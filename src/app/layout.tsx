@@ -11,6 +11,7 @@ const montserrat = Montserrat({
 export const metadata: Metadata = {
   title: "BSP",
   description: "Learn Spanish with BSP",
+  themeColor: "#2F54BA",
 };
 
 export default function RootLayout({
@@ -20,6 +21,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={`${montserrat.variable} h-full antialiased`}>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+        <meta name="theme-color" content="#2F54BA" />
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

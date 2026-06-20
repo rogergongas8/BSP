@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { AlertCircle } from 'lucide-react'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import AuthInput from '@/components/auth/auth-input'
 import PinInput from '@/components/auth/pin-input'
 
@@ -10,12 +11,13 @@ export default function LoginPage() {
   const [username, setUsername] = useState('')
   const [pin, setPin] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
   const isReady = username.trim().length > 0 && pin.length === 4
 
   function handleLogin() {
-    // Phase 2: real auth logic here
-    setError("Looks like there's no one with that username and PIN. Please, check your input or create a new account.")
+    // Phase 2: replace with real Supabase auth
+    router.push('/')
   }
 
   return (

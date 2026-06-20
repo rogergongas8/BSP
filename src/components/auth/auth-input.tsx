@@ -11,6 +11,8 @@ interface AuthInputProps {
   placeholder?: string
   type?: string
   inputMode?: 'text' | 'tel' | 'numeric'
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters'
+  autoCorrect?: 'on' | 'off'
   maxLength?: number
   status?: Status
   message?: string
@@ -24,6 +26,8 @@ export default function AuthInput({
   placeholder,
   type = 'text',
   inputMode,
+  autoCapitalize = 'none',
+  autoCorrect = 'off',
   maxLength,
   status = 'idle',
   message,
@@ -41,11 +45,13 @@ export default function AuthInput({
         <input
           type={type}
           inputMode={inputMode}
+          autoCapitalize={autoCapitalize}
+          autoCorrect={autoCorrect}
           maxLength={maxLength}
           placeholder={placeholder}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className={`w-full rounded-2xl bg-white px-4 py-3.5 text-sm text-gray-900 focus:text-gray-600 placeholder:text-gray-400 outline-none transition-all [&:-webkit-autofill]:[box-shadow:0_0_0_30px_white_inset] ${suffix ? 'pr-11' : ''} ${ringClass}`}
+className={`w-full rounded-2xl bg-white px-4 py-3.5 text-base text-gray-900 focus:text-gray-600 placeholder:text-gray-400 outline-none transition-all [&:-webkit-autofill]:[box-shadow:0_0_0_30px_white_inset] ${suffix ? 'pr-11' : ''} ${ringClass}`}
         />
         {suffix && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2">
