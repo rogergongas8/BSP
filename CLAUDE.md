@@ -256,7 +256,7 @@ BSP/
 │  │  └─ game-store.ts    # Zustand — multiplayer UI state only
 │  ├─ types/
 │  │  └─ database.types.ts  # generated — do not edit manually
-│  └─ middleware.ts         # session refresh, protect /play /room /profile /leaderboard
+│  └─ proxy.ts              # session refresh, protect /play /room /profile /leaderboard (Next.js 16: proxy.ts, no middleware.ts)
 ```
 
 ---
