@@ -204,6 +204,24 @@ This project follows OWASP Top 10 mitigations by default. Every rule below is ma
 - `cn()` from `lib/utils.ts` for conditional classes. Never string concatenation.
 - Animations respect `prefers-reduced-motion`. The countdown ring has a reduced-motion fallback.
 
+### Componentes reutilizables — regla obligatoria
+
+Antes de escribir cualquier elemento de UI, pregunta: **¿existe ya algo similar?** Si dos pantallas comparten un patrón visual (mismo input, mismo botón, mismo layout), extrae el componente antes de duplicar.
+
+- Un input con label + ring de estado + mensaje de validación → `AuthInput`
+- Un input de PIN con ojo + filtro numérico → `PinInput`
+- Nunca copiar JSX entre páginas — si lo copias, extráelo
+
+Estructura de componentes compartidos:
+```
+src/components/
+├── auth/       # componentes exclusivos de login/signup
+├── game/       # componentes del juego (AnswerButton, CountdownRing…)
+└── ui/         # primitivas shadcn — no tocar
+```
+
+Un componente sube a `src/components/` solo cuando lo usan 2+ rutas. Si es específico de una página, vive junto a su `page.tsx`.
+
 ### Forms
 
 - All forms use `react-hook-form` + `@hookform/resolvers/zod`. No uncontrolled inputs.
