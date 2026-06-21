@@ -14,6 +14,7 @@ type Props = {
   buttonPosition?: 'center' | 'right'
   buttonBottom?: string
   buttonRight?: string
+  buttonWidth?: string
 }
 
 export default function ActivityCard({
@@ -26,6 +27,7 @@ export default function ActivityCard({
   buttonPosition = 'center',
   buttonBottom = '10%',
   buttonRight = '10%',
+  buttonWidth = 'w-24',
 }: Props) {
   const router = useRouter()
   const [cardPressed, setCardPressed] = useState(false)
@@ -33,8 +35,8 @@ export default function ActivityCard({
 
   const btnClass =
     buttonColor === 'orange'
-      ? 'bg-[#FDBB6E] text-black shadow-[0_4px_12px_#FF87164D]'
-      : 'bg-bsp-blue text-white'
+      ? 'bg-[#FDBB6E] text-black shadow-[0_4px_12px_#FF87164D] py-2.5'
+      : 'bg-bsp-blue text-white shadow-[0_4px_12px_#2F54BA4D] py-[11px]'
 
   const posStyle =
     buttonPosition === 'center'
@@ -56,10 +58,11 @@ export default function ActivityCard({
         width={imageWidth}
         height={imageHeight}
         quality={100}
-        className="w-full h-auto"
+        draggable={false}
+        className="w-full h-auto select-none"
       />
       <div
-        className="absolute w-24 transition-transform duration-100"
+        className={`absolute ${buttonWidth} transition-transform duration-100`}
         style={posStyle}
         onPointerDown={(e) => {
           e.stopPropagation()
@@ -74,7 +77,7 @@ export default function ActivityCard({
           router.push(href)
         }}
       >
-        <div className={`w-full ${btnClass} rounded-full py-2.5 text-xs font-semibold flex items-center justify-center gap-1`}>
+        <div className={`w-full ${btnClass} rounded-full text-xs font-semibold flex items-center justify-center gap-1`}>
           Jugar <span className="text-sm leading-none">›</span>
         </div>
       </div>

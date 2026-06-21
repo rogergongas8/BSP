@@ -30,12 +30,12 @@ export default function HomePage() {
             className="rounded-full"
           />
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 bg-bsp-blue-dark rounded-full px-3 py-1.5">
-              <span className="text-sm">🔥</span>
+            <div className="flex items-center gap-1.5 bg-white/15 rounded-full px-2.5 py-1">
+              <Image src="/images/home/fxemoji_fire.svg" alt="Racha" width={16} height={16} />
               <span className="text-white text-xs font-semibold">4</span>
             </div>
-            <div className="flex items-center gap-1.5 bg-bsp-blue-dark rounded-full px-3 py-1.5">
-              <span className="text-sm">⭐</span>
+            <div className="flex items-center gap-1.5 bg-white/15 rounded-full px-2.5 py-1">
+              <Image src="/images/home/streamline-plump-color_star-circle-flat.svg" alt="Nivel" width={16} height={16} />
               <span className="text-white text-xs font-semibold">Lvl 2.</span>
             </div>
           </div>
@@ -132,6 +132,7 @@ export default function HomePage() {
           buttonPosition="right"
           buttonBottom="15%"
           buttonRight="10%"
+          buttonWidth="w-24"
         />
 
       </div>
