@@ -30,7 +30,7 @@ const achievement = (
   nameEs,
   nameEn,
   description,
-  badge: `${BASE}/${nameEs}.png`,
+  badge: `${BASE}/${id}.png`,
   cats: CATS[color],
 })
 
@@ -47,7 +47,7 @@ export const ACHIEVEMENTS = {
   reto_aceptado:      achievement('reto_aceptado',       'Reto Aceptado',            'Challenge Accepted',     'Complete 30 daily challenges.',                    'yellow'),
   vaya_semana:        achievement('vaya_semana',          'Vaya Semana',              'What a Week',            'Complete the daily challenge 7 days in a row.',   'yellow'),
   podio:              achievement('podio',                "Po'dio'",                  'Oh My Podium',           'Finish in the top 3 in 10 multiplayer games.',    'blue'),
-  campeones:          achievement('campeones',            'Campeones, Olé, Olé, Olé', 'Champions, Olé Olé Olé', 'Win 5 multiplayer games.',                       'yellow'),
+  campeones:          achievement('campeones',            'Campeones, Olé, Olé, Olé', 'Champions, Olé Olé Olé', 'Win 5 multiplayer games.',                       'green'),
   senor_del_tiempo:   achievement('senor_del_tiempo',    'Señor del Tiempo',         'Time Lord',              'Complete 1,500 items.',                            'blue'),
   vaya_leyenda:       achievement('vaya_leyenda',        'Vaya Leyenda',             'What a Legend',          'Complete 30 activities with no mistakes.',         'red'),
 } as const
