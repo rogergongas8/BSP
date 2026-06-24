@@ -6,7 +6,22 @@ import Link from 'next/link'
 import { motion, AnimatePresence, useMotionValue, useAnimation, useTransform, MotionValue } from 'motion/react'
 import { ChevronRight } from 'lucide-react'
 
-const TENSES = [
+type TenseItem = {
+  id: string
+  cat: string
+  catName: string
+  tense: string
+  color: string
+  colorLight: string
+  descEs: React.ReactNode
+  descEn: string
+  bgProps: { rotate: number; scaleX: number; scaleY: number; y: number }
+  bgSvg?: string
+  svgProps?: { x: number; y: number; scale: number }
+  bgFullSvg?: string
+}
+
+const TENSES: TenseItem[] = [
   {
     id: 'pretérito-perfecto',
     cat: 'javi-tostado',
@@ -73,7 +88,7 @@ const TENSES = [
     svgProps: { x: -2, y: 6, scale: 1.02 },
     bgFullSvg: '/images/escribiendo/bg-full-zas.svg',
   },
-] as const
+]
 
 const CARD_W = 180
 const GAP = 0
@@ -90,7 +105,7 @@ const TenseCard = memo(({ i, xValue, centerOffset, onClick }: { i: number, xValu
   const buttonOpacity = useTransform(distance, [0, 40], [1, 0], { clamp: true })
   const zIndex = useTransform(distance, (d) => Math.max(1, 100 - Math.floor(d / 10)))
   
-  const tenseIndex = ((i % 3) + 3) % 3
+  const tenseIndex = (((i % 3) + 3) % 3) as 0 | 1 | 2
   const tense = TENSES[tenseIndex]
 
   // Rotated background animations using custom props per tense
