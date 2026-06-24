@@ -262,7 +262,7 @@ export default function EscribiendoPage() {
           src="/images/escribiendo/background.png"
           alt=""
           fill
-          className="object-cover opacity-20 pointer-events-none select-none"
+          className="object-cover opacity-20 pointer-events-none select-none scale-[1.3] translate-x-[15%]"
         />
         <div className="relative flex items-center justify-between mb-3">
           <Image src="/images/nav/user-image.svg" alt="Avatar" width={36} height={36} className="rounded-full" />
@@ -296,12 +296,12 @@ export default function EscribiendoPage() {
       </div>
 
       {/* ── Content ── */}
-      <div className="bg-white flex-1 pt-5 pb-8">
+      <div className="bg-white flex-1 pt-5 pb-24">
 
-        <p className="px-5 text-sm font-black text-gray-900 mb-10">Choose your tense</p>
+        <p className="px-5 text-sm font-black text-gray-900 mb-6">Choose your tense</p>
 
         {/* ── Carousel ── */}
-        <div ref={containerRef} className="relative overflow-hidden" style={{ height: 280 }}>
+        <div ref={containerRef} className="relative overflow-visible" style={{ height: 260 }}>
           <motion.div
             className="absolute top-0 left-0 w-full h-full cursor-grab active:cursor-grabbing"
             style={{ x }}
@@ -320,7 +320,7 @@ export default function EscribiendoPage() {
         <AnimatePresence mode="wait">
           <motion.div
             key={renderIndex}
-            className="px-6 flex flex-col items-center gap-2 mt-6"
+            className="px-6 flex flex-col items-center gap-1.5 mt-2"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
