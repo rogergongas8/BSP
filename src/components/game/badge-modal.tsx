@@ -23,7 +23,7 @@ export function BadgeModal({ open, onClose, achievement }: BadgeModalProps) {
   if (!mounted || !open) return null
 
   const badgeSize = 'min(148px, 37vw)'
-  const whitePaddingTop = 184
+  const whitePaddingTop = 136
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -38,7 +38,7 @@ export function BadgeModal({ open, onClose, achievement }: BadgeModalProps) {
           style={{ background: 'repeating-conic-gradient(#F55379 0deg 10deg, #F76877 10deg 20deg)' }}
         >
           {/* Pill — fijo arriba */}
-          <div className="absolute top-5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 rounded-full border border-white/40 bg-white/20 px-4 py-1.5 backdrop-blur-md">
+          <div className="absolute top-5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 rounded-full border border-white/40 bg-white/20 px-4 py-1.5 backdrop-blur-md whitespace-nowrap">
             <Star className="h-3.5 w-3.5 fill-white text-white" />
             <span className="text-[11px] font-extrabold tracking-widest text-white uppercase">
               Logro Desbloqueado
@@ -55,7 +55,7 @@ export function BadgeModal({ open, onClose, achievement }: BadgeModalProps) {
           style={{
             marginTop: `calc(-1 * ${badgeSize} / 2)`,
             marginBottom: `calc(-1 * ${badgeSize} / 2)`,
-            transform: 'translateY(52px)',
+            transform: 'translateY(4px)',
           }}
         >
           {/* Top cat */}
