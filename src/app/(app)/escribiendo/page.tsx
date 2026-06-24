@@ -26,6 +26,7 @@ const TENSES = [
     bgProps: { rotate: -4, scaleX: 1.05, scaleY: 1.05, y: 0 },
     bgSvg: '/images/escribiendo/bg-javi.svg',
     svgProps: { x: 1, y: 2, scale: 1.04 },
+    bgFullSvg: '/images/escribiendo/bg-full-javi.svg',
   },
   {
     id: 'imperfecto',
@@ -45,9 +46,10 @@ const TENSES = [
       </>
     ),
     descEn: 'It was always there in the background; while others were doing things, it described what things were like, what was going on and what used to happen.',
-    bgProps: { rotate: 3, scaleX: 1.04, scaleY: 1.15, y: -10 },
-    bgSvg: '/images/escribiendo/bg-javi.svg',
-    svgProps: { x: 1, y: 2, scale: 1.04 },
+    bgProps: { rotate: 5, scaleX: 1.05, scaleY: 1.05, y: -2 },
+    bgSvg: '/images/escribiendo/bg-mimo.svg',
+    svgProps: { x: 3, y: 3, scale: 1.05 },
+    bgFullSvg: '/images/escribiendo/bg-full-mimo.svg',
   },
   {
     id: 'indefinido',
@@ -66,9 +68,10 @@ const TENSES = [
       </>
     ),
     descEn: 'It did not hang around: it came in, made a decision, paid, left and moved the story on.',
-    bgProps: { rotate: -2, scaleX: 1.08, scaleY: 1.03, y: 4 },
-    bgSvg: '/images/escribiendo/bg-javi.svg',
-    svgProps: { x: 1, y: 2, scale: 1.04 },
+    bgProps: { rotate: -2, scaleX: 1.02, scaleY: 1.02, y: -4 },
+    bgSvg: '/images/escribiendo/bg-zas.svg',
+    svgProps: { x: -2, y: 6, scale: 1.02 },
+    bgFullSvg: '/images/escribiendo/bg-full-zas.svg',
   },
 ] as const
 
@@ -110,60 +113,60 @@ const TenseCard = memo(({ i, xValue, centerOffset, onClick }: { i: number, xValu
       }}
       onClick={onClick}
     >
-      {/* Cat — overflows above */}
-      <motion.div
-        className="absolute left-1/2 -translate-x-1/2 pointer-events-none z-10"
-        style={{ width: 190, height: 190, bottom: catBottom }}
-      >
-        <Image
-          src={`/images/escribiendo/${tense.cat}.png`}
-          alt={tense.catName}
-          fill
-          className="object-contain drop-shadow-lg"
-          draggable={false}
-          priority
-        />
-      </motion.div>
-
       {/* Card Wrapper */}
       <motion.div
-        className="w-full relative"
-        style={{ height }}
+        className="absolute top-1/2 left-1/2 rounded-[28px]"
+        style={{
+          width: CARD_W,
+          height,
+          x: -CARD_W / 2,
+          y: '-50%',
+        }}
       >
-        {/* Light Rotated Background */}
-        <motion.div
-          className="absolute inset-0 pointer-events-none"
-          style={tense.bgSvg ? {} : { rotate: bgRotate, scaleX: bgScaleX, scaleY: bgScaleY, y: bgY }}
-        >
-          {tense.bgSvg ? (
-            <div 
-              className="absolute w-full h-full"
+        {tense.bgFullSvg ? (
+          <img 
+            src={tense.bgFullSvg} 
+            alt="" 
+            className="absolute inset-[-6px] w-[calc(100%+12px)] h-[calc(100%+12px)] object-fill pointer-events-none"
+          />
+        ) : (
+          <>
+            {/* Light Rotated Background */}
+            <motion.div
+              className="absolute inset-0 pointer-events-none"
+              style={tense.bgSvg ? {} : { rotate: bgRotate, scaleX: bgScaleX, scaleY: bgScaleY, y: bgY }}
+            >
+              {tense.bgSvg ? (
+                <div 
+                  className="absolute w-full h-full"
+                  style={{ 
+                    backgroundColor: tense.colorLight,
+                    maskImage: `url(${tense.bgSvg})`,
+                    maskSize: '100% 100%',
+                    maskRepeat: 'no-repeat',
+                    maskPosition: 'center',
+                    WebkitMaskImage: `url(${tense.bgSvg})`,
+                    WebkitMaskSize: '100% 100%',
+                    WebkitMaskRepeat: 'no-repeat',
+                    WebkitMaskPosition: 'center',
+                    transform: `scale(${tense.svgProps?.scale || 1.04}) translate(${tense.svgProps?.x || 0}px, ${tense.svgProps?.y || 0}px)`
+                  }} 
+                />
+              ) : (
+                <div className="w-full h-full rounded-[28px]" style={{ backgroundColor: tense.colorLight }} />
+              )}
+            </motion.div>
+            
+            {/* Dark Main Background with Gradient Overlay */}
+            <motion.div
+              className="absolute inset-0 rounded-[28px]"
               style={{ 
-                backgroundColor: tense.colorLight,
-                maskImage: `url(${tense.bgSvg})`,
-                maskSize: '100% 100%',
-                maskRepeat: 'no-repeat',
-                maskPosition: 'center',
-                WebkitMaskImage: `url(${tense.bgSvg})`,
-                WebkitMaskSize: '100% 100%',
-                WebkitMaskRepeat: 'no-repeat',
-                WebkitMaskPosition: 'center',
-                transform: `scale(${tense.svgProps?.scale || 1.04}) translate(${tense.svgProps?.x || 0}px, ${tense.svgProps?.y || 0}px)`
-              }} 
+                backgroundColor: tense.color,
+                backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 100%)'
+              }}
             />
-          ) : (
-            <div className="w-full h-full rounded-[28px]" style={{ backgroundColor: tense.colorLight }} />
-          )}
-        </motion.div>
-        
-        {/* Dark Main Background with Gradient Overlay */}
-        <motion.div
-          className="absolute inset-0 rounded-[28px]"
-          style={{ 
-            backgroundColor: tense.color,
-            backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 100%)'
-          }}
-        />
+          </>
+        )}
 
         {/* Button */}
         <motion.div
@@ -185,6 +188,21 @@ const TenseCard = memo(({ i, xValue, centerOffset, onClick }: { i: number, xValu
             Jugar <ChevronRight className="w-4 h-4 stroke-[3]" />
           </Link>
         </motion.div>
+      </motion.div>
+
+      {/* Cat — overflows above, rendered after Card Wrapper to appear on top */}
+      <motion.div
+        className="absolute left-1/2 -translate-x-1/2 pointer-events-none z-10"
+        style={{ width: 190, height: 190, bottom: catBottom }}
+      >
+        <Image
+          src={`/images/escribiendo/${tense.cat}.png`}
+          alt={tense.catName}
+          fill
+          className="object-contain drop-shadow-lg"
+          draggable={false}
+          priority
+        />
       </motion.div>
     </motion.div>
   )
