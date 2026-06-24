@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import ActivityCard from './ActivityCard'
 import { BadgeModalDemo } from './BadgeModalDemo'
+import { LevelUpModalDemo } from './LevelUpModalDemo'
 
 const CAT_POSITIONS = [
   // day 0: cat holding the XP badge from above
@@ -103,7 +104,7 @@ export default function HomePage() {
         {/* 2-col activity cards */}
         <div className="grid grid-cols-2 gap-3 mb-4">
           <ActivityCard
-            href="/practice"
+            href="/escribiendo"
             imageSrc="/images/home/escribiendo.png"
             imageAlt="Escribiendo"
             imageWidth={564}
@@ -138,6 +139,7 @@ export default function HomePage() {
 
       </div>
       <BadgeModalDemo />
+      <LevelUpModalDemo />
     </div>
   )
 }
