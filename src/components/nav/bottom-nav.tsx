@@ -19,7 +19,7 @@ export default function BottomNav() {
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
       <div className="relative h-[54px] w-[261px] bg-[#567BCA]/70 backdrop-blur-md rounded-full shadow-[0_8px_32px_#2F54BA55,inset_0_0_0_1px_rgba(255,255,255,0.2)]">
         <LayoutGroup>
-          <div className="relative grid grid-cols-3 h-full z-10">
+          <div className="relative grid grid-cols-3 h-full z-10 px-[3px]">
             {NAV_ITEMS.map((item, i) => {
               const isActive = active === i
               return (

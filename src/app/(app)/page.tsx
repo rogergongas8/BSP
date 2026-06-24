@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import ActivityCard from './ActivityCard'
+import { BadgeModalDemo } from './BadgeModalDemo'
 
 const CAT_POSITIONS = [
   // day 0: cat holding the XP badge from above
@@ -136,6 +137,7 @@ export default function HomePage() {
         />
 
       </div>
+      <BadgeModalDemo />
     </div>
   )
 }
