@@ -56,7 +56,7 @@ export function BadgeModal({ open, onClose, achievement }: BadgeModalProps) {
                 className="absolute top-5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 rounded-full border border-white/40 bg-white/20 px-4 py-1.5 backdrop-blur-md whitespace-nowrap"
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
+                transition={{ delay: 0 }}
               >
                 <Star className="h-3.5 w-3.5 fill-white text-white" />
                 <span className="text-[11px] font-extrabold tracking-widest text-white uppercase">
@@ -69,7 +69,7 @@ export function BadgeModal({ open, onClose, achievement }: BadgeModalProps) {
                 className="text-lg font-black text-white drop-shadow"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.25 }}
+                transition={{ delay: 0 }}
               >
                 ¡Felicidades!
               </motion.p>
@@ -90,7 +90,7 @@ export function BadgeModal({ open, onClose, achievement }: BadgeModalProps) {
                   className="absolute top-[6px] left-1/2 z-20 -translate-x-1/2"
                   initial={{ opacity: 0, y: -16, scale: 0.6 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ type: 'spring', damping: 14, stiffness: 240, delay: 0.35 }}
+                  transition={{ type: 'spring', damping: 14, stiffness: 240, delay: 0.12 }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={achievement.cats[0]} alt="mascot" className="h-12 w-12 object-contain" />
@@ -105,7 +105,7 @@ export function BadgeModal({ open, onClose, achievement }: BadgeModalProps) {
                 className="relative z-10 object-contain drop-shadow-xl"
                 initial={{ scale: 0.3, opacity: 0, rotate: -15 }}
                 animate={{ scale: 1, opacity: 1, rotate: 0 }}
-                transition={{ type: 'spring', damping: 12, stiffness: 200, delay: 0.18 }}
+                transition={{ type: 'spring', damping: 12, stiffness: 200, delay: 0.08 }}
               />
 
               {/* Bottom-left cat */}
@@ -114,7 +114,7 @@ export function BadgeModal({ open, onClose, achievement }: BadgeModalProps) {
                   className="absolute -bottom-[34px] left-[86px] z-20"
                   initial={{ opacity: 0, x: -20, scale: 0.6 }}
                   animate={{ opacity: 1, x: 0, scale: 1 }}
-                  transition={{ type: 'spring', damping: 14, stiffness: 240, delay: 0.4 }}
+                  transition={{ type: 'spring', damping: 14, stiffness: 240, delay: 0.15 }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={achievement.cats[1]} alt="mascot" className="h-16 w-16 object-contain" />
@@ -127,7 +127,7 @@ export function BadgeModal({ open, onClose, achievement }: BadgeModalProps) {
                   className="absolute -bottom-[43px] right-[79px] z-0"
                   initial={{ opacity: 0, x: 20, scale: 0.6 }}
                   animate={{ opacity: 1, x: 0, scale: 1 }}
-                  transition={{ type: 'spring', damping: 14, stiffness: 240, delay: 0.45 }}
+                  transition={{ type: 'spring', damping: 14, stiffness: 240, delay: 0.2 }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={achievement.cats[2]} alt="mascot" className="h-[70px] w-[70px] object-contain" />

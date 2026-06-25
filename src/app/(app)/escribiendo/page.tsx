@@ -292,12 +292,12 @@ export default function EscribiendoPage() {
             </div>
           </div>
         </div>
-        <div className="relative mb-2">
-          <Link href="/" className="flex items-center gap-1 text-white/80 text-xs font-semibold w-fit">
+        <motion.div whileTap={{ scale: 0.9 }} className="relative mb-2 w-fit">
+          <Link href="/" className="flex items-center gap-1 text-white/80 text-xs font-semibold">
             <ChevronRight className="w-3.5 h-3.5 rotate-180" />
             Back
           </Link>
-        </div>
+        </motion.div>
         <h1 className="relative text-center text-3xl font-black text-white tracking-tight">
           Escribiendo...
         </h1>

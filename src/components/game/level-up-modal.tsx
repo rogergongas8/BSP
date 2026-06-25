@@ -16,7 +16,7 @@ const CATS = ['javi-tostado', 'mimo', 'zas'] as const
 
 // Per-level cat config: size and offset relative to the number
 const CAT_CONFIG = [
-  { size: 90,  right: -80, bottom: -8  }, // lvl 1 (javi-tostado): más a la derecha y abajo
+  { size: 90,  right: -50, bottom: -8  }, // lvl 1 (javi-tostado): más a la derecha y abajo
   { size: 200, right: -104, bottom: -52 }, // lvl 2 (mimo): más grande y abajo
   { size: 150, right: -84, bottom: -28 }, // lvl 3 (zas): igual que lvl 2
 ] as const

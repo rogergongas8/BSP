@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { motion } from 'motion/react'
 
 type Props = {
   href: string
@@ -30,26 +30,24 @@ export default function ActivityCard({
   buttonWidth = 'w-24',
 }: Props) {
   const router = useRouter()
-  const [cardPressed, setCardPressed] = useState(false)
-  const [btnPressed, setBtnPressed] = useState(false)
 
   const btnClass =
     buttonColor === 'orange'
       ? 'bg-[#FDBB6E] text-black shadow-[0_4px_12px_#FF87164D] py-2.5'
       : 'bg-bsp-blue text-white shadow-[0_4px_12px_#2F54BA4D] py-[11px]'
 
-  const posStyle =
-    buttonPosition === 'center'
-      ? { bottom: buttonBottom, left: '50%', transform: `translateX(-50%) scale(${btnPressed ? 0.9 : 1})` }
-      : { bottom: buttonBottom, right: buttonRight, transform: `scale(${btnPressed ? 0.9 : 1})` }
+  const posClass = buttonPosition === 'center'
+    ? 'left-1/2 -translate-x-1/2'
+    : ''
+    
+  const posStyle = buttonPosition === 'center'
+    ? { bottom: buttonBottom }
+    : { bottom: buttonBottom, right: buttonRight }
 
   return (
-    <div
-      className="relative cursor-pointer transition-transform duration-150"
-      style={{ transform: `scale(${cardPressed ? 0.97 : 1})` }}
-      onPointerDown={() => setCardPressed(true)}
-      onPointerUp={() => setCardPressed(false)}
-      onPointerLeave={() => { setCardPressed(false); setBtnPressed(false) }}
+    <motion.div
+      className="relative cursor-pointer"
+      whileTap={{ scale: 0.96 }}
       onClick={() => router.push(href)}
     >
       <Image
@@ -59,19 +57,12 @@ export default function ActivityCard({
         height={imageHeight}
         quality={100}
         draggable={false}
-        className="w-full h-auto select-none"
+        className="w-full h-auto select-none drop-shadow-sm"
       />
-      <div
-        className={`absolute ${buttonWidth} transition-transform duration-100`}
+      <motion.div
+        className={`absolute ${buttonWidth} ${posClass}`}
         style={posStyle}
-        onPointerDown={(e) => {
-          e.stopPropagation()
-          setBtnPressed(true)
-        }}
-        onPointerUp={(e) => {
-          e.stopPropagation()
-          setBtnPressed(false)
-        }}
+        whileTap={{ scale: 0.9 }}
         onClick={(e) => {
           e.stopPropagation()
           router.push(href)
@@ -80,7 +71,7 @@ export default function ActivityCard({
         <div className={`w-full ${btnClass} rounded-full text-xs font-semibold flex items-center justify-center gap-1`}>
           Jugar <span className="text-sm leading-none">›</span>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
