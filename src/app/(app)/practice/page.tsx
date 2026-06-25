@@ -184,7 +184,7 @@ export default function LioDeTiemposPage() {
       {/* ── Blue header ── */}
       <div className="relative bg-bsp-blue px-5 pt-8 pb-12 overflow-hidden">
         <Image
-          src="/images/lio-de-tiempos/Lío de tiempos - background.png"
+          src="/images/lio-de-tiempos/background.png"
           alt=""
           fill
           className="object-cover opacity-20 pointer-events-none select-none scale-[1.3] translate-x-[15%]"

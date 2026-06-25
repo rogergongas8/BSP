@@ -56,6 +56,7 @@ export default function ActivityCard({
         width={imageWidth}
         height={imageHeight}
         quality={100}
+        unoptimized
         draggable={false}
         className="w-full h-auto select-none drop-shadow-sm"
       />

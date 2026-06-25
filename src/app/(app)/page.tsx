@@ -92,7 +92,7 @@ export default function HomePage() {
       </div>
 
       {/* ── Content area ── */}
-      <div className="bg-gray-100 px-4 pt-4 pb-6">
+      <div className="bg-gray-100 px-4 pt-4 pb-6 flex-1">
 
         {/* Section title */}
         <h2 className="mb-5 text-base leading-snug">

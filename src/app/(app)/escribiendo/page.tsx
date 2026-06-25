@@ -105,7 +105,7 @@ const TenseCard = memo(({ i, xValue, centerOffset, onClick }: { i: number, xValu
   const buttonOpacity = useTransform(distance, [0, 40], [1, 0], { clamp: true })
   const zIndex = useTransform(distance, (d) => Math.max(1, 100 - Math.floor(d / 10)))
   
-  const tenseIndex = (((i % 3) + 3) % 3) as 0 | 1 | 2
+  const tenseIndex = i as 0 | 1 | 2
   const tense = TENSES[tenseIndex]
 
   // Rotated background animations using custom props per tense
@@ -244,7 +244,8 @@ export default function EscribiendoPage() {
 
   useEffect(() => {
     return x.on('change', (latest) => {
-      const index = Math.round(-latest / ITEM_W)
+      let index = Math.round(-latest / ITEM_W)
+      index = Math.max(0, Math.min(TENSES.length - 1, index))
       if (index !== renderIndex) setRenderIndex(index)
     })
   }, [x, renderIndex])
@@ -257,16 +258,14 @@ export default function EscribiendoPage() {
     const currentX = x.get()
     const velocityX = info.velocity.x
     const predictedX = currentX + velocityX * 0.15
-    const targetIndex = Math.round(-predictedX / ITEM_W)
+    let targetIndex = Math.round(-predictedX / ITEM_W)
+    targetIndex = Math.max(0, Math.min(TENSES.length - 1, targetIndex))
     snapTo(targetIndex)
   }, [x, snapTo])
 
-  const selectedTense = TENSES[((renderIndex % 3) + 3) % 3]
+  const selectedTense = TENSES[renderIndex]
 
-  const indices = []
-  for (let i = renderIndex - 2; i <= renderIndex + 2; i++) {
-    indices.push(i)
-  }
+  const indices = [0, 1, 2]
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -321,6 +320,7 @@ export default function EscribiendoPage() {
             className="absolute top-0 left-0 w-full h-full cursor-grab active:cursor-grabbing"
             style={{ x }}
             drag="x"
+            dragConstraints={{ right: 0, left: -(TENSES.length - 1) * ITEM_W }}
             animate={controls}
             onDragEnd={handleDragEnd}
             dragElastic={0.1}
