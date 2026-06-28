@@ -46,7 +46,7 @@ const INPUT_STYLES: Record<ValidationStatus, { bg: string; border: string; color
 }
 
 function InlineSentence({
-  sentence, verb, input, answer, highlight, onChange, onKeyDown, status, inputRef, color,
+  sentence, verb, input, answer, highlight, onChange, onKeyDown, status, inputRef, color, showHint,
 }: {
   sentence: string
   verb: string
@@ -58,6 +58,7 @@ function InlineSentence({
   status: ValidationStatus
   inputRef: React.RefObject<HTMLInputElement | null>
   color: string
+  showHint: boolean
 }) {
   const [before, after] = sentence.split('___')
   const beforeWords = before.trim().split(/\s+/).filter(Boolean)
@@ -68,7 +69,8 @@ function InlineSentence({
   const displayValue = (status === 'correct' || status === 'skipped') ? answer : input
   const boxW = Math.max(80, Math.max(displayValue.length, answer.length) * 10 + 36)
 
-  const showSplit = (status === 'wrong_person' || status === 'wrong_ending') && highlight
+  // Split color (correct prefix + wrong suffix) only shown when hint is active
+  const showSplit = showHint && (status === 'wrong_person' || status === 'wrong_ending') && highlight
   const correctPrefix = showSplit ? input.slice(0, highlight!.length) : null
   const wrongSuffix   = showSplit ? input.slice(highlight!.length) : null
 
@@ -104,7 +106,7 @@ function InlineSentence({
               fontSize: '16px',
             }}
           />
-          {status === 'wrong_person' && correctPrefix !== null && (
+          {showSplit && correctPrefix !== null && (
             <div
               className="absolute inset-0 flex items-center justify-center pointer-events-none font-medium"
               style={{ fontSize: '16px' }}
@@ -343,6 +345,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
                   status={status}
                   inputRef={inputRef}
                   color={meta.color}
+                  showHint={showHint}
                 />
               ) : (
                 <div className="h-[80px]" />
