@@ -148,16 +148,19 @@ function validateIndefReg(normalized: string, phrase: Phrase): ValidationResult 
     }
   }
 
+  // 2. Derive expected stem (needed for both wrong_ending and stem checks)
+  const expectedStem = phrase.expected_stem
+    ?? deaccent(phrase.verb.toLowerCase()).slice(0, -2)
+
   if (inputStem === null) {
+    // No valid indefinido ending found — but stem may still be correct
+    const stemCorrect = normalized.startsWith(expectedStem)
     return {
       status: 'wrong_ending',
       hint: isAR ? REG_ENDING_WRONG_AR_HINT : REG_ENDING_WRONG_ERER_HINT,
+      highlight: stemCorrect ? expectedStem : undefined,
     }
   }
-
-  // 2. Derive expected stem
-  const expectedStem = phrase.expected_stem
-    ?? deaccent(phrase.verb.toLowerCase()).slice(0, -2)
 
   // 3. Check person/number
   const expectedEnding = personMap[phrase.person]

@@ -417,7 +417,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
                   <>
                     <StatusRow label="Tense ending" ok={status !== 'wrong_ending'} />
                     <StatusRow label="Person/Number" ok={status === 'wrong_stem'} />
-                    <StatusRow label="Stem"          ok={status === 'wrong_person' && highlight !== null} />
+                    <StatusRow label="Stem"          ok={(status === 'wrong_person' || status === 'wrong_ending') && highlight !== null} />
                   </>
                 ) : (
                   <>
