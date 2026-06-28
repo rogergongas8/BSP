@@ -26,9 +26,9 @@ const VALID_FORMS: Record<string, string[]> = {
 
 const INVALID_FORM_HINTS: Record<string, string> = {
   Indef_full_irreg_A:
-    "It's one of those pain-in-the-neck irregulars — this indefinido form has to be memorised. The **traitor**... It ends with \"-ar\", but it behaves as if it was an **-er/-ir** verb.",
+    "The **traitor**... Ends with \"-ar\", but it behaves as if it was an **\"-er/-ir\" verb**...",
   Indef_full_irreg_B:
-    "It's one of those pain-in-the-neck irregulars — this indefinido form has to be memorised. This is **THE** irregular that has to be memorised. It's the same for \"ir\" and \"ser\". It starts with **fu**...",
+    "This is **THE irregular** that has to be memorised. It's the same for \"ir\" and \"ser\". It starts with \"fu\"...",
 }
 
 const WRONG_PERSON_HINTS: Record<string, string> = {
@@ -176,6 +176,7 @@ function validateIndefReg(normalized: string, phrase: Phrase): ValidationResult 
     return {
       status: 'wrong_stem',
       hint: REG_STEM_HINTS[stemGroup] ?? REG_STEM_HINTS.Reg_default_stem,
+      highlight: inputStem, // split point: stem (red) | ending (theme)
     }
   }
 

@@ -69,10 +69,12 @@ function InlineSentence({
   const displayValue = (status === 'correct' || status === 'skipped') ? answer : input
   const boxW = Math.max(80, Math.max(displayValue.length, answer.length) * 10 + 36)
 
-  // Split color (correct prefix + wrong suffix) only shown when hint is active
-  const showSplit = showHint && (status === 'wrong_person' || status === 'wrong_ending') && highlight
+  // Split color only shown when hint is active
+  const showSplit = showHint && (status === 'wrong_person' || status === 'wrong_ending' || status === 'wrong_stem') && highlight
   const correctPrefix = showSplit ? input.slice(0, highlight!.length) : null
   const wrongSuffix   = showSplit ? input.slice(highlight!.length) : null
+  // wrong_stem: stem part is wrong → reverse colors (prefix=red, suffix=theme)
+  const stemIsWrong = status === 'wrong_stem'
 
   return (
     <div className="flex flex-wrap items-end justify-center gap-x-2 gap-y-3 px-4">
@@ -111,8 +113,8 @@ function InlineSentence({
               className="absolute inset-0 flex items-center justify-center pointer-events-none font-medium"
               style={{ fontSize: '16px' }}
             >
-              <span style={{ color }}>{correctPrefix}</span>
-              <span className="text-red-500">{wrongSuffix}</span>
+              <span style={{ color: stemIsWrong ? 'rgb(239,68,68)' : color }}>{correctPrefix}</span>
+              <span style={{ color: stemIsWrong ? color : 'rgb(239,68,68)' }}>{wrongSuffix}</span>
             </div>
           )}
         </div>
@@ -415,7 +417,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
                   <>
                     <StatusRow label="Tense ending" ok={status !== 'wrong_ending'} />
                     <StatusRow label="Person/Number" ok={status === 'wrong_stem'} />
-                    <StatusRow label="Stem"          ok={status === 'wrong_person'} />
+                    <StatusRow label="Stem"          ok={status === 'wrong_person' && highlight !== null} />
                   </>
                 ) : (
                   <>
