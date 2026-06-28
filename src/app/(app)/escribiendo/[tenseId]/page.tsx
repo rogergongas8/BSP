@@ -64,7 +64,7 @@ function InlineSentence({
   const styles = INPUT_STYLES[status]
   const borderColor = status === 'idle' ? color : styles.border
   const displayValue = (status === 'correct' || status === 'skipped') ? answer : input
-  const boxW = Math.max(80, displayValue.length * 10 + 36)
+  const boxW = Math.max(80, Math.max(displayValue.length, answer.length) * 10 + 36)
 
   const correctPrefix = status === 'wrong_person' && highlight
     ? input.slice(0, highlight.length) : null
@@ -151,14 +151,17 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   const [stats, setStats] = useState({ firstTry: 0, fixed: 0, withHints: 0, skipped: 0 })
   const hadErrorRef = useRef(false)
   const usedHintRef = useRef(false)
+  const usedIdsRef  = useRef<Set<string>>(new Set())
   const inputRef = useRef<HTMLInputElement>(null)
   const charName = meta.character.charAt(0).toUpperCase() + meta.character.slice(1)
 
   const prefetchRef = useRef<Phrase | null>(null)
 
-  const prefetchNext = useCallback(async () => {
+  const prefetchNext = useCallback(async (currentIds: Set<string>) => {
     try {
-      const res = await fetch(`/api/phrases/random?tense=${encodeURIComponent(meta.tense)}`)
+      const exclude = [...currentIds].join(',')
+      const url = `/api/phrases/random?tense=${encodeURIComponent(meta.tense)}${exclude ? `&exclude=${exclude}` : ''}`
+      const res = await fetch(url)
       const json = await res.json()
       if (json.data) prefetchRef.current = json.data
     } catch { /* silent */ }
@@ -174,19 +177,26 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
     usedHintRef.current = false
 
     if (prefetchRef.current) {
-      setPhrase(prefetchRef.current)
+      const phrase = prefetchRef.current
       prefetchRef.current = null
+      usedIdsRef.current.add(phrase.id)
+      setPhrase(phrase)
       setLoading(false)
-      prefetchNext()
+      prefetchNext(new Set(usedIdsRef.current))
       setTimeout(() => inputRef.current?.focus(), 80)
       return
     }
 
-    const res = await fetch(`/api/phrases/random?tense=${encodeURIComponent(meta.tense)}`)
+    const exclude = [...usedIdsRef.current].join(',')
+    const url = `/api/phrases/random?tense=${encodeURIComponent(meta.tense)}${exclude ? `&exclude=${exclude}` : ''}`
+    const res = await fetch(url)
     const json = await res.json()
-    if (json.data) setPhrase(json.data)
+    if (json.data) {
+      usedIdsRef.current.add(json.data.id)
+      setPhrase(json.data)
+    }
     setLoading(false)
-    prefetchNext()
+    prefetchNext(new Set(usedIdsRef.current))
     setTimeout(() => inputRef.current?.focus(), 80)
   }, [meta.tense, prefetchNext])
 
