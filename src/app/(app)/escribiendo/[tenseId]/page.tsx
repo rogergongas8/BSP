@@ -4,7 +4,7 @@ import { use, useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'motion/react'
-import { X, ChevronRight, SkipForward, Info } from 'lucide-react'
+import { X, Check, SkipForward, Lightbulb, Send } from 'lucide-react'
 import { validate, TENSE_META, type Phrase, type ValidationStatus } from '@/lib/game-logic'
 
 const SESSION_TOTAL = 10
@@ -15,11 +15,41 @@ function renderHint(hint: string) {
   )
 }
 
+function DottedWord({ word }: { word: string }) {
+  const [hovered, setHovered] = useState(false)
+  return (
+    <span
+      className="text-gray-700 font-medium text-base cursor-pointer transition-colors duration-150"
+      style={{
+        textDecoration: 'underline dotted',
+        textDecorationColor: hovered ? '#E8922A' : '#CBD5E1',
+        textUnderlineOffset: '5px',
+        textDecorationThickness: '2px',
+        color: hovered ? '#E8922A' : undefined,
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {word}
+    </span>
+  )
+}
+
+const INPUT_STYLES: Record<ValidationStatus, { bg: string; border: string; color: string }> = {
+  idle:         { bg: '#FFFFFF',  border: '',        color: '' },
+  correct:      { bg: '#DCFCE7',  border: '#22C55E', color: '#16A34A' },
+  invalid_form: { bg: '#FEE2E2',  border: '#EF4444', color: '#DC2626' },
+  wrong_person: { bg: '#FFF1F2',  border: '#FECDD3', color: '#E11D48' },
+}
+
 function InlineSentence({
-  sentence, input, onChange, onKeyDown, status, inputRef, color,
+  sentence, verb, input, answer, highlight, onChange, onKeyDown, status, inputRef, color,
 }: {
   sentence: string
+  verb: string
   input: string
+  answer: string
+  highlight: string | null
   onChange: (v: string) => void
   onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void
   status: ValidationStatus
@@ -27,33 +57,78 @@ function InlineSentence({
   color: string
 }) {
   const [before, after] = sentence.split('___')
-  const borderColor =
-    status === 'correct' ? '#22c55e' :
-    status !== 'idle' ? '#ef4444' :
-    color
+  const beforeWords = before.trim().split(/\s+/).filter(Boolean)
+  const afterWords = after.trim().split(/\s+/).filter(Boolean)
+
+  const styles = INPUT_STYLES[status]
+  const borderColor = status === 'idle' ? color : styles.border
+  const displayValue = status === 'correct' ? answer : input
+  const boxW = Math.max(80, displayValue.length * 10 + 36)
+
+  const correctPrefix = status === 'wrong_person' && highlight
+    ? input.slice(0, highlight.length) : null
+  const wrongSuffix = status === 'wrong_person' && highlight
+    ? input.slice(highlight.length) : null
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-x-1 gap-y-2 px-4 text-lg leading-relaxed">
-      <span className="text-gray-700 font-medium">{before}</span>
-      <input
-        ref={inputRef}
-        value={input}
-        onChange={e => onChange(e.target.value)}
-        onKeyDown={onKeyDown}
-        autoComplete="off"
-        autoCorrect="off"
-        autoCapitalize="off"
-        spellCheck={false}
-        className="inline-block border-2 rounded-xl px-3 py-1 text-center font-black outline-none transition-colors duration-200"
-        style={{
-          minWidth: 80,
-          width: Math.max(80, input.length * 14 + 40),
-          borderColor,
-          color,
-          fontSize: '1.1rem',
-        }}
-      />
-      <span className="text-gray-700 font-medium">{after}</span>
+    <div className="flex flex-wrap items-end justify-center gap-x-2 gap-y-3 px-4">
+      {beforeWords.map((word, i) => <DottedWord key={`b${i}`} word={word} />)}
+
+      <div className="flex flex-col items-center gap-[2px]">
+        <span className="text-[9px] font-black tracking-widest uppercase" style={{ color }}>
+          {verb}
+        </span>
+        <div className="relative">
+          <input
+            ref={inputRef}
+            value={displayValue}
+            onChange={e => onChange(e.target.value)}
+            onKeyDown={onKeyDown}
+            readOnly={status === 'correct'}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            data-form-type="other"
+            inputMode="text"
+            className="border-2 rounded-xl px-3 py-1.5 text-center font-medium outline-none transition-all duration-200"
+            style={{
+              minWidth: 80,
+              width: boxW,
+              borderColor,
+              backgroundColor: status === 'wrong_person' && correctPrefix !== null
+                ? '#FFFFFF' : styles.bg,
+              color: status === 'wrong_person' && correctPrefix !== null
+                ? 'transparent'
+                : status === 'idle' ? color : styles.color,
+              fontSize: '16px',
+            }}
+          />
+          {status === 'wrong_person' && correctPrefix !== null && (
+            <div
+              className="absolute inset-0 flex items-center justify-center pointer-events-none font-medium"
+              style={{ fontSize: '16px' }}
+            >
+              <span style={{ color }}>{correctPrefix}</span>
+              <span className="text-red-500">{wrongSuffix}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {afterWords.map((word, i) => <DottedWord key={`a${i}`} word={word} />)}
+    </div>
+  )
+}
+
+function StatusRow({ label, ok }: { label: string; ok: boolean }) {
+  return (
+    <div className="flex items-center justify-end gap-1.5">
+      <span className="text-xs text-gray-400">{label}</span>
+      {ok
+        ? <Check className="w-3.5 h-3.5 text-green-500 stroke-[3]" />
+        : <X className="w-3.5 h-3.5 text-red-500 stroke-[3]" />
+      }
     </div>
   )
 }
@@ -68,15 +143,20 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   const [input, setInput] = useState('')
   const [status, setStatus] = useState<ValidationStatus>('idle')
   const [hint, setHint] = useState<string | null>(null)
+  const [highlight, setHighlight] = useState<string | null>(null)
   const [showHint, setShowHint] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [mistakeIndex, setMistakeIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const charName = meta.character.charAt(0).toUpperCase() + meta.character.slice(1)
 
   const fetchPhrase = useCallback(async () => {
     setLoading(true)
     setInput('')
     setStatus('idle')
     setHint(null)
+    setHighlight(null)
     setShowHint(false)
     try {
       const res = await fetch(`/api/phrases/random?tense=${encodeURIComponent(meta.tense)}`)
@@ -84,7 +164,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
       if (json.data) setPhrase(json.data)
     } finally {
       setLoading(false)
-      setTimeout(() => inputRef.current?.focus(), 100)
+      setTimeout(() => inputRef.current?.focus(), 300)
     }
   }, [meta.tense])
 
@@ -95,6 +175,11 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
     const result = validate(input, phrase)
     setStatus(result.status)
     if (result.hint) setHint(result.hint)
+    setHighlight(result.highlight ?? null)
+    if (result.status !== 'correct') {
+      setMistakeIndex(i => (i + 1) % 4)
+      setTimeout(() => inputRef.current?.focus(), 50)
+    }
   }, [phrase, input])
 
   const handleNext = () => {
@@ -118,8 +203,10 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
 
   const handleInputChange = (v: string) => {
     setInput(v)
-    if (status !== 'idle') setStatus('idle')
+    if (status !== 'idle') { setStatus('idle'); setHighlight(null) }
   }
+
+  const isError = status === 'invalid_form' || status === 'wrong_person'
 
   return (
     <>
@@ -138,7 +225,6 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
         </div>
       </motion.div>
 
-      {/* No BottomNav here — layout renders it, so we override via a portal-like empty slot */}
       <div className="min-h-screen bg-white flex flex-col pb-0">
 
         {/* Header */}
@@ -158,7 +244,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
         </div>
 
         {/* Game */}
-        <div className="flex-1 flex flex-col px-5 pt-6 pb-8 gap-5">
+        <div className="flex-1 flex flex-col px-5 pt-6 pb-28 gap-4">
 
           <AnimatePresence mode="wait">
             {loading ? (
@@ -175,68 +261,72 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
                 </div>
               </motion.div>
             ) : phrase ? (
-              <motion.div key={phrase.id} className="flex-1 flex flex-col gap-5"
+              <motion.div key={phrase.id} className="flex-1 flex flex-col gap-4"
                 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
               >
-                {/* Verb */}
-                <p className="text-center text-xs font-black tracking-widest uppercase" style={{ color: meta.color }}>
-                  {phrase.verb}
-                </p>
-
-                {/* Sentence with inline input */}
-                <div className="flex-1 flex flex-col items-center justify-center gap-6">
+                {/* Sentence */}
+                <div className="flex flex-col items-center justify-start gap-5 pt-8">
                   <InlineSentence
                     sentence={phrase.sentence}
+                    verb={phrase.verb}
                     input={input}
+                    answer={phrase.answer}
+                    highlight={highlight}
                     onChange={handleInputChange}
                     onKeyDown={handleKeyDown}
                     status={status}
                     inputRef={inputRef}
                     color={meta.color}
                   />
-
-                  {/* Feedback */}
-                  <AnimatePresence mode="wait">
-                    {status === 'correct' && (
-                      <motion.div key="correct" className="flex flex-col items-center gap-3"
-                        initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
-                      >
-                        <Image src={`/images/escribiendo/${meta.character}.png`} width={110} height={110} alt="" className="drop-shadow-lg" />
-                        <p className="text-base font-black text-green-500">¡Correcto! 🎉</p>
-                      </motion.div>
-                    )}
-                    {status === 'invalid_form' && (
-                      <motion.p key="invalid"
-                        initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                        className="text-sm font-semibold text-red-500 text-center"
-                      >
-                        Try again
-                      </motion.p>
-                    )}
-                    {status === 'wrong_person' && (
-                      <motion.p key="wp"
-                        initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                        className="text-sm font-semibold text-red-500 text-center"
-                      >
-                        Close! Check the subject
-                      </motion.p>
-                    )}
-                  </AnimatePresence>
-
-                  {/* Hint box */}
-                  <AnimatePresence>
-                    {showHint && hint && status !== 'correct' && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-                        className="flex items-start gap-2 bg-amber-50 rounded-xl px-4 py-3 border border-amber-200 mx-2"
-                      >
-                        <Info className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                        <p className="text-sm text-amber-800 leading-relaxed">{renderHint(hint)}</p>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
                 </div>
 
+                {/* Correct feedback */}
+                <AnimatePresence>
+                  {status === 'correct' && (
+                    <motion.div key="correct" className="flex-1 flex items-start justify-center pt-8"
+                      initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                    >
+                      <Image src={`/images/escribiendo/${meta.character}.png`} width={180} height={180} alt="" className="drop-shadow-lg" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Error feedback card */}
+                <AnimatePresence>
+                  {isError && (
+                    <motion.div
+                      key={`error-${mistakeIndex}`}
+                      className="px-4 py-4 flex flex-col gap-3"
+                      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                    >
+                      {/* Image + message */}
+                      <div className="flex items-center gap-4">
+                        <Image
+                          src={`/images/${tenseId}/Mistake ${mistakeIndex + 1} - ${charName}.png`}
+                          width={170} height={170} alt=""
+                          className="shrink-0"
+                        />
+                        <div className="flex-1">
+                          {showHint && hint ? (
+                            <p className="text-sm text-gray-700 leading-relaxed">{renderHint(hint)}</p>
+                          ) : (
+                            <p className="text-base font-bold text-gray-800">Try again</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Form / Person checkmarks */}
+                      <div className="flex flex-col items-end gap-1">
+                        <StatusRow label="Form" ok={status === 'wrong_person'} />
+                        <StatusRow label="Person/Number" ok={false} />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div className="flex-1" />
               </motion.div>
             ) : (
               <div className="flex-1 flex items-center justify-center">
@@ -245,26 +335,43 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
             )}
           </AnimatePresence>
 
-          {/* Buttons */}
-          <div className="flex gap-3">
-            {status !== 'correct' ? (
+          {/* Buttons — fixed above keyboard */}
+          <div className="fixed bottom-0 left-0 right-0 flex items-center gap-4 px-5 pb-6 pt-3 bg-white">
+            {status === 'correct' ? (
+              <motion.button whileTap={{ scale: 0.95 }} onClick={handleNext}
+                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl text-base font-black text-gray-900"
+                style={{ backgroundColor: '#F5B461' }}
+              >
+                <SkipForward className="w-5 h-5 stroke-[2.5]" />
+                {progress + 1 >= SESSION_TOTAL ? 'Finish' : 'Ok, next!'}
+              </motion.button>
+            ) : isError ? (
               <>
-                <motion.button whileTap={{ scale: 0.95 }} onClick={handleSkip}
-                  className="flex items-center gap-1.5 px-4 py-3 rounded-2xl text-sm font-bold text-gray-400 bg-gray-100"
+                <motion.button whileTap={{ scale: 0.9 }} onClick={handleSkip}
+                  className="flex items-center gap-1.5 text-sm font-bold text-gray-900 shrink-0"
                 >
                   <SkipForward className="w-4 h-4" /> Skip
                 </motion.button>
-
-                {hint && !showHint && (
-                  <motion.button whileTap={{ scale: 0.95 }} onClick={() => setShowHint(true)}
-                    className="flex items-center gap-1.5 px-4 py-3 rounded-2xl text-sm font-bold border-2"
-                    style={{ borderColor: meta.color, color: meta.color }}
-                    initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-                  >
-                    <Info className="w-4 h-4" /> Hint
-                  </motion.button>
-                )}
-
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => { setShowHint(h => !h); setTimeout(() => inputRef.current?.focus(), 50) }}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold border-2 transition-colors duration-200"
+                  style={showHint
+                    ? { borderColor: '#D1D5DB', color: '#9CA3AF' }
+                    : { borderColor: meta.color, color: meta.color }
+                  }
+                >
+                  <Lightbulb className="w-4 h-4" /> Step-by-step hint
+                </motion.button>
+              </>
+            ) : (
+              <>
+                <motion.button whileTap={{ scale: 0.9 }} onClick={handleSkip}
+                  className="flex items-center gap-1.5 text-sm font-bold text-gray-900 shrink-0"
+                >
+                  <SkipForward className="w-4 h-4" /> Skip
+                </motion.button>
                 <motion.button
                   whileTap={input.trim() ? { scale: 0.95 } : {}}
                   onClick={handleSubmit}
@@ -272,17 +379,9 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
                   className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-black text-white transition-colors duration-200"
                   style={{ backgroundColor: input.trim() ? meta.color : '#D1D5DB' }}
                 >
-                  <ChevronRight className="w-4 h-4 stroke-[3]" /> Submit
+                  <Send className="w-4 h-4" /> Submit
                 </motion.button>
               </>
-            ) : (
-              <motion.button whileTap={{ scale: 0.95 }} onClick={handleNext}
-                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                className="w-full py-4 rounded-2xl text-base font-black text-white"
-                style={{ backgroundColor: meta.color }}
-              >
-                {progress + 1 >= SESSION_TOTAL ? 'Finish' : 'Next →'}
-              </motion.button>
             )}
           </div>
 

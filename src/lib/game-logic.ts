@@ -40,13 +40,18 @@ export const HIGHLIGHT_PREFIX: Record<string, string> = {
   Indef_full_irreg_B: 'fu', // highlight letters after "fu"
 }
 
+// Strip accents so "dió" matches "dio", "fué" matches "fue", etc.
+function deaccent(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '')
+}
+
 export function validate(input: string, phrase: Phrase): ValidationResult {
-  const normalized = input.trim().toLowerCase()
-  const correct = phrase.answer.toLowerCase()
+  const normalized = deaccent(input.trim().toLowerCase())
+  const correct    = deaccent(phrase.answer.toLowerCase())
 
   if (normalized === correct) return { status: 'correct' }
 
-  const validForms = VALID_FORMS[phrase.type] ?? []
+  const validForms = (VALID_FORMS[phrase.type] ?? []).map(deaccent)
 
   if (!validForms.includes(normalized)) {
     return {
