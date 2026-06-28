@@ -3,8 +3,11 @@
 import { useState, useRef, useCallback, useEffect, memo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence, useMotionValue, useAnimation, useTransform, MotionValue } from 'motion/react'
 import { ChevronRight } from 'lucide-react'
+
+type TransitionPhase = 'idle' | 'curtain-down' | 'cats' | 'curtain-up'
 
 type BattleItem = {
   id: string
@@ -50,7 +53,7 @@ const CARD_W = 180
 const GAP = 24
 const ITEM_W = CARD_W + GAP
 
-const BattleCard = memo(({ i, xValue, centerOffset, onClick }: { i: number, xValue: MotionValue<number>, centerOffset: number, onClick: () => void }) => {
+const BattleCard = memo(({ i, xValue, centerOffset, onClick, onPlay }: { i: number, xValue: MotionValue<number>, centerOffset: number, onClick: () => void, onPlay: (href: string) => void }) => {
   const itemX = i * ITEM_W
   const distance = useTransform(xValue, (latestX) => Math.abs(itemX + latestX))
   
@@ -64,6 +67,17 @@ const BattleCard = memo(({ i, xValue, centerOffset, onClick }: { i: number, xVal
   const battleIndex = i as 0 | 1 | 2
   const battle = BATTLES[battleIndex]
 
+  const [isPressed, setIsPressed] = useState(false)
+
+  const handleClick = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
+    if (distance.get() <= 30) {
+      onPlay(`/practice/${battle.id}`)
+    } else {
+      onClick()
+    }
+  }
+
   return (
     <motion.div
       className="absolute flex-shrink-0 cursor-pointer flex flex-col justify-end"
@@ -76,18 +90,27 @@ const BattleCard = memo(({ i, xValue, centerOffset, onClick }: { i: number, xVal
         bottom: 8,
         top: 0
       }}
-      onClick={onClick}
+      onClick={handleClick}
     >
-      {/* Card Wrapper */}
-      <motion.div
-        className="absolute top-1/2 left-1/2 rounded-[28px]"
-        style={{
-          width: CARD_W,
-          height,
-          x: -CARD_W / 2,
-          y: '-50%',
-        }}
+      <motion.div 
+        className="w-full h-full relative"
+        animate={{ scale: isPressed ? 0.94 : 1 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+        onPointerDown={() => setIsPressed(true)}
+        onPointerUp={() => setIsPressed(false)}
+        onPointerLeave={() => setIsPressed(false)}
+        onPointerCancel={() => setIsPressed(false)}
       >
+        {/* Card Wrapper */}
+        <motion.div
+          className="absolute top-1/2 left-1/2 rounded-[28px]"
+          style={{
+            width: CARD_W,
+            height,
+            x: -CARD_W / 2,
+            y: '-50%',
+          }}
+        >
         <img 
           src={battle.bgFullSvg} 
           alt="" 
@@ -99,20 +122,19 @@ const BattleCard = memo(({ i, xValue, centerOffset, onClick }: { i: number, xVal
           className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-fit flex justify-center"
           style={{ opacity: buttonOpacity }}
         >
-          <Link
-            href={`/practice/${battle.id}`}
-            className="flex items-center gap-1 rounded-full px-6 py-1.5 text-xs font-bold text-white shadow-lg whitespace-nowrap"
-            style={{ background: 'linear-gradient(135deg, #FF8716 0%, #F55379 100%)' }}
-            onClick={(e) => {
-              if (distance.get() > 10) {
-                e.preventDefault()
-              } else {
-                e.stopPropagation()
-              }
-            }}
+          <motion.div
+            whileTap={{ scale: 0.82 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 12 }}
+            onPointerDown={(e) => e.stopPropagation()}
           >
-            Jugar <ChevronRight className="w-3.5 h-3.5 stroke-[3]" />
-          </Link>
+            <button
+              className="flex items-center gap-1 rounded-full px-6 py-1.5 text-xs font-bold text-white shadow-lg whitespace-nowrap"
+              style={{ background: 'linear-gradient(135deg, #FF8716 0%, #F55379 100%)' }}
+              onClick={handleClick}
+            >
+              Jugar <ChevronRight className="w-3.5 h-3.5 stroke-[3]" />
+            </button>
+          </motion.div>
         </motion.div>
       </motion.div>
 
@@ -130,6 +152,7 @@ const BattleCard = memo(({ i, xValue, centerOffset, onClick }: { i: number, xVal
           priority
         />
       </motion.div>
+      </motion.div>
     </motion.div>
   )
 })
@@ -141,6 +164,24 @@ export default function LioDeTiemposPage() {
   const controls = useAnimation()
   const containerRef = useRef<HTMLDivElement>(null)
   const [centerOffset, setCenterOffset] = useState(111)
+  const router = useRouter()
+  const [phase, setPhase] = useState<TransitionPhase>('idle')
+  const pendingHref = useRef('')
+
+  const handlePlay = useCallback((href: string) => {
+    if (phase !== 'idle') return
+    pendingHref.current = href
+    setPhase('curtain-down')
+  }, [phase])
+
+  useEffect(() => {
+    if (phase !== 'cats') return
+    // Navigate while the curtain is down
+    const t = setTimeout(() => {
+      router.push(pendingHref.current)
+    }, 1200)
+    return () => clearTimeout(t)
+  }, [phase, router])
 
   useEffect(() => {
     const updateCenter = () => {
@@ -237,7 +278,7 @@ export default function LioDeTiemposPage() {
             dragElastic={0.1}
           >
             {indices.map((i) => (
-              <BattleCard key={i} i={i} xValue={x} centerOffset={centerOffset} onClick={() => snapTo(i)} />
+              <BattleCard key={i} i={i} xValue={x} centerOffset={centerOffset} onClick={() => snapTo(i)} onPlay={handlePlay} />
             ))}
           </motion.div>
         </div>
@@ -260,6 +301,35 @@ export default function LioDeTiemposPage() {
         </AnimatePresence>
 
       </div>
+
+      {/* ── Transition overlay ── */}
+      {phase !== 'idle' && (
+        <motion.div
+          className="fixed inset-x-0 top-0 h-screen bg-bsp-blue z-50 flex items-center justify-center gap-6"
+          initial={{ y: 'calc(-100% - 50px)' }}
+          animate={{ y: phase === 'curtain-down' || phase === 'cats' ? '0%' : 'calc(-100% - 50px)' }}
+          transition={{ duration: 0.55, ease: [0.4, 0, 0.6, 1] }}
+          onAnimationComplete={() => {
+            if (phase === 'curtain-down') setPhase('cats')
+          }}
+        >
+          {/* Wave at the bottom of the curtain */}
+          <div className="absolute left-0 right-0 bottom-0 translate-y-[99%]">
+            <svg viewBox="0 0 402 36" preserveAspectRatio="none" className="w-full block h-9 text-bsp-blue rotate-180">
+              <path d="M0,0 C67,36 134,0 201,18 C268,36 335,0 402,18 L402,36 L0,36 Z" fill="currentColor" />
+            </svg>
+          </div>
+          {([1, 2, 3] as const).map((n, i) => (
+            <motion.div
+              key={n}
+              animate={{ y: [0, -22, 0] }}
+              transition={{ duration: 0.42, delay: i * 0.13, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              <Image src={`/images/loading/small-loading${n}.png`} width={60} height={60} alt="" draggable={false} />
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
     </div>
   )
 }

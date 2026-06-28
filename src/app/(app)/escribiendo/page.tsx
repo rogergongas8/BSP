@@ -3,8 +3,11 @@
 import { useState, useRef, useCallback, useEffect, memo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence, useMotionValue, useAnimation, useTransform, MotionValue } from 'motion/react'
 import { ChevronRight } from 'lucide-react'
+
+type TransitionPhase = 'idle' | 'curtain-down' | 'cats' | 'curtain-up'
 
 type TenseItem = {
   id: string
@@ -94,7 +97,7 @@ const CARD_W = 180
 const GAP = 0
 const ITEM_W = CARD_W + GAP
 
-const TenseCard = memo(({ i, xValue, centerOffset, onClick }: { i: number, xValue: MotionValue<number>, centerOffset: number, onClick: () => void }) => {
+const TenseCard = memo(({ i, xValue, centerOffset, onClick, onPlay }: { i: number, xValue: MotionValue<number>, centerOffset: number, onClick: () => void, onPlay: (href: string) => void }) => {
   const itemX = i * ITEM_W
   const distance = useTransform(xValue, (latestX) => Math.abs(itemX + latestX))
   
@@ -114,6 +117,17 @@ const TenseCard = memo(({ i, xValue, centerOffset, onClick }: { i: number, xValu
   const bgScaleY = useTransform(distance, [0, ITEM_W], [tense.bgProps.scaleY, 1], { clamp: true })
   const bgY = useTransform(distance, [0, ITEM_W], [tense.bgProps.y, 0], { clamp: true })
   
+  const [isPressed, setIsPressed] = useState(false)
+
+  const handleClick = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
+    if (distance.get() <= 30) {
+      onPlay(`/practice/${tense.id}`)
+    } else {
+      onClick()
+    }
+  }
+
   return (
     <motion.div
       className="absolute flex-shrink-0 cursor-pointer flex flex-col justify-end"
@@ -126,18 +140,27 @@ const TenseCard = memo(({ i, xValue, centerOffset, onClick }: { i: number, xValu
         bottom: 8,
         top: 0
       }}
-      onClick={onClick}
+      onClick={handleClick}
     >
-      {/* Card Wrapper */}
-      <motion.div
-        className="absolute top-1/2 left-1/2 rounded-[28px]"
-        style={{
-          width: CARD_W,
-          height,
-          x: -CARD_W / 2,
-          y: '-50%',
-        }}
+      <motion.div 
+        className="w-full h-full relative"
+        animate={{ scale: isPressed ? 0.94 : 1 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+        onPointerDown={() => setIsPressed(true)}
+        onPointerUp={() => setIsPressed(false)}
+        onPointerLeave={() => setIsPressed(false)}
+        onPointerCancel={() => setIsPressed(false)}
       >
+        {/* Card Wrapper */}
+        <motion.div
+          className="absolute top-1/2 left-1/2 rounded-[28px]"
+          style={{
+            width: CARD_W,
+            height,
+            x: -CARD_W / 2,
+            y: '-50%',
+          }}
+        >
         {tense.bgFullSvg ? (
           <img 
             src={tense.bgFullSvg} 
@@ -185,23 +208,22 @@ const TenseCard = memo(({ i, xValue, centerOffset, onClick }: { i: number, xValu
 
         {/* Button */}
         <motion.div
-          className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full flex justify-center"
+          className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-fit flex justify-center"
           style={{ opacity: buttonOpacity }}
         >
-          <Link
-            href={`/practice/${tense.id}`}
-            className="flex items-center gap-1.5 rounded-full px-6 py-2.5 text-sm font-bold text-gray-900 shadow-md"
-            style={{ backgroundColor: tense.colorLight }}
-            onClick={(e) => {
-              if (distance.get() > 10) {
-                e.preventDefault()
-              } else {
-                e.stopPropagation()
-              }
-            }}
+          <motion.div
+            whileTap={{ scale: 0.82 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 12 }}
+            onPointerDown={(e) => e.stopPropagation()}
           >
-            Jugar <ChevronRight className="w-4 h-4 stroke-[3]" />
-          </Link>
+            <button
+              className="flex items-center gap-1.5 rounded-full px-6 py-2.5 text-sm font-bold text-gray-900 shadow-md"
+              style={{ backgroundColor: tense.colorLight }}
+              onClick={handleClick}
+            >
+              Jugar <ChevronRight className="w-4 h-4 stroke-[3]" />
+            </button>
+          </motion.div>
         </motion.div>
       </motion.div>
 
@@ -219,17 +241,36 @@ const TenseCard = memo(({ i, xValue, centerOffset, onClick }: { i: number, xValu
           priority
         />
       </motion.div>
+      </motion.div>
     </motion.div>
   )
 })
 TenseCard.displayName = 'TenseCard'
 
 export default function EscribiendoPage() {
-  const [renderIndex, setRenderIndex] = useState(0)
-  const x = useMotionValue(0)
+  const [renderIndex, setRenderIndex] = useState(1)
+  const x = useMotionValue(-ITEM_W)
   const controls = useAnimation()
   const containerRef = useRef<HTMLDivElement>(null)
   const [centerOffset, setCenterOffset] = useState(111)
+  const router = useRouter()
+  const [phase, setPhase] = useState<TransitionPhase>('idle')
+  const pendingHref = useRef('')
+
+  const handlePlay = useCallback((href: string) => {
+    if (phase !== 'idle') return
+    pendingHref.current = href
+    setPhase('curtain-down')
+  }, [phase])
+
+  useEffect(() => {
+    if (phase !== 'cats') return
+    // Navigate while the curtain is down
+    const t = setTimeout(() => {
+      router.push(pendingHref.current)
+    }, 1200)
+    return () => clearTimeout(t)
+  }, [phase, router])
 
   useEffect(() => {
     const updateCenter = () => {
@@ -326,7 +367,7 @@ export default function EscribiendoPage() {
             dragElastic={0.1}
           >
             {indices.map((i) => (
-              <TenseCard key={i} i={i} xValue={x} centerOffset={centerOffset} onClick={() => snapTo(i)} />
+              <TenseCard key={i} i={i} xValue={x} centerOffset={centerOffset} onClick={() => snapTo(i)} onPlay={handlePlay} />
             ))}
           </motion.div>
         </div>
@@ -349,6 +390,35 @@ export default function EscribiendoPage() {
         </AnimatePresence>
 
       </div>
+
+      {/* ── Transition overlay ── */}
+      {phase !== 'idle' && (
+        <motion.div
+          className="fixed inset-x-0 top-0 h-screen bg-bsp-blue z-50 flex items-center justify-center gap-6"
+          initial={{ y: 'calc(-100% - 50px)' }}
+          animate={{ y: phase === 'curtain-down' || phase === 'cats' ? '0%' : 'calc(-100% - 50px)' }}
+          transition={{ duration: 0.55, ease: [0.4, 0, 0.6, 1] }}
+          onAnimationComplete={() => {
+            if (phase === 'curtain-down') setPhase('cats')
+          }}
+        >
+          {/* Wave at the bottom of the curtain */}
+          <div className="absolute left-0 right-0 bottom-0 translate-y-[99%]">
+            <svg viewBox="0 0 402 36" preserveAspectRatio="none" className="w-full block h-9 text-bsp-blue rotate-180">
+              <path d="M0,0 C67,36 134,0 201,18 C268,36 335,0 402,18 L402,36 L0,36 Z" fill="currentColor" />
+            </svg>
+          </div>
+          {([1, 2, 3] as const).map((n, i) => (
+            <motion.div
+              key={n}
+              animate={{ y: [0, -22, 0] }}
+              transition={{ duration: 0.42, delay: i * 0.13, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              <Image src={`/images/loading/small-loading${n}.png`} width={60} height={60} alt="" draggable={false} />
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
     </div>
   )
 }

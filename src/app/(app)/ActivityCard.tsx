@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { motion } from 'motion/react'
@@ -44,10 +45,17 @@ export default function ActivityCard({
     ? { bottom: buttonBottom }
     : { bottom: buttonBottom, right: buttonRight }
 
+  const [isPressed, setIsPressed] = useState(false)
+
   return (
     <motion.div
       className="relative cursor-pointer"
-      whileTap={{ scale: 0.96 }}
+      animate={{ scale: isPressed ? 0.96 : 1 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+      onPointerDown={() => setIsPressed(true)}
+      onPointerUp={() => setIsPressed(false)}
+      onPointerLeave={() => setIsPressed(false)}
+      onPointerCancel={() => setIsPressed(false)}
       onClick={() => router.push(href)}
     >
       <Image
@@ -64,6 +72,7 @@ export default function ActivityCard({
         className={`absolute ${buttonWidth} ${posClass}`}
         style={posStyle}
         whileTap={{ scale: 0.9 }}
+        onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.stopPropagation()
           router.push(href)
