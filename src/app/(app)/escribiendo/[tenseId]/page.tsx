@@ -363,9 +363,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
                 <div className="flex-1" />
               </motion.div>
             ) : (
-              <div className="flex-1 flex items-center justify-center">
-                <p className="text-gray-400 text-sm">No phrases available for this tense yet.</p>
-              </div>
+              <div className="flex-1" />
             )}
           </AnimatePresence>
 
