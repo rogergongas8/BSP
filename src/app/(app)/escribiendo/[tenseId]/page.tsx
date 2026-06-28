@@ -331,18 +331,22 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.15, ease: 'easeOut' }}
             >
-              <InlineSentence
-                sentence={phrase?.sentence ?? '___'}
-                verb={phrase?.verb ?? ''}
-                input={input}
-                answer={phrase?.answer ?? ''}
-                highlight={highlight}
-                onChange={handleInputChange}
-                onKeyDown={handleKeyDown}
-                status={status}
-                inputRef={inputRef}
-                color={meta.color}
-              />
+              {!loading && phrase ? (
+                <InlineSentence
+                  sentence={phrase.sentence}
+                  verb={phrase.verb}
+                  input={input}
+                  answer={phrase.answer}
+                  highlight={highlight}
+                  onChange={handleInputChange}
+                  onKeyDown={handleKeyDown}
+                  status={status}
+                  inputRef={inputRef}
+                  color={meta.color}
+                />
+              ) : (
+                <div className="h-[80px]" />
+              )}
             </motion.div>
 
             {/* Correct / Skipped feedback */}

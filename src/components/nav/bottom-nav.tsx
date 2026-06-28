@@ -13,7 +13,7 @@ const NAV_ITEMS = [
 
 
 
-const HIDE_NAV_PATHS = ['/escribiendo/']
+const HIDE_NAV_PATHS = ['/escribiendo', '/practice', '/room']
 
 export default function BottomNav() {
   const [active, setActive] = useState(1)
