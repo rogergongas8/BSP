@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Montserrat } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
@@ -12,6 +12,9 @@ const montserrat = Montserrat({
 export const metadata: Metadata = {
   title: "BSP",
   description: "Learn Spanish with BSP",
+};
+
+export const viewport: Viewport = {
   themeColor: "#2F54BA",
 };
 
