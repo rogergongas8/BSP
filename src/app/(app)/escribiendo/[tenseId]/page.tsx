@@ -310,7 +310,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
 
         {/* Header */}
         <div className="flex items-center gap-3 px-5 pt-10 pb-4">
-          <motion.button whileTap={{ scale: 0.88 }} onClick={() => router.back()}>
+          <motion.button whileTap={{ scale: 0.88 }} onClick={() => router.back()} className="p-2 -m-2">
             <X className="w-5 h-5 text-gray-400" />
           </motion.button>
           <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
@@ -409,8 +409,8 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
               <div className="flex flex-col items-end gap-1 pb-1">
                 {isStemIrreg ? (
                   <>
-                    <StatusRow label="Tense ending" ok={status === 'wrong_person'} />
-                    <StatusRow label="Person/Number" ok={false} />
+                    <StatusRow label="Tense ending" ok={status === 'wrong_person' || (status === 'wrong_stem' && highlight !== null)} />
+                    <StatusRow label="Person/Number" ok={status === 'wrong_stem' && highlight !== null} />
                     <StatusRow label="Stem"          ok={status !== 'wrong_stem'} />
                   </>
                 ) : isIndefReg ? (

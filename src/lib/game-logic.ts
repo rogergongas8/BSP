@@ -48,6 +48,10 @@ export const HIGHLIGHT_PREFIX: Record<string, string> = {
 // Try longer endings first to avoid partial matches (e.g. 'iste' before 'e')
 const STEM_IRREG_ENDINGS = ['isteis', 'ieron', 'imos', 'eron', 'iste', 'o', 'e'] as const
 
+const STEM_IRREG_PERSON_MAP: Record<string, string[]> = {
+  '1s': ['e'], '2s': ['iste'], '3s': ['o'], '1pl': ['imos'], '2pl': ['isteis'], '3pl': ['ieron', 'eron'],
+}
+
 const STEM_WRONG_HINT =
   "One of those tricky ones with an **irregular stem**. Do you remember how it changes from the infinitive?"
 
@@ -90,8 +94,16 @@ function validateStemIrreg(normalized: string, phrase: Phrase): ValidationResult
     return { status: 'wrong_ending', hint: ENDING_WRONG_HINT, highlight: expectedStem }
   }
 
-  // Stem is wrong
-  return { status: 'wrong_stem', hint: STEM_WRONG_HINT }
+  // Stem is wrong — check if ending and person were at least correct
+  const endingAndPersonOk =
+    inputEnding !== null &&
+    (STEM_IRREG_PERSON_MAP[phrase.person] ?? []).includes(inputEnding)
+
+  return {
+    status: 'wrong_stem',
+    hint: STEM_WRONG_HINT,
+    highlight: endingAndPersonOk ? (inputStem ?? undefined) : undefined,
+  }
 }
 
 // ─── indef_reg ────────────────────────────────────────────────────────────────
