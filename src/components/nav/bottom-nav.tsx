@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import { useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { motion, LayoutGroup } from 'motion/react'
 
 const NAV_ITEMS = [
@@ -12,8 +13,13 @@ const NAV_ITEMS = [
 
 const BUBBLE_H = 46
 
+const HIDE_NAV_PATHS = ['/escribiendo/']
+
 export default function BottomNav() {
   const [active, setActive] = useState(1)
+  const pathname = usePathname()
+
+  if (HIDE_NAV_PATHS.some(p => pathname.startsWith(p))) return null
 
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">

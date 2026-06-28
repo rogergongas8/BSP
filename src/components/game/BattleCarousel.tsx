@@ -94,14 +94,14 @@ const BattleCard = memo(({ i, xValue, centerOffset, onClick, onPlay, isDragging,
         <motion.div className="absolute top-1/2 left-1/2 rounded-[28px]" style={{ width: cardW, height, x: -cardW / 2, y: '-50%' }}>
           <img src={battle.bgFullSvg} alt="" className="absolute inset-[-6px] w-[calc(100%+12px)] h-[calc(100%+12px)] object-fill pointer-events-none" />
 
-          <motion.div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-fit flex justify-center" style={{ opacity: buttonOpacity }}>
+          <motion.div className={`absolute ${contained ? 'bottom-2' : '-bottom-3'} left-1/2 -translate-x-1/2 w-fit flex justify-center`} style={{ opacity: buttonOpacity }}>
             <motion.div whileTap={{ scale: 0.82 }} transition={{ type: 'spring', stiffness: 500, damping: 12 }} onPointerDown={(e) => e.stopPropagation()}>
               <button
-                className="flex items-center gap-1 rounded-full px-6 py-1.5 text-xs font-bold text-white shadow-lg whitespace-nowrap"
-                style={{ background: 'linear-gradient(135deg, #FF8716 0%, #F55379 100%)' }}
+                className="flex items-center gap-1.5 rounded-full px-6 py-2.5 text-sm font-bold text-white shadow-md"
+                style={{ backgroundColor: 'rgba(255,255,255,0.45)' }}
                 onClick={handleClick}
               >
-                Jugar <ChevronRight className="w-3.5 h-3.5 stroke-[3]" />
+                Jugar <ChevronRight className="w-4 h-4 stroke-[3]" />
               </button>
             </motion.div>
           </motion.div>
@@ -159,7 +159,7 @@ export default function BattleCarousel({ onPlay, contained = false }: { onPlay: 
     <>
       <div ref={containerRef} className="relative flex justify-center items-center" style={{ height: contained ? 220 : 260, overflow: contained ? 'hidden' : 'visible' }}>
         <motion.div
-          className="absolute top-0 left-0 w-full h-full cursor-grab active:cursor-grabbing"
+          className="absolute top-0 left-0 w-full h-full cursor-grab active:cursor-grabbing select-none"
           style={{ x }}
           drag="x"
           dragConstraints={{ right: 0, left: -(BATTLES.length - 1) * itemW }}
@@ -183,8 +183,8 @@ export default function BattleCarousel({ onPlay, contained = false }: { onPlay: 
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.18 }}
         >
-          <p className={`text-base font-black tracking-wide ${contained ? 'text-white' : 'text-gray-900'}`}>{selected.catName}</p>
-          <p className={`text-xs font-semibold tracking-widest text-center ${contained ? 'text-white/60' : 'text-gray-500'}`}>{selected.tense}</p>
+          <p className={`text-sm font-semibold tracking-wide ${contained ? 'text-white' : 'text-gray-900'}`}>{selected.catName}</p>
+          <p className={`text-[10px] font-medium tracking-widest text-center ${contained ? 'text-white/60' : 'text-gray-500'}`}>{selected.tense}</p>
           {!contained && (
             <>
               <p className="text-sm text-gray-600 text-center leading-relaxed mt-1">{selected.descEs}</p>

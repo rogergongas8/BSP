@@ -39,7 +39,38 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      phrases: {
+        Row: {
+          id: string
+          verb: string
+          sentence: string
+          answer: string
+          type: string
+          person: string
+          tense: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          verb: string
+          sentence: string
+          answer: string
+          type: string
+          person: string
+          tense: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          verb?: string
+          sentence?: string
+          answer?: string
+          type?: string
+          person?: string
+          tense?: string
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

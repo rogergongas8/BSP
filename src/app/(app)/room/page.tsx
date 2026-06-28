@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'motion/react'
 import { ChevronRight, ChevronDown, Plus, ArrowRight } from 'lucide-react'
 import TenseCarousel from '@/components/game/TenseCarousel'
@@ -15,9 +16,19 @@ const PURPLE_DARK = '#4A5BB5'
 
 type CreateMode = 'options' | 'escribiendo' | 'lio'
 
+function generateCode() {
+  return Math.floor(1000 + Math.random() * 9000).toString()
+}
+
 export default function RoomPage() {
+  const router = useRouter()
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [createMode, setCreateMode] = useState<CreateMode>('options')
+
+  const handlePlay = () => {
+    const code = generateCode()
+    router.push(`/room/${code}`)
+  }
 
   const handleCreateToggle = () => {
     if (isCreateOpen) {
@@ -141,7 +152,7 @@ export default function RoomPage() {
                     : { top: -20, left: '50%', x: '-50%', width: 70, height: 70 }
                   }
                   initial={false}
-                  transition={{ type: 'spring', stiffness: 250, damping: 28 }}
+                  transition={{ type: 'spring', stiffness: 250, damping: 40 }}
                 >
                   <Image src="/images/multiplayer/escribiendo.png" alt="" fill className="object-contain drop-shadow-md" draggable={false} />
                 </motion.div>
@@ -172,8 +183,9 @@ export default function RoomPage() {
                   animate={{ height: createMode === 'escribiendo' ? 'auto' : 0, opacity: createMode === 'escribiendo' ? 1 : 0 }}
                   transition={{ type: 'spring', stiffness: 250, damping: 28 }}
                   className="overflow-hidden w-full"
+                  onClick={(e) => { if (createMode === 'escribiendo') e.stopPropagation() }}
                 >
-                  <TenseCarousel onPlay={() => {}} contained />
+                  <TenseCarousel onPlay={handlePlay} contained />
                 </motion.div>
               </div>
 
@@ -191,7 +203,7 @@ export default function RoomPage() {
                     : { top: -20, left: '50%', x: '-50%', width: 70, height: 70 }
                   }
                   initial={false}
-                  transition={{ type: 'spring', stiffness: 250, damping: 28 }}
+                  transition={{ type: 'spring', stiffness: 250, damping: 40 }}
                 >
                   <Image src="/images/multiplayer/lio.png" alt="" fill className="object-contain drop-shadow-md" draggable={false} />
                 </motion.div>
@@ -222,8 +234,9 @@ export default function RoomPage() {
                   animate={{ height: createMode === 'lio' ? 'auto' : 0, opacity: createMode === 'lio' ? 1 : 0 }}
                   transition={{ type: 'spring', stiffness: 250, damping: 28 }}
                   className="overflow-hidden w-full"
+                  onClick={(e) => { if (createMode === 'lio') e.stopPropagation() }}
                 >
-                  <BattleCarousel onPlay={() => {}} contained />
+                  <BattleCarousel onPlay={handlePlay} contained />
                 </motion.div>
               </div>
 
@@ -232,6 +245,7 @@ export default function RoomPage() {
         </div>
 
         {/* ── Join a session ── */}
+        <Link href="/join">
         <motion.button
           whileTap={{ scale: 0.97 }}
           transition={{ type: 'spring', stiffness: 400, damping: 20 }}
@@ -250,6 +264,7 @@ export default function RoomPage() {
             <p className="text-xs font-normal text-gray-900 mt-1 leading-relaxed">A friend or a teacher has already created a room? Join with the code!</p>
           </div>
         </motion.button>
+        </Link>
 
       </div>
     </div>

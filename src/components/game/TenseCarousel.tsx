@@ -106,7 +106,7 @@ const TenseCard = memo(({ i, xValue, centerOffset, onClick, onPlay, isDragging, 
   const distance = useTransform(xValue, (latestX) => Math.abs(itemX + latestX))
   const scale = useTransform(distance, [0, itemW], [1, 0.82], { clamp: true })
   const opacity = useTransform(distance, [0, itemW], [1, 0.65], { clamp: true })
-  const catBottom = useTransform(distance, [0, itemW], [80, 60], { clamp: true })
+  const catBottom = useTransform(distance, [0, itemW], contained ? [35, 15] : [80, 60], { clamp: true })
   const height = useTransform(distance, [0, itemW], contained ? [210, 160] : [200, 155], { clamp: true })
   const buttonOpacity = useTransform(distance, [0, 40], [1, 0], { clamp: true })
   const zIndex = useTransform(distance, (d) => Math.max(1, 100 - Math.floor(d / 10)))
@@ -120,7 +120,7 @@ const TenseCard = memo(({ i, xValue, centerOffset, onClick, onPlay, isDragging, 
   const handleClick = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation()
     if (isDragging.current) return
-    if (distance.get() <= 30) onPlay(`/practice/${tense.id}`)
+    if (distance.get() <= 30) onPlay(`/escribiendo/${tense.id}`)
     else onClick()
   }
 
@@ -158,7 +158,7 @@ const TenseCard = memo(({ i, xValue, centerOffset, onClick, onPlay, isDragging, 
             </>
           )}
 
-          <motion.div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-fit flex justify-center" style={{ opacity: buttonOpacity }}>
+          <motion.div className={`absolute ${contained ? 'bottom-2' : '-bottom-3'} left-1/2 -translate-x-1/2 w-fit flex justify-center`} style={{ opacity: buttonOpacity }}>
             <motion.div whileTap={{ scale: 0.82 }} transition={{ type: 'spring', stiffness: 500, damping: 12 }} onPointerDown={(e) => e.stopPropagation()}>
               <button
                 className="flex items-center gap-1.5 rounded-full px-6 py-2.5 text-sm font-bold text-gray-900 shadow-md"
@@ -171,7 +171,7 @@ const TenseCard = memo(({ i, xValue, centerOffset, onClick, onPlay, isDragging, 
           </motion.div>
         </motion.div>
 
-        <motion.div className="absolute left-1/2 -translate-x-1/2 pointer-events-none z-10" style={{ width: contained ? 160 : 190, height: contained ? 160 : 190, bottom: catBottom }}>
+        <motion.div className="absolute left-1/2 -translate-x-1/2 pointer-events-none z-10" style={{ width: contained ? 170 : 190, height: contained ? 170 : 190, bottom: catBottom }}>
           <Image src={`/images/escribiendo/${tense.cat}.png`} alt={tense.catName} fill className="object-contain drop-shadow-lg" draggable={false} priority />
         </motion.div>
       </motion.div>
@@ -223,7 +223,7 @@ export default function TenseCarousel({ onPlay, contained = false }: { onPlay: (
     <>
       <div ref={containerRef} className="relative flex justify-center items-center" style={{ height: contained ? 220 : 260, overflow: contained ? 'hidden' : 'visible' }}>
         <motion.div
-          className="absolute top-0 left-0 w-full h-full cursor-grab active:cursor-grabbing"
+          className="absolute top-0 left-0 w-full h-full cursor-grab active:cursor-grabbing select-none"
           style={{ x }}
           drag="x"
           dragConstraints={{ right: 0, left: -(TENSES.length - 1) * itemW }}
@@ -247,8 +247,8 @@ export default function TenseCarousel({ onPlay, contained = false }: { onPlay: (
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.18 }}
         >
-          <p className="text-base font-black tracking-wide text-gray-900">{selected.catName}</p>
-          <p className="text-xs font-semibold tracking-widest text-center text-gray-500">{selected.tense}</p>
+          <p className="text-sm font-semibold tracking-wide text-gray-900">{selected.catName}</p>
+          <p className="text-[10px] font-medium tracking-widest text-center text-gray-500">{selected.tense}</p>
           {!contained && (
             <>
               <p className="text-sm text-gray-600 text-center leading-relaxed mt-1">{selected.descEs}</p>
