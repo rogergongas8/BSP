@@ -167,7 +167,6 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
     const json = await res.json()
     if (json.data) setPhrase(json.data)
     setLoading(false)
-    setTimeout(() => inputRef.current?.focus(), 50)
   }, [meta.tense])
 
   useEffect(() => { fetchPhrase() }, [fetchPhrase])
@@ -187,6 +186,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   }, [phrase, input])
 
   const handleNext = () => {
+    inputRef.current?.focus()
     const next = progress + 1
     // Record stat for this question
     const newStats = { ...stats }
@@ -210,6 +210,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   }
 
   const handleSkip = () => {
+    inputRef.current?.focus()
     const next = progress + 1
     const newStats = { ...stats, skipped: stats.skipped + 1 }
     setStats(newStats)
@@ -269,31 +270,18 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
             <motion.div
               className="h-full rounded-full"
               style={{ backgroundColor: meta.color }}
-              animate={{ width: `${(progress / SESSION_TOTAL) * 100}%` }}
+              animate={{ width: `${((progress + 1) / SESSION_TOTAL) * 100}%` }}
               transition={{ type: 'spring', stiffness: 200, damping: 30 }}
             />
           </div>
-          <span className="text-xs font-bold text-gray-400">{progress}/{SESSION_TOTAL}</span>
+          <span className="text-xs font-bold text-gray-400">{progress + 1}/{SESSION_TOTAL}</span>
         </div>
 
         {/* Game */}
         <div className="flex-1 flex flex-col px-5 pt-6 pb-28 gap-4">
 
           <AnimatePresence mode="wait">
-            {loading ? (
-              <motion.div key="loading" className="flex-1 flex flex-col items-center justify-center gap-4"
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              >
-                <div className="flex gap-3">
-                  {[1, 2, 3].map((n, i) => (
-                    <motion.div key={n} animate={{ y: [0, -12, 0] }}
-                      transition={{ duration: 0.5, delay: i * 0.15, repeat: Infinity, ease: 'easeInOut' }}>
-                      <Image src={`/images/loading/small-loading${n}.png`} width={40} height={40} alt="" />
-                    </motion.div>
-                  ))}
-                </div>
-              </motion.div>
-            ) : phrase ? (
+            {phrase ? (
               <motion.div key={phrase.id} className="flex-1 flex flex-col gap-4"
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}

@@ -27,7 +27,7 @@ const CONFETTI_PIECES = [
 ]
 
 function CircleProgress({ pct, color, character }: { pct: number; color: string; character: string }) {
-  const R = 80
+  const R = 75
   const C = 2 * Math.PI * R
   const pathRef = useRef<SVGCircleElement>(null)
 
@@ -37,15 +37,15 @@ function CircleProgress({ pct, color, character }: { pct: number; color: string;
   }, [pct, C])
 
   return (
-    <div className="relative flex items-center justify-center" style={{ width: 200, height: 200 }}>
-      <svg width="200" height="200" className="-rotate-90">
-        <circle cx="100" cy="100" r={R} fill="none" stroke="#E5E7EB" strokeWidth="14" />
+    <div className="relative flex items-center justify-center" style={{ width: 180, height: 180 }}>
+      <svg width="180" height="180" className="-rotate-90">
+        <circle cx="90" cy="90" r={R} fill="none" stroke="#E5E7EB" strokeWidth="13" />
         <circle
           ref={pathRef}
-          cx="100" cy="100" r={R}
+          cx="90" cy="90" r={R}
           fill="none"
           stroke={color}
-          strokeWidth="14"
+          strokeWidth="13"
           strokeLinecap="round"
           strokeDasharray={C}
           strokeDashoffset={C}
@@ -53,14 +53,14 @@ function CircleProgress({ pct, color, character }: { pct: number; color: string;
         />
       </svg>
       <div className="absolute flex flex-col items-center leading-tight">
-        <span className="text-4xl font-black text-gray-900">{pct}<span className="text-2xl">%</span></span>
-        <span className="text-base font-semibold text-gray-400">
+        <span className="text-4xl font-black text-gray-900">{pct}<span className="text-xl">%</span></span>
+        <span className="text-sm font-semibold text-gray-400">
           {Math.round((pct / 100) * (XP_AT_100[character] ?? 25))} XP
         </span>
       </div>
       {/* Character overlapping ring */}
-      <div className="absolute -right-10 -bottom-4 pointer-events-none">
-        <Image src={`/images/escribiendo/${character}.png`} width={120} height={120} alt="" className="drop-shadow-lg" />
+      <div className="absolute -right-10 -bottom-3 pointer-events-none">
+        <Image src={`/images/escribiendo/${character}.png`} width={110} height={110} alt="" className="drop-shadow-lg" />
       </div>
     </div>
   )
@@ -104,7 +104,7 @@ export default function ResultsPage({ params }: { params: Promise<{ tenseId: str
     <div className="min-h-screen flex flex-col bg-gray-50">
 
       {/* Blue header */}
-      <div className="relative overflow-hidden" style={{ backgroundColor: meta.color, paddingBottom: 40 }}>
+      <div className="relative overflow-hidden" style={{ backgroundColor: meta.color, paddingBottom: 32 }}>
         {/* Confetti */}
         {CONFETTI_PIECES.map((p, i) => (
           <motion.div
@@ -117,9 +117,9 @@ export default function ResultsPage({ params }: { params: Promise<{ tenseId: str
           />
         ))}
 
-        <div className="pt-14 pb-4 flex flex-col items-center">
+        <div className="pt-10 pb-2 flex flex-col items-center">
           <motion.h1
-            className="text-3xl font-black text-white"
+            className="text-2xl font-black text-white"
             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
           >
             {tenseLabel[tenseId] ?? 'Escribiendo...'}
@@ -135,10 +135,10 @@ export default function ResultsPage({ params }: { params: Promise<{ tenseId: str
       </div>
 
       {/* Content */}
-      <div className="flex-1 flex flex-col px-6 pt-8 pb-8 gap-6">
+      <div className="flex-1 flex flex-col px-6 pt-4 pb-28 gap-4">
 
         {/* Circle + XP */}
-        <div className="flex justify-center pt-2 pb-6">
+        <div className="flex justify-center pt-1 pb-3">
           <CircleProgress pct={scorePct} color={meta.color} character={meta.character} />
         </div>
 
@@ -147,14 +147,14 @@ export default function ResultsPage({ params }: { params: Promise<{ tenseId: str
           {STAT_ROWS.map(({ key, label, color }) => (
             <motion.div
               key={key}
-              className="flex items-center gap-3 py-3.5"
+              className="flex items-center gap-3 py-2.5"
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3 + STAT_ROWS.findIndex(r => r.key === key) * 0.08 }}
             >
               <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: color }} />
-              <span className="flex-1 text-base text-gray-700">{label}</span>
-              <span className="text-base font-bold text-gray-900">{stats[key]}</span>
+              <span className="flex-1 text-sm text-gray-700">{label}</span>
+              <span className="text-sm font-bold text-gray-900">{stats[key]}</span>
             </motion.div>
           ))}
         </div>
@@ -170,9 +170,10 @@ export default function ResultsPage({ params }: { params: Promise<{ tenseId: str
           </p>
         </motion.div>
 
-        <div className="flex-1" />
+      </div>
 
-        {/* Fin button */}
+      {/* Fin button — fixed above keyboard */}
+      <div className="fixed bottom-0 left-0 right-0 px-6 pb-8 pt-3 bg-gray-50">
         <motion.button
           whileTap={{ scale: 0.97 }}
           onClick={() => router.push('/')}
