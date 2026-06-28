@@ -19,7 +19,7 @@ function DottedWord({ word }: { word: string }) {
   const [hovered, setHovered] = useState(false)
   return (
     <span
-      className="text-gray-700 font-medium text-base cursor-pointer transition-colors duration-150"
+      className="text-gray-700 font-medium text-sm cursor-pointer transition-colors duration-150"
       style={{
         textDecoration: 'underline dotted',
         textDecorationColor: hovered ? '#E8922A' : '#CBD5E1',
@@ -147,25 +147,27 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   const [showHint, setShowHint] = useState(false)
   const [progress, setProgress] = useState(0)
   const [mistakeIndex, setMistakeIndex] = useState(0)
+  const [stats, setStats] = useState({ firstTry: 0, fixed: 0, withHints: 0, skipped: 0 })
+  const hadErrorRef = useRef(false)
+  const usedHintRef = useRef(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const charName = meta.character.charAt(0).toUpperCase() + meta.character.slice(1)
 
   const fetchPhrase = useCallback(async () => {
-    setLoading(true)
+    setPhrase(null)
     setInput('')
     setStatus('idle')
     setHint(null)
     setHighlight(null)
     setShowHint(false)
-    try {
-      const res = await fetch(`/api/phrases/random?tense=${encodeURIComponent(meta.tense)}`)
-      const json = await res.json()
-      if (json.data) setPhrase(json.data)
-    } finally {
-      setLoading(false)
-      setTimeout(() => inputRef.current?.focus(), 300)
-    }
+    hadErrorRef.current = false
+    usedHintRef.current = false
+    const res = await fetch(`/api/phrases/random?tense=${encodeURIComponent(meta.tense)}`)
+    const json = await res.json()
+    if (json.data) setPhrase(json.data)
+    setLoading(false)
+    setTimeout(() => inputRef.current?.focus(), 50)
   }, [meta.tense])
 
   useEffect(() => { fetchPhrase() }, [fetchPhrase])
@@ -177,6 +179,8 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
     if (result.hint) setHint(result.hint)
     setHighlight(result.highlight ?? null)
     if (result.status !== 'correct') {
+      hadErrorRef.current = true
+      setShowHint(false)
       setMistakeIndex(i => (i + 1) % 4)
       setTimeout(() => inputRef.current?.focus(), 50)
     }
@@ -184,13 +188,42 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
 
   const handleNext = () => {
     const next = progress + 1
-    if (next >= SESSION_TOTAL) { router.back(); return }
+    // Record stat for this question
+    const newStats = { ...stats }
+    if (!hadErrorRef.current && !usedHintRef.current) newStats.firstTry++
+    else if (hadErrorRef.current && !usedHintRef.current) newStats.fixed++
+    else newStats.withHints++
+    setStats(newStats)
+
+    if (next >= SESSION_TOTAL) {
+      const p = new URLSearchParams({
+        firstTry: String(newStats.firstTry),
+        fixed: String(newStats.fixed),
+        withHints: String(newStats.withHints),
+        skipped: String(newStats.skipped),
+      })
+      router.push(`/escribiendo/${tenseId}/results?${p}`)
+      return
+    }
     setProgress(next)
     fetchPhrase()
   }
 
   const handleSkip = () => {
-    setProgress(p => Math.min(p + 1, SESSION_TOTAL - 1))
+    const next = progress + 1
+    const newStats = { ...stats, skipped: stats.skipped + 1 }
+    setStats(newStats)
+    if (next >= SESSION_TOTAL) {
+      const p = new URLSearchParams({
+        firstTry: String(newStats.firstTry),
+        fixed: String(newStats.fixed),
+        withHints: String(newStats.withHints),
+        skipped: String(newStats.skipped),
+      })
+      router.push(`/escribiendo/${tenseId}/results?${p}`)
+      return
+    }
+    setProgress(next)
     fetchPhrase()
   }
 
@@ -262,7 +295,8 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
               </motion.div>
             ) : phrase ? (
               <motion.div key={phrase.id} className="flex-1 flex flex-col gap-4"
-                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
               >
                 {/* Sentence */}
                 <div className="flex flex-col items-center justify-start gap-5 pt-8">
@@ -305,7 +339,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
                       <div className="flex items-center gap-4">
                         <Image
                           src={`/images/${tenseId}/Mistake ${mistakeIndex + 1} - ${charName}.png`}
-                          width={170} height={170} alt=""
+                          width={120} height={120} alt=""
                           className="shrink-0"
                         />
                         <div className="flex-1">
@@ -355,12 +389,9 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
                 </motion.button>
                 <motion.button
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => { setShowHint(h => !h); setTimeout(() => inputRef.current?.focus(), 50) }}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold border-2 transition-colors duration-200"
-                  style={showHint
-                    ? { borderColor: '#D1D5DB', color: '#9CA3AF' }
-                    : { borderColor: meta.color, color: meta.color }
-                  }
+                  onClick={() => { setShowHint(h => !h); usedHintRef.current = true; setTimeout(() => inputRef.current?.focus(), 50) }}
+                  className="ml-auto flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold text-white transition-colors duration-200"
+                  style={{ backgroundColor: meta.color }}
                 >
                   <Lightbulb className="w-4 h-4" /> Step-by-step hint
                 </motion.button>
@@ -376,7 +407,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
                   whileTap={input.trim() ? { scale: 0.95 } : {}}
                   onClick={handleSubmit}
                   disabled={!input.trim() || loading}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-black text-white transition-colors duration-200"
+                  className="ml-auto flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-black text-white transition-colors duration-200"
                   style={{ backgroundColor: input.trim() ? meta.color : '#D1D5DB' }}
                 >
                   <Send className="w-4 h-4" /> Submit
