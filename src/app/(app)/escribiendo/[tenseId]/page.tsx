@@ -196,6 +196,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
     prefetchNext(new Set(usedIdsRef.current))
   }, [meta.tense, prefetchNext])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchPhrase() }, [fetchPhrase])
 
   const handleSubmit = useCallback(() => {

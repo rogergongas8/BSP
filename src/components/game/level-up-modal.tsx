@@ -76,6 +76,7 @@ function ConfettiPieceEl({ p }: { p: ConfettiPiece }) {
 export function LevelUpModal({ open, onClose, level }: LevelUpModalProps) {
   const [mounted, setMounted] = useState(false)
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setMounted(true) }, [])
 
   if (!mounted) return null

@@ -10,6 +10,7 @@ import PinInput from '@/components/auth/pin-input'
 export default function LoginPage() {
   const [username, setUsername] = useState('')
   const [pin, setPin] = useState('')
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 

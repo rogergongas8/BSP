@@ -7,7 +7,6 @@ import { motion } from 'motion/react'
 import { ChevronRight, Copy, Check, Plus } from 'lucide-react'
 
 const ORANGE = '#FF8716'
-const ORANGE_DARK = '#F55379'
 
 const PLACEHOLDER_PLAYERS = [
   { id: '1', name: 'Carlos', level: 6, avatar: '/images/nav/user-image.svg', isHost: true },

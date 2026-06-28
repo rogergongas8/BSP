@@ -48,13 +48,6 @@ export const HIGHLIGHT_PREFIX: Record<string, string> = {
 // Try longer endings first to avoid partial matches (e.g. 'iste' before 'e')
 const STEM_IRREG_ENDINGS = ['isteis', 'ieron', 'imos', 'eron', 'iste', 'o', 'e'] as const
 
-const DEFAULT_PERSON_ENDINGS: Record<string, string> = {
-  '1s': 'e', '2s': 'iste', '3s': 'o', '1pl': 'imos', '2pl': 'isteis', '3pl': 'ieron',
-}
-const J_STEM_PERSON_ENDINGS: Record<string, string> = {
-  '1s': 'e', '2s': 'iste', '3s': 'o', '1pl': 'imos', '2pl': 'isteis', '3pl': 'eron',
-}
-
 const STEM_WRONG_HINT =
   "One of those tricky ones with an **irregular stem**. Do you remember how it changes from the infinitive?"
 

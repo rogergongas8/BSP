@@ -89,8 +89,7 @@ export default function ResultsPage({ params }: { params: Promise<{ tenseId: str
     ? (firstTry * SCORE_WEIGHTS.firstTry + fixed * SCORE_WEIGHTS.fixed + withHints * SCORE_WEIGHTS.withHints) / (total * 10) * 100
     : 0
   const scorePct = Math.round(rawScore)
-  const xpMax = XP_AT_100[tenseId] ?? 25
-  const xpEarned = Math.round((scorePct / 100) * xpMax)
+
 
   const stats = { firstTry, fixed, withHints, skipped }
 

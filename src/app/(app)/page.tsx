@@ -13,6 +13,7 @@ const CAT_POSITIONS = [
 ] as const
 
 export default function HomePage() {
+  // eslint-disable-next-line react-hooks/purity
   const dayIndex = Math.floor(Date.now() / (1000 * 60 * 60 * 24)) % 3
   const pos = CAT_POSITIONS[dayIndex]
 

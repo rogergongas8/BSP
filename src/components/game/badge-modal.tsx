@@ -17,6 +17,7 @@ type BadgeModalProps = {
 export function BadgeModal({ open, onClose, achievement }: BadgeModalProps) {
   const [mounted, setMounted] = useState(false)
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setMounted(true) }, [])
 
   if (!mounted) return null

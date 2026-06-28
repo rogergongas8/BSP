@@ -11,7 +11,7 @@ const NAV_ITEMS = [
   { icon: '/images/nav/profile-v2.svg', iconActive: '/images/nav/profile-hover-v2.svg', label: 'Profile', size: 28 },
 ]
 
-const BUBBLE_H = 46
+
 
 const HIDE_NAV_PATHS = ['/escribiendo/']
 
