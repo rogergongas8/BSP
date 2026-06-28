@@ -40,6 +40,8 @@ const INPUT_STYLES: Record<ValidationStatus, { bg: string; border: string; color
   correct:      { bg: '#DCFCE7',  border: '#22C55E', color: '#16A34A' },
   skipped:      { bg: '#FFFFFF',  border: '#22C55E', color: '#16A34A' },
   invalid_form: { bg: '#FEE2E2',  border: '#EF4444', color: '#DC2626' },
+  wrong_stem:   { bg: '#FEE2E2',  border: '#EF4444', color: '#DC2626' },
+  wrong_ending: { bg: '#FFF1F2',  border: '#FECDD3', color: '#E11D48' },
   wrong_person: { bg: '#FFF1F2',  border: '#FECDD3', color: '#E11D48' },
 }
 
@@ -66,10 +68,9 @@ function InlineSentence({
   const displayValue = (status === 'correct' || status === 'skipped') ? answer : input
   const boxW = Math.max(80, Math.max(displayValue.length, answer.length) * 10 + 36)
 
-  const correctPrefix = status === 'wrong_person' && highlight
-    ? input.slice(0, highlight.length) : null
-  const wrongSuffix = status === 'wrong_person' && highlight
-    ? input.slice(highlight.length) : null
+  const showSplit = (status === 'wrong_person' || status === 'wrong_ending') && highlight
+  const correctPrefix = showSplit ? input.slice(0, highlight!.length) : null
+  const wrongSuffix   = showSplit ? input.slice(highlight!.length) : null
 
   return (
     <div className="flex flex-wrap items-end justify-center gap-x-2 gap-y-3 px-4">
@@ -97,10 +98,8 @@ function InlineSentence({
               minWidth: 80,
               width: boxW,
               borderColor,
-              backgroundColor: status === 'wrong_person' && correctPrefix !== null
-                ? '#FFFFFF' : styles.bg,
-              color: status === 'wrong_person' && correctPrefix !== null
-                ? 'transparent'
+              backgroundColor: correctPrefix !== null ? '#FFFFFF' : styles.bg,
+              color: correctPrefix !== null ? 'transparent'
                 : status === 'idle' ? color : styles.color,
               fontSize: '16px',
             }}
@@ -274,7 +273,8 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
     if (status !== 'idle') { setStatus('idle'); setHighlight(null) }
   }
 
-  const isError = status === 'invalid_form' || status === 'wrong_person'
+  const isError = status === 'invalid_form' || status === 'wrong_stem' || status === 'wrong_ending' || status === 'wrong_person'
+  const isStemIrreg = phrase?.type === 'Indef_stem_irreg'
 
   return (
     <>
@@ -389,8 +389,18 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
           <div className="fixed bottom-0 left-0 right-0 flex flex-col px-5 pb-6 pt-3 bg-white gap-2">
             {isError && (
               <div className="flex flex-col items-end gap-1 pb-1">
-                <StatusRow label="Form" ok={status === 'wrong_person'} />
-                <StatusRow label="Person/Number" ok={false} />
+                {isStemIrreg ? (
+                  <>
+                    <StatusRow label="Tense ending" ok={status === 'wrong_person'} />
+                    <StatusRow label="Person/Number" ok={false} />
+                    <StatusRow label="Stem"          ok={status !== 'wrong_stem'} />
+                  </>
+                ) : (
+                  <>
+                    <StatusRow label="Form"          ok={status === 'wrong_person'} />
+                    <StatusRow label="Person/Number" ok={false} />
+                  </>
+                )}
               </div>
             )}
             <div className="flex items-center gap-4">

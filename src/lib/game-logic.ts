@@ -9,7 +9,7 @@ export type Phrase = {
   stem_group?: string | null
 }
 
-export type ValidationStatus = 'idle' | 'correct' | 'skipped' | 'invalid_form' | 'wrong_person'
+export type ValidationStatus = 'idle' | 'correct' | 'skipped' | 'invalid_form' | 'wrong_stem' | 'wrong_ending' | 'wrong_person'
 
 export type ValidationResult = {
   status: ValidationStatus
@@ -70,7 +70,7 @@ const THIRD_PL_WRONG_ENDING_HINT =
 function validateStemIrreg(normalized: string, phrase: Phrase): ValidationResult {
   const expectedStem = phrase.expected_stem ?? ''
 
-  // Split input into stem + ending by trying each ending longest-first
+  // Try to extract a valid stem-irreg ending (all 7: both -ieron and -eron included)
   let inputStem: string | null = null
   let inputEnding: string | null = null
   for (const ending of STEM_IRREG_ENDINGS) {
@@ -81,31 +81,24 @@ function validateStemIrreg(normalized: string, phrase: Phrase): ValidationResult
     }
   }
 
-  if (inputStem === null || inputEnding === null) {
-    return { status: 'invalid_form', hint: STEM_WRONG_HINT }
+  // Stem correct + valid ending → wrong person (exact match already caught above)
+  if (inputStem === expectedStem) {
+    const isThirdPlTypeMismatch =
+      phrase.person === '3pl' && (inputEnding === 'ieron' || inputEnding === 'eron')
+    return {
+      status: 'wrong_person',
+      hint: isThirdPlTypeMismatch ? THIRD_PL_WRONG_ENDING_HINT : STEM_IRREG_WRONG_PERSON_HINT,
+      highlight: expectedStem,
+    }
   }
 
-  if (inputStem !== expectedStem) {
-    return { status: 'invalid_form', hint: STEM_WRONG_HINT }
+  // Input starts with correct stem → stem is right, ending is the problem
+  if (normalized.startsWith(expectedStem)) {
+    return { status: 'wrong_ending', hint: ENDING_WRONG_HINT, highlight: expectedStem }
   }
 
-  // Stem is correct — ending must be wrong person/number
-  // (exact match is handled before this function is called)
-  const isJStem = phrase.stem_group === 'Irreg_j_stem'
-  const personEndings = isJStem ? J_STEM_PERSON_ENDINGS : DEFAULT_PERSON_ENDINGS
-  const validEndingsForThisVerb = Object.values(personEndings)
-
-  if (!validEndingsForThisVerb.includes(inputEnding)) {
-    return { status: 'invalid_form', hint: ENDING_WRONG_HINT }
-  }
-
-  // Right stem + valid ending but wrong person
-  const isThirdPl = phrase.person === '3pl'
-  return {
-    status: 'wrong_person',
-    hint: isThirdPl ? THIRD_PL_WRONG_ENDING_HINT : STEM_IRREG_WRONG_PERSON_HINT,
-    highlight: expectedStem,
-  }
+  // Stem is wrong
+  return { status: 'wrong_stem', hint: STEM_WRONG_HINT }
 }
 
 // ─── Strip accents ────────────────────────────────────────────────────────────
