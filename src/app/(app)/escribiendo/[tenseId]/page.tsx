@@ -86,7 +86,6 @@ function InlineSentence({
             value={displayValue}
             onChange={e => onChange(e.target.value)}
             onKeyDown={onKeyDown}
-            readOnly={status === 'correct' || status === 'skipped'}
             autoComplete="off"
             autoCorrect="off"
             autoCapitalize="off"
@@ -182,7 +181,6 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
       setPhrase(phrase)
       setLoading(false)
       prefetchNext(new Set(usedIdsRef.current))
-      setTimeout(() => inputRef.current?.focus(), 80)
       return
     }
 
@@ -196,7 +194,6 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
     }
     setLoading(false)
     prefetchNext(new Set(usedIdsRef.current))
-    setTimeout(() => inputRef.current?.focus(), 80)
   }, [meta.tense, prefetchNext])
 
   useEffect(() => { fetchPhrase() }, [fetchPhrase])
@@ -216,6 +213,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   }, [phrase, input])
 
   const handleNext = () => {
+    inputRef.current?.focus()
     const next = progress + 1
     // Record stat for this question
     const newStats = { ...stats }
@@ -245,6 +243,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   }
 
   const handleSkipNext = () => {
+    inputRef.current?.focus()
     const next = progress + 1
     if (next >= SESSION_TOTAL) {
       const p = new URLSearchParams({
@@ -269,6 +268,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   }
 
   const handleInputChange = (v: string) => {
+    if (status === 'correct' || status === 'skipped') return
     setInput(v)
     if (status !== 'idle') { setStatus('idle'); setHighlight(null) }
   }
