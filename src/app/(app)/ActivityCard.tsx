@@ -11,11 +11,12 @@ type Props = {
   imageAlt: string
   imageWidth: number
   imageHeight: number
-  buttonColor?: 'orange' | 'blue'
+  buttonColor?: 'orange' | 'blue' | 'gradient'
   buttonPosition?: 'center' | 'right'
   buttonBottom?: string
   buttonRight?: string
   buttonWidth?: string
+  priority?: boolean
 }
 
 export default function ActivityCard({
@@ -29,13 +30,18 @@ export default function ActivityCard({
   buttonBottom = '10%',
   buttonRight = '10%',
   buttonWidth = 'w-24',
+  priority = false,
 }: Props) {
   const router = useRouter()
 
   const btnClass =
     buttonColor === 'orange'
       ? 'bg-[#FDBB6E] text-black shadow-[0_4px_12px_#FF87164D] py-2.5'
+      : buttonColor === 'gradient'
+      ? 'text-white shadow-[0_4px_12px_#F553794D] py-[11px]'
       : 'bg-bsp-blue text-white shadow-[0_4px_12px_#2F54BA4D] py-[11px]'
+
+  const gradientStyle = buttonColor === 'gradient' ? { background: 'linear-gradient(135deg, #FF8716 0%, #F55379 100%)' } : {}
 
   const posClass = buttonPosition === 'center'
     ? 'left-1/2 -translate-x-1/2'
@@ -63,8 +69,7 @@ export default function ActivityCard({
         alt={imageAlt}
         width={imageWidth}
         height={imageHeight}
-        quality={100}
-        unoptimized
+        priority={priority}
         draggable={false}
         className="w-full h-auto select-none drop-shadow-sm"
       />
@@ -78,7 +83,7 @@ export default function ActivityCard({
           router.push(href)
         }}
       >
-        <div className={`w-full ${btnClass} rounded-full text-xs font-semibold flex items-center justify-center gap-1`}>
+        <div className={`w-full ${btnClass} rounded-full text-xs font-semibold flex items-center justify-center gap-1`} style={gradientStyle}>
           Jugar <span className="text-sm leading-none">›</span>
         </div>
       </motion.div>

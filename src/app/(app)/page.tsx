@@ -120,6 +120,7 @@ export default function HomePage() {
             imageHeight={1019}
             buttonColor="orange"
             buttonBottom="10%"
+            priority={true}
           />
         </div>
 
@@ -130,7 +131,7 @@ export default function HomePage() {
           imageAlt="BSP Battle"
           imageWidth={1123}
           imageHeight={828}
-          buttonColor="blue"
+          buttonColor="gradient"
           buttonPosition="right"
           buttonBottom="15%"
           buttonRight="10%"
