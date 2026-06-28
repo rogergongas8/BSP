@@ -178,6 +178,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
       prefetchRef.current = null
       setLoading(false)
       prefetchNext()
+      setTimeout(() => inputRef.current?.focus(), 80)
       return
     }
 
@@ -186,6 +187,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
     if (json.data) setPhrase(json.data)
     setLoading(false)
     prefetchNext()
+    setTimeout(() => inputRef.current?.focus(), 80)
   }, [meta.tense, prefetchNext])
 
   useEffect(() => { fetchPhrase() }, [fetchPhrase])
@@ -196,16 +198,15 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
     setStatus(result.status)
     if (result.hint) setHint(result.hint)
     setHighlight(result.highlight ?? null)
+    inputRef.current?.blur()
     if (result.status !== 'correct') {
       hadErrorRef.current = true
       setShowHint(false)
       setMistakeIndex(i => (i + 1) % 4)
-      inputRef.current?.blur()
     }
   }, [phrase, input])
 
   const handleNext = () => {
-    inputRef.current?.focus()
     const next = progress + 1
     // Record stat for this question
     const newStats = { ...stats }
@@ -235,7 +236,6 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   }
 
   const handleSkipNext = () => {
-    inputRef.current?.focus()
     const next = progress + 1
     if (next >= SESSION_TOTAL) {
       const p = new URLSearchParams({
@@ -307,7 +307,13 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
           {/* Sentence — always in DOM so input never unmounts and keyboard stays open */}
           <div className="flex-1 flex flex-col gap-4">
             {/* Sentence */}
-            <div className="flex flex-col items-center justify-start gap-5 pt-8">
+            <motion.div
+              key={phrase?.id}
+              className="flex flex-col items-center justify-start gap-5 pt-8"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+            >
               <InlineSentence
                 sentence={phrase?.sentence ?? '___'}
                 verb={phrase?.verb ?? ''}
@@ -320,7 +326,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
                 inputRef={inputRef}
                 color={meta.color}
               />
-            </div>
+            </motion.div>
 
             {/* Correct / Skipped feedback */}
             <AnimatePresence>
