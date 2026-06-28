@@ -83,6 +83,7 @@ function InlineSentence({
         <div className="relative">
           <input
             ref={inputRef}
+            autoFocus
             value={displayValue}
             onChange={e => onChange(e.target.value)}
             onKeyDown={onKeyDown}
@@ -198,6 +199,12 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchPhrase() }, [fetchPhrase])
+
+  useEffect(() => {
+    if (phrase && !loading) {
+      setTimeout(() => inputRef.current?.focus(), 10)
+    }
+  }, [phrase, loading])
 
   const handleSubmit = useCallback(() => {
     if (!phrase || !input.trim()) return
@@ -319,7 +326,6 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
           <div className="flex-1 flex flex-col gap-4">
             {/* Sentence */}
             <motion.div
-              key={phrase?.id}
               className="flex flex-col items-center justify-start gap-5 pt-8"
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
