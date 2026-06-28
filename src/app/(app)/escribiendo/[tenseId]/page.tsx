@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'motion/react'
 import { X, Check, SkipForward, Lightbulb, Send } from 'lucide-react'
 import { validate, TENSE_META, type Phrase, type ValidationStatus } from '@/lib/game-logic'
+import { useKeyboardOffset } from '@/hooks/use-keyboard-offset'
 
 const SESSION_TOTAL = 10
 
@@ -151,6 +152,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   const hadErrorRef = useRef(false)
   const usedHintRef = useRef(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const keyboardOffset = useKeyboardOffset()
 
   const charName = meta.character.charAt(0).toUpperCase() + meta.character.slice(1)
 
@@ -280,83 +282,79 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
         {/* Game */}
         <div className="flex-1 flex flex-col px-5 pt-6 pb-28 gap-4">
 
-          <AnimatePresence mode="wait">
-            {phrase ? (
-              <motion.div key={phrase.id} className="flex-1 flex flex-col gap-4"
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-              >
-                {/* Sentence */}
-                <div className="flex flex-col items-center justify-start gap-5 pt-8">
-                  <InlineSentence
-                    sentence={phrase.sentence}
-                    verb={phrase.verb}
-                    input={input}
-                    answer={phrase.answer}
-                    highlight={highlight}
-                    onChange={handleInputChange}
-                    onKeyDown={handleKeyDown}
-                    status={status}
-                    inputRef={inputRef}
-                    color={meta.color}
-                  />
-                </div>
+          {/* Sentence — always in DOM so input never unmounts and keyboard stays open */}
+          <motion.div
+            className="flex-1 flex flex-col gap-4"
+            animate={{ opacity: phrase ? 1 : 0 }}
+            transition={{ duration: 0.15 }}
+          >
+            {/* Sentence */}
+            <div className="flex flex-col items-center justify-start gap-5 pt-8">
+              <InlineSentence
+                sentence={phrase?.sentence ?? '___'}
+                verb={phrase?.verb ?? ''}
+                input={input}
+                answer={phrase?.answer ?? ''}
+                highlight={highlight}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                status={status}
+                inputRef={inputRef}
+                color={meta.color}
+              />
+            </div>
 
-                {/* Correct feedback */}
-                <AnimatePresence>
-                  {status === 'correct' && (
-                    <motion.div key="correct" className="flex-1 flex items-start justify-center pt-8"
-                      initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
-                      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                    >
-                      <Image src={`/images/escribiendo/${meta.character}.png`} width={180} height={180} alt="" className="drop-shadow-lg" />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+            {/* Correct feedback */}
+            <AnimatePresence>
+              {status === 'correct' && (
+                <motion.div key="correct" className="flex-1 flex items-start justify-center pt-8"
+                  initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                >
+                  <Image src={`/images/escribiendo/${meta.character}.png`} width={180} height={180} alt="" className="drop-shadow-lg" />
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-                {/* Error feedback card */}
-                <AnimatePresence>
-                  {isError && (
-                    <motion.div
-                      key={`error-${mistakeIndex}`}
-                      className="px-4 py-4 flex flex-col gap-3"
-                      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                    >
-                      {/* Image + message */}
-                      <div className="flex items-center gap-4">
-                        <Image
-                          src={`/images/${tenseId}/Mistake ${mistakeIndex + 1} - ${charName}.png`}
-                          width={120} height={120} alt=""
-                          className="shrink-0"
-                        />
-                        <div className="flex-1">
-                          {showHint && hint ? (
-                            <p className="text-sm text-gray-700 leading-relaxed">{renderHint(hint)}</p>
-                          ) : (
-                            <p className="text-base font-bold text-gray-800">Try again</p>
-                          )}
-                        </div>
-                      </div>
+            {/* Error feedback card */}
+            <AnimatePresence>
+              {isError && (
+                <motion.div
+                  key={`error-${mistakeIndex}`}
+                  className="px-4 py-4 flex flex-col gap-3"
+                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                >
+                  <div className="flex items-center gap-4">
+                    <Image
+                      src={`/images/${tenseId}/Mistake ${mistakeIndex + 1} - ${charName}.png`}
+                      width={120} height={120} alt=""
+                      className="shrink-0"
+                    />
+                    <div className="flex-1">
+                      {showHint && hint ? (
+                        <p className="text-sm text-gray-700 leading-relaxed">{renderHint(hint)}</p>
+                      ) : (
+                        <p className="text-base font-bold text-gray-800">Try again</p>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-                      {/* Form / Person checkmarks */}
-                      <div className="flex flex-col items-end gap-1">
-                        <StatusRow label="Form" ok={status === 'wrong_person'} />
-                        <StatusRow label="Person/Number" ok={false} />
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <div className="flex-1" />
-              </motion.div>
-            ) : (
-              <div className="flex-1" />
-            )}
-          </AnimatePresence>
+            <div className="flex-1" />
+          </motion.div>
 
           {/* Buttons — fixed above keyboard */}
-          <div className="fixed bottom-0 left-0 right-0 flex items-center gap-4 px-5 pb-6 pt-3 bg-white">
+          <div className="fixed left-0 right-0 flex flex-col px-5 pb-6 pt-3 bg-white gap-2" style={{ bottom: keyboardOffset }}>
+            {isError && (
+              <div className="flex flex-col items-end gap-1 pb-1">
+                <StatusRow label="Form" ok={status === 'wrong_person'} />
+                <StatusRow label="Person/Number" ok={false} />
+              </div>
+            )}
+            <div className="flex items-center gap-4">
             {status === 'correct' ? (
               <motion.button whileTap={{ scale: 0.95 }} onClick={handleNext}
                 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
@@ -400,6 +398,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
                 </motion.button>
               </>
             )}
+            </div>
           </div>
 
         </div>
