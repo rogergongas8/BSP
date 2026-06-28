@@ -94,6 +94,94 @@ function validateStemIrreg(normalized: string, phrase: Phrase): ValidationResult
   return { status: 'wrong_stem', hint: STEM_WRONG_HINT }
 }
 
+// ─── indef_reg ────────────────────────────────────────────────────────────────
+
+// After deaccenting: é→e, ó→o, í→i, ió→io
+const AR_ENDINGS   = ['asteis', 'aron', 'amos', 'aste', 'o', 'e'] as const
+const ERER_ENDINGS = ['isteis', 'ieron', 'imos', 'iste', 'io', 'i'] as const
+
+const AR_PERSON_MAP: Record<string, string> = {
+  '1s': 'e', '2s': 'aste', '3s': 'o', '1pl': 'amos', '2pl': 'asteis', '3pl': 'aron',
+}
+const ERER_PERSON_MAP: Record<string, string> = {
+  '1s': 'i', '2s': 'iste', '3s': 'io', '1pl': 'imos', '2pl': 'isteis', '3pl': 'ieron',
+}
+
+const REG_ENDING_WRONG_AR_HINT =
+  "Remember in regular indefinidos, **-ar** endings usually have the **e** sound, except for accent distinctions. Do any of your letters feel out of place?"
+
+const REG_ENDING_WRONG_ERER_HINT =
+  "Remember in regular indefinidos, **-er/-ir** endings all include an **i** sound. Does your ending look right?"
+
+const REG_PERSON_WRONG_GUSTAR_HINT =
+  "Close! This is a **gustar**-type verb. The verb agrees with the **What**, not the Who. Recheck who is doing the action."
+
+const REG_PERSON_WRONG_HINT =
+  "Close! Now it just has to match the subject. Recheck who is doing the action."
+
+const REG_STEM_HINTS: Record<string, string> = {
+  Reg_default_stem:
+    "It's a regular indefinido, so the stem just stays the same — drop the last two letters of the infinitive and put it before your ending (good job there!).",
+  Reg_change_stem_1s_car:
+    "Spelling tweak: **-car** verbs change **c → qu** in the 1st person singular to keep the sound.",
+  Reg_change_stem_1s_gar:
+    "Spelling tweak: **-gar** verbs change **g → gu** in the 1st person singular to keep the sound.",
+  Reg_change_stem_1s_zar:
+    "Spelling tweak: **-zar** verbs change **z → c** in the 1st person singular to keep the sound.",
+  Reg_change_stem_3s3pl:
+    "This is one of those almost-regular indefinidos: the stem is regular, but it has a **vowel change in the 3rd person**. Can you recall that stem change?",
+}
+
+function validateIndefReg(normalized: string, phrase: Phrase): ValidationResult {
+  const isAR = phrase.verb.toLowerCase().endsWith('ar')
+  const endings   = isAR ? AR_ENDINGS   : ERER_ENDINGS
+  const personMap = isAR ? AR_PERSON_MAP : ERER_PERSON_MAP
+
+  // 1. Extract ending (longest first to avoid partial matches)
+  let inputStem: string | null = null
+  let inputEnding: string | null = null
+  for (const ending of endings) {
+    if (normalized.endsWith(ending) && normalized.length > ending.length) {
+      inputStem   = normalized.slice(0, normalized.length - ending.length)
+      inputEnding = ending
+      break
+    }
+  }
+
+  if (inputStem === null) {
+    return {
+      status: 'wrong_ending',
+      hint: isAR ? REG_ENDING_WRONG_AR_HINT : REG_ENDING_WRONG_ERER_HINT,
+    }
+  }
+
+  // 2. Derive expected stem
+  const expectedStem = phrase.expected_stem
+    ?? deaccent(phrase.verb.toLowerCase()).slice(0, -2)
+
+  // 3. Check person/number
+  const expectedEnding = personMap[phrase.person]
+  if (inputEnding !== expectedEnding) {
+    const isGustar = phrase.type === 'Indef_reg_gustar'
+    return {
+      status: 'wrong_person',
+      hint: isGustar ? REG_PERSON_WRONG_GUSTAR_HINT : REG_PERSON_WRONG_HINT,
+      highlight: inputStem === expectedStem ? inputStem : undefined,
+    }
+  }
+
+  // 4. Check stem
+  if (inputStem !== expectedStem) {
+    const stemGroup = phrase.stem_group ?? 'Reg_default_stem'
+    return {
+      status: 'wrong_stem',
+      hint: REG_STEM_HINTS[stemGroup] ?? REG_STEM_HINTS.Reg_default_stem,
+    }
+  }
+
+  return { status: 'correct' }
+}
+
 // ─── Strip accents ────────────────────────────────────────────────────────────
 
 function deaccent(s: string): string {
@@ -110,6 +198,10 @@ export function validate(input: string, phrase: Phrase): ValidationResult {
 
   if (phrase.type === 'Indef_stem_irreg') {
     return validateStemIrreg(normalized, phrase)
+  }
+
+  if (phrase.type === 'Indef_reg' || phrase.type === 'Indef_reg_gustar') {
+    return validateIndefReg(normalized, phrase)
   }
 
   // indef_full_irreg_A / B

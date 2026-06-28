@@ -285,6 +285,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
 
   const isError = status === 'invalid_form' || status === 'wrong_stem' || status === 'wrong_ending' || status === 'wrong_person'
   const isStemIrreg = phrase?.type === 'Indef_stem_irreg'
+  const isIndefReg  = phrase?.type === 'Indef_reg' || phrase?.type === 'Indef_reg_gustar'
 
   return (
     <>
@@ -352,23 +353,6 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
               )}
             </motion.div>
 
-            {/* Correct / Skipped feedback */}
-            <AnimatePresence>
-              {(status === 'correct' || status === 'skipped') && (
-                <motion.div key={status} className="flex-1 flex items-center justify-center"
-                  initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                >
-                  <Image
-                    src={status === 'skipped'
-                      ? `/images/${tenseId}/Mistake 1 - ${charName}.png`
-                      : `/images/escribiendo/${meta.character}.png`}
-                    width={180} height={180} alt="" className="drop-shadow-lg"
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-
             {/* Error feedback card */}
             <AnimatePresence>
               {isError && (
@@ -396,7 +380,25 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
               )}
             </AnimatePresence>
 
-            <div className="flex-1" />
+            {/* Spacer — always in DOM so layout is stable; image animates inside */}
+            <div className="flex-1 flex items-center justify-center min-h-0">
+              <AnimatePresence>
+                {(status === 'correct' || status === 'skipped') && (
+                  <motion.div key={status}
+                    initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                  >
+                    <Image
+                      src={status === 'skipped'
+                        ? `/images/${tenseId}/Mistake 1 - ${charName}.png`
+                        : `/images/escribiendo/${meta.character}.png`}
+                      width={180} height={180} alt="" className="drop-shadow-lg"
+                      priority
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
 
           {/* Buttons — always fixed at bottom-0; keyboard overlaps skip/submit, that's fine */}
@@ -408,6 +410,12 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
                     <StatusRow label="Tense ending" ok={status === 'wrong_person'} />
                     <StatusRow label="Person/Number" ok={false} />
                     <StatusRow label="Stem"          ok={status !== 'wrong_stem'} />
+                  </>
+                ) : isIndefReg ? (
+                  <>
+                    <StatusRow label="Tense ending" ok={status !== 'wrong_ending'} />
+                    <StatusRow label="Person/Number" ok={status === 'wrong_stem'} />
+                    <StatusRow label="Stem"          ok={status === 'wrong_person'} />
                   </>
                 ) : (
                   <>
