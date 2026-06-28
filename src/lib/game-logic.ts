@@ -5,6 +5,8 @@ export type Phrase = {
   answer: string
   type: string
   person: string
+  expected_stem?: string | null
+  stem_group?: string | null
 }
 
 export type ValidationStatus = 'idle' | 'correct' | 'skipped' | 'invalid_form' | 'wrong_person'
@@ -14,6 +16,8 @@ export type ValidationResult = {
   hint?: string
   highlight?: string
 }
+
+// ─── indef_full_irreg ────────────────────────────────────────────────────────
 
 const VALID_FORMS: Record<string, string[]> = {
   Indef_full_irreg_A: ['di', 'diste', 'dio', 'dimos', 'disteis', 'dieron'],
@@ -34,16 +38,83 @@ const WRONG_PERSON_HINTS: Record<string, string> = {
     "Close! Now it just has to match the subject. Recheck who is doing the action.",
 }
 
-// Returns which part to highlight when person/number is wrong
 export const HIGHLIGHT_PREFIX: Record<string, string> = {
-  Indef_full_irreg_A: 'd',  // highlight letters after "d"
-  Indef_full_irreg_B: 'fu', // highlight letters after "fu"
+  Indef_full_irreg_A: 'd',
+  Indef_full_irreg_B: 'fu',
 }
 
-// Strip accents so "dió" matches "dio", "fué" matches "fue", etc.
+// ─── indef_stem_irreg ─────────────────────────────────────────────────────────
+
+// Try longer endings first to avoid partial matches (e.g. 'iste' before 'e')
+const STEM_IRREG_ENDINGS = ['isteis', 'ieron', 'imos', 'eron', 'iste', 'o', 'e'] as const
+
+const DEFAULT_PERSON_ENDINGS: Record<string, string> = {
+  '1s': 'e', '2s': 'iste', '3s': 'o', '1pl': 'imos', '2pl': 'isteis', '3pl': 'ieron',
+}
+const J_STEM_PERSON_ENDINGS: Record<string, string> = {
+  '1s': 'e', '2s': 'iste', '3s': 'o', '1pl': 'imos', '2pl': 'isteis', '3pl': 'eron',
+}
+
+const STEM_WRONG_HINT =
+  "One of those tricky ones with an **irregular stem**. Do you remember how it changes from the infinitive?"
+
+const ENDING_WRONG_HINT =
+  "Nearly. You've got the trickiest part, the stem. Now the ending — there's a **specific pattern** for this irregular-stem group. Remember?"
+
+const STEM_IRREG_WRONG_PERSON_HINT =
+  "Close! Now it just has to match the subject. Recheck who is doing the action."
+
+const THIRD_PL_WRONG_ENDING_HINT =
+  "Watch out with 3rd person plural in this irregular-stem group: it's usually **-ieron**, but some switch to **-eron**. Do you remember which type this verb is?"
+
+function validateStemIrreg(normalized: string, phrase: Phrase): ValidationResult {
+  const expectedStem = phrase.expected_stem ?? ''
+
+  // Split input into stem + ending by trying each ending longest-first
+  let inputStem: string | null = null
+  let inputEnding: string | null = null
+  for (const ending of STEM_IRREG_ENDINGS) {
+    if (normalized.endsWith(ending) && normalized.length > ending.length) {
+      inputStem = normalized.slice(0, normalized.length - ending.length)
+      inputEnding = ending
+      break
+    }
+  }
+
+  if (inputStem === null || inputEnding === null) {
+    return { status: 'invalid_form', hint: STEM_WRONG_HINT }
+  }
+
+  if (inputStem !== expectedStem) {
+    return { status: 'invalid_form', hint: STEM_WRONG_HINT }
+  }
+
+  // Stem is correct — ending must be wrong person/number
+  // (exact match is handled before this function is called)
+  const isJStem = phrase.stem_group === 'Irreg_j_stem'
+  const personEndings = isJStem ? J_STEM_PERSON_ENDINGS : DEFAULT_PERSON_ENDINGS
+  const validEndingsForThisVerb = Object.values(personEndings)
+
+  if (!validEndingsForThisVerb.includes(inputEnding)) {
+    return { status: 'invalid_form', hint: ENDING_WRONG_HINT }
+  }
+
+  // Right stem + valid ending but wrong person
+  const isThirdPl = phrase.person === '3pl'
+  return {
+    status: 'wrong_person',
+    hint: isThirdPl ? THIRD_PL_WRONG_ENDING_HINT : STEM_IRREG_WRONG_PERSON_HINT,
+    highlight: expectedStem,
+  }
+}
+
+// ─── Strip accents ────────────────────────────────────────────────────────────
+
 function deaccent(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '')
 }
+
+// ─── Main validate ────────────────────────────────────────────────────────────
 
 export function validate(input: string, phrase: Phrase): ValidationResult {
   const normalized = deaccent(input.trim().toLowerCase())
@@ -51,6 +122,11 @@ export function validate(input: string, phrase: Phrase): ValidationResult {
 
   if (normalized === correct) return { status: 'correct' }
 
+  if (phrase.type === 'Indef_stem_irreg') {
+    return validateStemIrreg(normalized, phrase)
+  }
+
+  // indef_full_irreg_A / B
   const validForms = (VALID_FORMS[phrase.type] ?? []).map(deaccent)
 
   if (!validForms.includes(normalized)) {
@@ -67,9 +143,10 @@ export function validate(input: string, phrase: Phrase): ValidationResult {
   }
 }
 
-// Maps tenseId (URL) to DB tense value and character
+// ─── Tense metadata ───────────────────────────────────────────────────────────
+
 export const TENSE_META: Record<string, { tense: string; character: string; color: string }> = {
-  'indefinido':         { tense: 'indefinido',         character: 'zas',         color: '#4A5BB5' },
-  'imperfecto':         { tense: 'imperfecto',         character: 'mimo',        color: '#E8922A' },
+  'indefinido':         { tense: 'indefinido',         character: 'zas',          color: '#4A5BB5' },
+  'imperfecto':         { tense: 'imperfecto',         character: 'mimo',         color: '#E8922A' },
   'pretérito-perfecto': { tense: 'pretérito-perfecto', character: 'javi-tostado', color: '#C85C6E' },
 }

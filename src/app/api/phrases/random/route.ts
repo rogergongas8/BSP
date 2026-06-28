@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await supabase
     .from('phrases')
-    .select('id, verb, sentence, answer, type, person')
+    .select('id, verb, sentence, answer, type, person, expected_stem, stem_group')
     .eq('tense', parsed.data.tense)
     .range(offset, offset)
     .single()

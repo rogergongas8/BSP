@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'motion/react'
 import { X, Check, SkipForward, Lightbulb, Send } from 'lucide-react'
 import { validate, TENSE_META, type Phrase, type ValidationStatus } from '@/lib/game-logic'
-import { useKeyboardOffset } from '@/hooks/use-keyboard-offset'
 
 const SESSION_TOTAL = 10
 
@@ -153,8 +152,6 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   const hadErrorRef = useRef(false)
   const usedHintRef = useRef(false)
   const inputRef = useRef<HTMLInputElement>(null)
-  const keyboardOffset = useKeyboardOffset()
-
   const charName = meta.character.charAt(0).toUpperCase() + meta.character.slice(1)
 
   const prefetchRef = useRef<Phrase | null>(null)
@@ -203,7 +200,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
       hadErrorRef.current = true
       setShowHint(false)
       setMistakeIndex(i => (i + 1) % 4)
-      setTimeout(() => inputRef.current?.focus(), 50)
+      inputRef.current?.blur()
     }
   }, [phrase, input])
 
@@ -372,12 +369,8 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
             <div className="flex-1" />
           </div>
 
-          {/* Buttons — fixed; skip/submit follow keyboard, ok-next stays at bottom */}
-          <motion.div
-            className="fixed left-0 right-0 flex flex-col px-5 pb-6 pt-3 bg-white gap-2"
-            animate={{ bottom: (status === 'correct' || status === 'skipped') ? 0 : keyboardOffset }}
-            transition={{ type: 'spring', stiffness: 300, damping: 35 }}
-          >
+          {/* Buttons — always fixed at bottom-0; keyboard overlaps skip/submit, that's fine */}
+          <div className="fixed bottom-0 left-0 right-0 flex flex-col px-5 pb-6 pt-3 bg-white gap-2">
             {isError && (
               <div className="flex flex-col items-end gap-1 pb-1">
                 <StatusRow label="Form" ok={status === 'wrong_person'} />
@@ -411,12 +404,12 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
                   <SkipForward className="w-4 h-4" /> Skip
                 </motion.button>
                 <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => { setShowHint(h => !h); usedHintRef.current = true; setTimeout(() => inputRef.current?.focus(), 50) }}
+                  whileTap={showHint ? {} : { scale: 0.95 }}
+                  onClick={() => { if (showHint) return; setShowHint(true); usedHintRef.current = true }}
                   className="ml-auto flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold text-white transition-colors duration-200"
-                  style={{ backgroundColor: meta.color }}
+                  style={{ backgroundColor: showHint ? '#9CA3AF' : meta.color }}
                 >
-                  <Lightbulb className="w-4 h-4" /> Step-by-step hint
+                  <Lightbulb className="w-4 h-4" /> {showHint ? 'Hint shown' : 'Step-by-step hint'}
                 </motion.button>
               </>
             ) : (
@@ -438,7 +431,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
               </>
             )}
             </div>
-          </motion.div>
+          </div>
 
         </div>
       </div>
