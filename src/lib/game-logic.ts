@@ -7,7 +7,7 @@ export type Phrase = {
   person: string
 }
 
-export type ValidationStatus = 'idle' | 'correct' | 'invalid_form' | 'wrong_person'
+export type ValidationStatus = 'idle' | 'correct' | 'skipped' | 'invalid_form' | 'wrong_person'
 
 export type ValidationResult = {
   status: ValidationStatus

@@ -39,6 +39,7 @@ function DottedWord({ word }: { word: string }) {
 const INPUT_STYLES: Record<ValidationStatus, { bg: string; border: string; color: string }> = {
   idle:         { bg: '#FFFFFF',  border: '',        color: '' },
   correct:      { bg: '#DCFCE7',  border: '#22C55E', color: '#16A34A' },
+  skipped:      { bg: '#FFFFFF',  border: '#22C55E', color: '#16A34A' },
   invalid_form: { bg: '#FEE2E2',  border: '#EF4444', color: '#DC2626' },
   wrong_person: { bg: '#FFF1F2',  border: '#FECDD3', color: '#E11D48' },
 }
@@ -63,7 +64,7 @@ function InlineSentence({
 
   const styles = INPUT_STYLES[status]
   const borderColor = status === 'idle' ? color : styles.border
-  const displayValue = status === 'correct' ? answer : input
+  const displayValue = (status === 'correct' || status === 'skipped') ? answer : input
   const boxW = Math.max(80, displayValue.length * 10 + 36)
 
   const correctPrefix = status === 'wrong_person' && highlight
@@ -85,7 +86,7 @@ function InlineSentence({
             value={displayValue}
             onChange={e => onChange(e.target.value)}
             onKeyDown={onKeyDown}
-            readOnly={status === 'correct'}
+            readOnly={status === 'correct' || status === 'skipped'}
             autoComplete="off"
             autoCorrect="off"
             autoCapitalize="off"
@@ -156,8 +157,17 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
 
   const charName = meta.character.charAt(0).toUpperCase() + meta.character.slice(1)
 
+  const prefetchRef = useRef<Phrase | null>(null)
+
+  const prefetchNext = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/phrases/random?tense=${encodeURIComponent(meta.tense)}`)
+      const json = await res.json()
+      if (json.data) prefetchRef.current = json.data
+    } catch { /* silent */ }
+  }, [meta.tense])
+
   const fetchPhrase = useCallback(async () => {
-    setPhrase(null)
     setInput('')
     setStatus('idle')
     setHint(null)
@@ -165,11 +175,21 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
     setShowHint(false)
     hadErrorRef.current = false
     usedHintRef.current = false
+
+    if (prefetchRef.current) {
+      setPhrase(prefetchRef.current)
+      prefetchRef.current = null
+      setLoading(false)
+      prefetchNext()
+      return
+    }
+
     const res = await fetch(`/api/phrases/random?tense=${encodeURIComponent(meta.tense)}`)
     const json = await res.json()
     if (json.data) setPhrase(json.data)
     setLoading(false)
-  }, [meta.tense])
+    prefetchNext()
+  }, [meta.tense, prefetchNext])
 
   useEffect(() => { fetchPhrase() }, [fetchPhrase])
 
@@ -212,16 +232,20 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   }
 
   const handleSkip = () => {
-    inputRef.current?.focus()
-    const next = progress + 1
     const newStats = { ...stats, skipped: stats.skipped + 1 }
     setStats(newStats)
+    setStatus('skipped')
+  }
+
+  const handleSkipNext = () => {
+    inputRef.current?.focus()
+    const next = progress + 1
     if (next >= SESSION_TOTAL) {
       const p = new URLSearchParams({
-        firstTry: String(newStats.firstTry),
-        fixed: String(newStats.fixed),
-        withHints: String(newStats.withHints),
-        skipped: String(newStats.skipped),
+        firstTry: String(stats.firstTry),
+        fixed: String(stats.fixed),
+        withHints: String(stats.withHints),
+        skipped: String(stats.skipped),
       })
       router.push(`/escribiendo/${tenseId}/results?${p}`)
       return
@@ -233,6 +257,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       if (status === 'correct') handleNext()
+      else if (status === 'skipped') handleSkipNext()
       else handleSubmit()
     }
   }
@@ -283,11 +308,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
         <div className="flex-1 flex flex-col px-5 pt-6 pb-28 gap-4">
 
           {/* Sentence — always in DOM so input never unmounts and keyboard stays open */}
-          <motion.div
-            className="flex-1 flex flex-col gap-4"
-            animate={{ opacity: phrase ? 1 : 0 }}
-            transition={{ duration: 0.15 }}
-          >
+          <div className="flex-1 flex flex-col gap-4">
             {/* Sentence */}
             <div className="flex flex-col items-center justify-start gap-5 pt-8">
               <InlineSentence
@@ -304,14 +325,19 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
               />
             </div>
 
-            {/* Correct feedback */}
+            {/* Correct / Skipped feedback */}
             <AnimatePresence>
-              {status === 'correct' && (
-                <motion.div key="correct" className="flex-1 flex items-start justify-center pt-8"
+              {(status === 'correct' || status === 'skipped') && (
+                <motion.div key={status} className="flex-1 flex items-center justify-center"
                   initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
                   transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                 >
-                  <Image src={`/images/escribiendo/${meta.character}.png`} width={180} height={180} alt="" className="drop-shadow-lg" />
+                  <Image
+                    src={status === 'skipped'
+                      ? `/images/${tenseId}/Mistake 1 - ${charName}.png`
+                      : `/images/escribiendo/${meta.character}.png`}
+                    width={180} height={180} alt="" className="drop-shadow-lg"
+                  />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -344,10 +370,14 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
             </AnimatePresence>
 
             <div className="flex-1" />
-          </motion.div>
+          </div>
 
-          {/* Buttons — fixed above keyboard */}
-          <div className="fixed left-0 right-0 flex flex-col px-5 pb-6 pt-3 bg-white gap-2" style={{ bottom: keyboardOffset }}>
+          {/* Buttons — fixed; skip/submit follow keyboard, ok-next stays at bottom */}
+          <motion.div
+            className="fixed left-0 right-0 flex flex-col px-5 pb-6 pt-3 bg-white gap-2"
+            animate={{ bottom: (status === 'correct' || status === 'skipped') ? 0 : keyboardOffset }}
+            transition={{ type: 'spring', stiffness: 300, damping: 35 }}
+          >
             {isError && (
               <div className="flex flex-col items-end gap-1 pb-1">
                 <StatusRow label="Form" ok={status === 'wrong_person'} />
@@ -357,6 +387,15 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
             <div className="flex items-center gap-4">
             {status === 'correct' ? (
               <motion.button whileTap={{ scale: 0.95 }} onClick={handleNext}
+                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl text-base font-black text-white"
+                style={{ backgroundColor: '#22C55E' }}
+              >
+                <SkipForward className="w-5 h-5 stroke-[2.5]" />
+                {progress + 1 >= SESSION_TOTAL ? 'Finish' : 'Next!'}
+              </motion.button>
+            ) : status === 'skipped' ? (
+              <motion.button whileTap={{ scale: 0.95 }} onClick={handleSkipNext}
                 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                 className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl text-base font-black text-gray-900"
                 style={{ backgroundColor: '#F5B461' }}
@@ -399,7 +438,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
               </>
             )}
             </div>
-          </div>
+          </motion.div>
 
         </div>
       </div>
