@@ -59,14 +59,17 @@ export default function SignupPage() {
     setLoading(true)
     setError(null)
 
-    const supabase = createClient()
-    const { error: authError } = await supabase.auth.signUp({
-      email: `${username.trim().toLowerCase()}@bsp.internal`,
-      password: pin,
+    const res = await fetch('/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: username.trim().toLowerCase(), pin }),
     })
 
-    if (authError) {
-      setError('No se ha podido crear la cuenta. Intenta de nuevo.')
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      setError(data.error === 'Username already taken'
+        ? 'This name is already taken. Try a new one!'
+        : 'No se ha podido crear la cuenta. Intenta de nuevo.')
       setLoading(false)
       return
     }
