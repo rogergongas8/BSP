@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getLevelInfo, catImagePath } from '@/lib/levels'
 import ActivityCard from './ActivityCard'
 import NotificationQueue from './NotificationQueue'
+import OverscrollColor from '@/components/overscroll-color'
 
 const CAT_POSITIONS = [
   { cat: 'absolute -top-5 right-6 w-[60px] h-[60px] z-20', xp: 'absolute top-7 right-4 z-10' },
@@ -18,36 +19,30 @@ export default async function HomePage() {
   let level = 1
   let avatarSrc = '/images/nav/user-image.svg'
 
-  // Today's challenge
   const challengeDayIndex = Math.floor(Date.now() / (1000 * 60 * 60 * 24)) % 6
-  const { data: challenge } = await supabase
-    .from('daily_challenges')
-    .select('*')
-    .eq('day_index', challengeDayIndex)
-    .single()
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+
+  // Parallelizar challenge + profile (son independientes entre sí)
+  const [{ data: challenge }, { data: profile }] = await Promise.all([
+    supabase.from('daily_challenges').select('*').eq('day_index', challengeDayIndex).single(),
+    user
+      ? supabase.from('profiles').select('streak, total_xp').eq('id', user.id).single()
+      : Promise.resolve({ data: null, error: null }),
+  ])
+
+  if (profile) {
+    streak = profile.streak
+    const info = getLevelInfo(profile.total_xp)
+    level = info.level
+    avatarSrc = catImagePath(info.cat)
+  }
 
   // Challenge progress for logged-in user
   let challengeProgress = 0
   let challengeTarget = challenge?.target ?? 3
 
   if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('streak, total_xp')
-      .eq('id', user.id)
-      .single()
-
-    if (profile) {
-      streak = profile.streak
-      const info = getLevelInfo(profile.total_xp)
-      level = info.level
-      avatarSrc = catImagePath(info.cat)
-    }
-
-    // Compute progress from today's sessions
-    const todayStart = new Date()
-    todayStart.setHours(0, 0, 0, 0)
-
     const { data: todaySessions } = await supabase
       .from('practice_sessions')
       .select('tense, correct, total, completed_at')
@@ -80,6 +75,7 @@ export default async function HomePage() {
 
   return (
     <div className="flex flex-col">
+      <OverscrollColor top="#2F54BA" bottom="#F3F4F6" />
 
       {/* ── Blue header ── */}
       <div className="bg-bsp-blue px-5 pt-8">

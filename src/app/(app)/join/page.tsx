@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'motion/react'
 import { ChevronRight, Plus, Info } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getLevelInfo, catImagePath } from '@/lib/levels'
+import OverscrollColor from '@/components/overscroll-color'
 
 const ORANGE = '#FF8716'
 const CODE_LENGTH = 4
@@ -111,7 +112,7 @@ export default function JoinPage() {
 
   return (
     <div className="flex flex-col min-h-screen">
-
+      <OverscrollColor top={ORANGE} bottom="#F3F4F6" />
       {/* ── Orange header ── */}
       <div className="relative px-5 pt-8 pb-12 overflow-hidden" style={{ backgroundColor: ORANGE }}>
         <Image src="/images/multiplayer/bg-star.png" alt="" width={220} height={220} className="absolute -top-6 -right-6 opacity-25 pointer-events-none select-none" draggable={false} />

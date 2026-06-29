@@ -5,19 +5,10 @@ import { getLevelInfo, catImagePath } from '@/lib/levels'
 import type { AchievementId } from '@/lib/achievements'
 import type { Tables } from '@/types/database.types'
 import AchievementsGrid from './AchievementsGrid'
+import OverscrollColor from '@/components/overscroll-color'
 
 type Profile = Tables<'profiles'>
 type UserAchievement = Tables<'user_achievements'>
-
-const WEEK_BARS = [
-  { day: 'Mon', height: 35 },
-  { day: 'Tue', height: 60 },
-  { day: 'Wed', height: 50 },
-  { day: 'Thu', height: 90 },
-  { day: 'Fri', height: 80 },
-  { day: 'Sat', height: 40 },
-  { day: 'Sun', height: 25 },
-]
 
 const ZAS  = '/images/profile/small-loading1.png'
 const MIMO = '/images/profile/small-loading2.png'
@@ -35,29 +26,21 @@ export default async function ProfilePage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profileRaw } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
+  // Parallelizar las 3 queries independientes
+  const [{ data: profileRaw }, { data: achievementsRaw }, { data: sessionsRaw }] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase.from('user_achievements').select('achievement_id').eq('user_id', user.id),
+    supabase.from('practice_sessions')
+      .select('tense, correct, total, skipped, first_try, duration_seconds, completed_at')
+      .eq('user_id', user.id),
+  ])
 
   const profile = profileRaw as Profile | null
   if (!profile) redirect('/login')
 
-  const { data: achievementsRaw } = await supabase
-    .from('user_achievements')
-    .select('achievement_id')
-    .eq('user_id', user.id)
-
   const userAchievements = achievementsRaw as UserAchievement[] | null
   const unlockedIds = (userAchievements ?? []).map(r => r.achievement_id as AchievementId)
   const { level, xpInLevel, xpForNext, cat } = getLevelInfo(profile.total_xp)
-
-  // Per-tense accuracy from practice_sessions
-  const { data: sessionsRaw } = await supabase
-    .from('practice_sessions')
-    .select('tense, correct, total, skipped, first_try, duration_seconds, completed_at')
-    .eq('user_id', user.id)
 
   type SessionRow = { tense: string; correct: number; total: number; skipped: number; first_try: number; duration_seconds: number; completed_at: string }
   const sessions = (sessionsRaw ?? []) as SessionRow[]
@@ -142,6 +125,7 @@ export default async function ProfilePage() {
 
   return (
     <div className="flex flex-col">
+      <OverscrollColor top="#2F54BA" bottom="#F3F4F6" />
 
       {/* Blue header */}
       <div className="bg-bsp-blue px-5 pt-10 pb-6">

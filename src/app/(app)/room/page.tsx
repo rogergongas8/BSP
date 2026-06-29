@@ -10,6 +10,7 @@ import TenseCarousel from '@/components/game/TenseCarousel'
 import BattleCarousel from '@/components/game/BattleCarousel'
 import { createClient } from '@/lib/supabase/client'
 import { getLevelInfo, catImagePath } from '@/lib/levels'
+import OverscrollColor from '@/components/overscroll-color'
 
 const ORANGE = '#FF8716'
 const ORANGE_DARK = '#F55379'
@@ -65,6 +66,7 @@ export default function RoomPage() {
 
   return (
     <div className="flex flex-col min-h-screen">
+      <OverscrollColor top={ORANGE} bottom="#F3F4F6" />
 
       {/* ── Orange header ── */}
       <div className="relative px-5 pt-8 pb-12 overflow-hidden" style={{ backgroundColor: ORANGE }}>

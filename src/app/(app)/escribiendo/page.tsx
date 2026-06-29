@@ -9,6 +9,7 @@ import { ChevronRight } from 'lucide-react'
 import TenseCarousel from '@/components/game/TenseCarousel'
 import { createClient } from '@/lib/supabase/client'
 import { getLevelInfo, catImagePath } from '@/lib/levels'
+import OverscrollColor from '@/components/overscroll-color'
 
 type TransitionPhase = 'idle' | 'curtain-down' | 'cats'
 
@@ -48,7 +49,8 @@ export default function EscribiendoPage() {
   }, [phase, router])
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-dvh">
+      <OverscrollColor top="#2F54BA" bottom="#ffffff" />
 
       {/* ── Blue header ── */}
       <div className="relative bg-bsp-blue px-5 pt-8 pb-12 overflow-hidden">

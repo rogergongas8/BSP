@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'motion/react'
 import { X, Check, SkipForward, Lightbulb, Send } from 'lucide-react'
 import { validate, TENSE_META, type Phrase, type ValidationStatus } from '@/lib/game-logic'
+import OverscrollColor from '@/components/overscroll-color'
 
 const SESSION_TOTAL = 10
 
@@ -296,6 +297,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
 
   return (
     <>
+      <OverscrollColor top="#ffffff" bottom="#ffffff" />
       {/* Curtain up */}
       <motion.div
         className="fixed inset-x-0 top-0 h-screen z-50 pointer-events-none"

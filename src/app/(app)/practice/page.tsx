@@ -9,6 +9,7 @@ import { ChevronRight } from 'lucide-react'
 import BattleCarousel from '@/components/game/BattleCarousel'
 import { createClient } from '@/lib/supabase/client'
 import { getLevelInfo, catImagePath } from '@/lib/levels'
+import OverscrollColor from '@/components/overscroll-color'
 
 type TransitionPhase = 'idle' | 'curtain-down' | 'cats'
 
@@ -49,6 +50,7 @@ export default function LioDeTiemposPage() {
 
   return (
     <div className="flex flex-col min-h-screen">
+      <OverscrollColor top="#2F54BA" bottom="#ffffff" />
 
       {/* ── Blue header ── */}
       <div className="relative bg-bsp-blue px-5 pt-8 pb-12 overflow-hidden">
