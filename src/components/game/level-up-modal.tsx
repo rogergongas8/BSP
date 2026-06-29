@@ -24,24 +24,34 @@ const CAT_CONFIG = [
 type ConfettiPiece = {
   id: number
   x: number
+  drift: number   // horizontal drift in px (negative = left, positive = right)
   color: string
   w: number
   h: number
   duration: number
   delay: number
+  rotations: number // total degrees to rotate during fall
 }
 
 function generateConfetti(): ConfettiPiece[] {
   const colors = ['#F5A623', '#FF8716', '#C0392B', '#F5A623', '#F5A623']
-  return Array.from({ length: 22 }, (_, i) => ({
-    id: i,
-    x: 4 + (i * 4.4) % 94,
-    color: colors[i % colors.length],
-    w: 7 + (i * 3) % 8,
-    h: 7 + (i * 5) % 7,
-    duration: 2.2 + (i * 0.17) % 1.4,
-    delay: (i * 0.13) % 1.8,
-  }))
+  // Use a deterministic pseudo-random sequence so SSR/CSR stays stable
+  return Array.from({ length: 22 }, (_, i) => {
+    const seed = (i * 137 + 31) % 100          // 0-99, nicely spread
+    const seed2 = (i * 79 + 17) % 100
+    return {
+      id: i,
+      x: 4 + (i * 4.4) % 94,
+      // drift: -60..+60 px with alternating sign so pieces spread naturally
+      drift: (seed < 50 ? -1 : 1) * (20 + (seed % 40)),
+      color: colors[i % colors.length],
+      w: 7 + (i * 3) % 8,
+      h: 7 + (i * 5) % 7,
+      duration: 2.0 + (seed2 * 0.022),          // 2.0 – 4.2 s
+      delay: (i * 0.13) % 1.8,
+      rotations: 180 + (seed * 5),              // 180-675 degrees
+    }
+  })
 }
 
 const CONFETTI = generateConfetti()
@@ -59,15 +69,17 @@ function ConfettiPieceEl({ p }: { p: ConfettiPiece }) {
         borderRadius: 1,
       }}
       animate={{
-        y: ['0vh', '105vh'],
-        rotate: [0, 360 + (p.id * 40) % 360],
-        opacity: [1, 1, 0],
+        y: ['0vh', '108vh'],
+        x: [0, p.drift * 0.4, p.drift],   // ease into drift mid-fall for natural arc
+        rotate: [0, p.rotations],
+        opacity: [1, 1, 1, 0],             // fade only in the last quarter
       }}
       transition={{
         duration: p.duration,
         delay: p.delay,
         repeat: Infinity,
-        ease: 'linear',
+        ease: 'easeIn',                    // accelerates downward like gravity
+        opacity: { times: [0, 0.6, 0.8, 1], ease: 'linear' },
       }}
     />
   )

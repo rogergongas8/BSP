@@ -120,26 +120,26 @@ const ERER_PERSON_MAP: Record<string, string> = {
 }
 
 const REG_ENDING_WRONG_AR_HINT =
-  "Remember: in regular indefinidos, -**ar** endings usually have the **'a'** sound at the start of the ending, except for *yo* and *el/ella* (which only have an accented vowel)."
+  "Remember: in regular indefinidos, **-ar** endings usually have the **'a'** sound, except for *yo* and *él/ella* (which only have an accented vowel)."
 
 const REG_ENDING_WRONG_ERER_HINT =
-  "Remember: in regular indefinidos, -**er/-ir** endings all include an **'i'** sound at the start of the ending."
+  "Remember: in regular indefinidos, **-er/-ir** endings all include an **'i'** sound."
 
 const REG_PERSON_WRONG_GUSTAR_HINT =
-  "Close! This is a gustar type verb. The verb agrees with the **what**, not the **who**. Does your form reflect that?"
+  "Close! This is a **gustar**-type verb. The verb agrees with the **What**, not the Who. Recheck who is doing the action."
 
 const REG_PERSON_WRONG_HINT =
   "Close! Now it just has to match the subject. Recheck who is doing the action."
 
 const REG_STEM_HINTS: Record<string, string> = {
   Reg_default_stem:
-    "It's a regular indefinido, so for the stem just drop the last two letters of the infinitive and put it before your ending (good job there!)",
+    "It's a regular indefinido, so the stem just stays the same — drop the last two letters of the infinitive and put it before your ending (good job there!).",
   Reg_change_stem_1s_car:
-    "Spelling tweak: since **yo** ends with **-é**, -**car** verbs change **c → qu** to keep the sound.",
+    "Spelling tweak: **-car** verbs change **c → qu** in the 1st person singular to keep the sound.",
   Reg_change_stem_1s_gar:
-    "Spelling tweak: since **yo** ends with **-é**, -**gar** verbs change **g → gu** to keep the sound.",
+    "Spelling tweak: **-gar** verbs change **g → gu** in the 1st person singular to keep the sound.",
   Reg_change_stem_1s_zar:
-    "Spelling tweak: since **yo** ends with **-é**, -**zar** verbs change **z → c** to keep the sound.",
+    "Spelling tweak: **-zar** verbs change **z → c** in the 1st person singular to keep the sound.",
   Reg_change_stem_3s3pl:
     "This is one of those almost-regular indefinidos: the stem is regular, but it has a **vowel change in the 3rd person**. Can you recall that stem change?",
 }
@@ -171,6 +171,16 @@ function validateIndefReg(normalized: string, phrase: Phrase): ValidationResult 
       status: 'wrong_ending',
       hint: isAR ? REG_ENDING_WRONG_AR_HINT : REG_ENDING_WRONG_ERER_HINT,
       highlight: stemCorrect ? expectedStem : undefined,
+    }
+  }
+
+  // 2b. Valid ending found but stem is wrong AND input starts with expected stem →
+  // user typed correct stem then an invalid ending sequence (e.g. "visitasto" vs "visitaste")
+  if (inputStem !== expectedStem && normalized.startsWith(expectedStem)) {
+    return {
+      status: 'wrong_ending',
+      hint: isAR ? REG_ENDING_WRONG_AR_HINT : REG_ENDING_WRONG_ERER_HINT,
+      highlight: expectedStem,
     }
   }
 

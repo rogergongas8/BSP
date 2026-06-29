@@ -105,16 +105,28 @@ export default function ResultsPage({ params }: { params: Promise<{ tenseId: str
       {/* Blue header */}
       <div className="relative overflow-hidden" style={{ backgroundColor: meta.color, paddingBottom: 32 }}>
         {/* Confetti */}
-        {CONFETTI_PIECES.map((p, i) => (
-          <motion.div
-            key={i}
-            className="absolute rounded-sm"
-            style={{ left: `${p.x}%`, top: p.y, width: p.w, height: p.h, backgroundColor: p.color, rotate: p.r }}
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.08, duration: 0.4 }}
-          />
-        ))}
+        {CONFETTI_PIECES.map((p, i) => {
+          const duration = 2.2 + (i % 4) * 0.45
+          return (
+            <motion.div
+              key={i}
+              className="absolute rounded-sm"
+              style={{ left: `${p.x}%`, top: p.y, width: p.w, height: p.h, backgroundColor: p.color }}
+              initial={{ opacity: 0, y: -20, rotate: p.r }}
+              animate={{
+                opacity: [0, 1, 1, 0.85, 0],
+                y: [-20, 0, 20, 50, 85],
+                rotate: [p.r - 10, p.r, p.r + 90, p.r + 220, p.r + 360],
+              }}
+              transition={{
+                delay: i * 0.12,
+                duration,
+                repeat: Infinity,
+                ease: 'easeIn',
+              }}
+            />
+          )
+        })}
 
         <div className="pt-10 pb-2 flex flex-col items-center">
           <motion.h1

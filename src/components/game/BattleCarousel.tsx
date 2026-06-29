@@ -10,6 +10,7 @@ export type BattleItem = {
   id: string
   catName: string
   tense: string
+  gradient: string
   descEs: string
   descEn: string
   bgFullSvg: string
@@ -21,6 +22,7 @@ export const BATTLES: BattleItem[] = [
     id: 'javi-zas',
     catName: 'JAVI TOSTADO vs. ZAS',
     tense: 'PRETÉRITO PERFECTO - INDEFINIDO',
+    gradient: 'linear-gradient(135deg, #C85C6E 0%, #E8922A 100%)',
     descEs: 'Javi Tostado todavía tiene una pata en el presente. Zas pasó, hizo lo suyo y cerró la puerta al salir.',
     descEn: 'Javi Tostado still has one paw in the present. Zas came, did his thing and closed the door on the way out.',
     bgFullSvg: '/images/lio-de-tiempos/bg-javi-zas.svg',
@@ -30,6 +32,7 @@ export const BATTLES: BattleItem[] = [
     id: 'mimo-zas',
     catName: 'MIMO vs. ZAS',
     tense: 'IMPERFECTO - INDEFINIDO',
+    gradient: 'linear-gradient(135deg, #E8922A 0%, #FF8716 100%)',
     descEs: 'Mimo preparaba la escena, Zas entró, hizo algo y cambió la historia.',
     descEn: 'Mimo was setting the scene. Zas came in, did something and changed the story.',
     bgFullSvg: '/images/lio-de-tiempos/bg-mimo-zas.svg',
@@ -39,6 +42,7 @@ export const BATTLES: BattleItem[] = [
     id: 'javi-mimo-zas',
     catName: 'JAVI TOSTADO vs. ZAS vs. MIMO',
     tense: 'PRETÉRITO PERFECTO - INDEFINIDO - IMPERFECTO',
+    gradient: 'linear-gradient(135deg, #4A5BB5 0%, #8B75C0 100%)',
     descEs: 'Mientras Mimo contaba cómo era todo, Javi Tostado llegó con algo que todavía le importa, pero Zas pasó página y siguió adelante.',
     descEn: 'While Mimo was describing what everything was like, Javi Tostado arrived with something that still matters to him, but Zas turned the page and moved on.',
     bgFullSvg: '/images/lio-de-tiempos/bg-javi-mimo-zas.svg',
@@ -98,8 +102,8 @@ const BattleCard = memo(({ i, xValue, centerOffset, onClick, onPlay, isDragging,
           <motion.div className={`absolute ${contained ? 'bottom-2' : '-bottom-3'} left-1/2 -translate-x-1/2 w-fit flex justify-center`} style={{ opacity: buttonOpacity }}>
             <motion.div whileTap={{ scale: 0.82 }} transition={{ type: 'spring', stiffness: 500, damping: 12 }} onPointerDown={(e) => e.stopPropagation()}>
               <button
-                className="flex items-center gap-1.5 rounded-full px-6 py-2.5 text-sm font-bold text-white shadow-md"
-                style={{ backgroundColor: 'rgba(255,255,255,0.45)' }}
+                className="flex items-center gap-1.5 rounded-full px-6 py-2.5 text-sm font-bold text-gray-800 shadow-md backdrop-blur-sm"
+                style={{ background: 'rgba(255,255,255,0.38)' }}
                 onClick={handleClick}
               >
                 Jugar <ChevronRight className="w-4 h-4 stroke-[3]" />

@@ -71,6 +71,59 @@ export type Database = {
           created_at?: string
         }
       }
+      profiles: {
+        Row: {
+          id: string
+          username: string
+          total_xp: number
+          streak: number
+          activities_completed: number
+          top3_finishes: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          username: string
+          total_xp?: number
+          streak?: number
+          activities_completed?: number
+          top3_finishes?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          username?: string
+          total_xp?: number
+          streak?: number
+          activities_completed?: number
+          top3_finishes?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_achievements: {
+        Row: {
+          id: string
+          user_id: string
+          achievement_id: string
+          unlocked_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          achievement_id: string
+          unlocked_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          achievement_id?: string
+          unlocked_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

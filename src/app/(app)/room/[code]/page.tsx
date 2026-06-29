@@ -23,7 +23,7 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
   const sessionCode = `BSP-${code}`
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(sessionCode)
+    navigator.clipboard.writeText(code)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -64,7 +64,7 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
       </div>
 
       {/* ── Content ── */}
-      <div className="bg-gray-100 flex-1 px-5 pt-6 pb-8 flex flex-col gap-4">
+      <div className="bg-gray-100 flex-1 px-5 pt-6 pb-28 flex flex-col gap-4">
 
         {/* Session Code card */}
         <div
@@ -132,7 +132,10 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
           </div>
         </div>
 
-        {/* ── JUGAR button ── */}
+      </div>
+
+      {/* ── JUGAR button — always visible ── */}
+      <div className="fixed bottom-0 left-0 right-0 px-5 pb-6 pt-3 bg-gray-100">
         <motion.button
           whileTap={{ scale: 0.97 }}
           className="w-full py-4 rounded-2xl font-black text-white text-base tracking-widest uppercase shadow-lg"
@@ -140,7 +143,6 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
         >
           Jugar
         </motion.button>
-
       </div>
 
     </div>

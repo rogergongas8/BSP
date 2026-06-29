@@ -43,6 +43,21 @@ export default function JoinPage() {
     }
   }, [digits])
 
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault()
+    const chars = e.clipboardData.getData('text')
+      .replace(/[^A-Za-z0-9]/g, '')
+      .toUpperCase()
+      .slice(0, CODE_LENGTH)
+      .split('')
+    if (chars.length === 0) return
+    const next = Array(CODE_LENGTH).fill('')
+    chars.forEach((char, i) => { next[i] = char })
+    setDigits(next)
+    setJoinState('input')
+    inputRefs.current[Math.min(chars.length, CODE_LENGTH - 1)]?.focus()
+  }, [])
+
   const handleKeyDown = useCallback((index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Backspace') {
       if (digits[index]) {
@@ -140,6 +155,7 @@ export default function JoinPage() {
                   value={digits[i]}
                   onChange={e => handleChange(i, e.target.value)}
                   onKeyDown={e => handleKeyDown(i, e)}
+                  onPaste={handlePaste}
                   className="w-10 h-11 rounded-xl text-center text-base font-black outline-none transition-all duration-200"
                   style={{
                     backgroundColor: filled ? (isError ? '#FFF0F3' : '#FFF4E8') : '#F3F4F6',
