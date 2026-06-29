@@ -152,10 +152,11 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   const [progress, setProgress] = useState(0)
   const [mistakeIndex, setMistakeIndex] = useState(0)
   const [stats, setStats] = useState({ firstTry: 0, fixed: 0, withHints: 0, skipped: 0 })
-  const hadErrorRef = useRef(false)
-  const usedHintRef = useRef(false)
-  const usedIdsRef  = useRef<Set<string>>(new Set())
-  const inputRef = useRef<HTMLInputElement>(null)
+  const hadErrorRef   = useRef(false)
+  const usedHintRef   = useRef(false)
+  const usedIdsRef    = useRef<Set<string>>(new Set())
+  const sessionStart  = useRef(Date.now())
+  const inputRef      = useRef<HTMLInputElement>(null)
   const charName = meta.character.charAt(0).toUpperCase() + meta.character.slice(1)
 
   const prefetchRef = useRef<Phrase | null>(null)
@@ -235,11 +236,13 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
     setStats(newStats)
 
     if (next >= SESSION_TOTAL) {
+      const duration = Math.round((Date.now() - sessionStart.current) / 1000)
       const p = new URLSearchParams({
         firstTry: String(newStats.firstTry),
         fixed: String(newStats.fixed),
         withHints: String(newStats.withHints),
         skipped: String(newStats.skipped),
+        duration: String(duration),
       })
       router.push(`/escribiendo/${tenseId}/results?${p}`)
       return
@@ -258,11 +261,13 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
     inputRef.current?.focus()
     const next = progress + 1
     if (next >= SESSION_TOTAL) {
+      const duration = Math.round((Date.now() - sessionStart.current) / 1000)
       const p = new URLSearchParams({
         firstTry: String(stats.firstTry),
         fixed: String(stats.fixed),
         withHints: String(stats.withHints),
         skipped: String(stats.skipped),
+        duration: String(duration),
       })
       router.push(`/escribiendo/${tenseId}/results?${p}`)
       return

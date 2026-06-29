@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -8,6 +8,8 @@ import { motion } from 'motion/react'
 import { ChevronRight, ChevronDown, Plus, ArrowRight } from 'lucide-react'
 import TenseCarousel from '@/components/game/TenseCarousel'
 import BattleCarousel from '@/components/game/BattleCarousel'
+import { createClient } from '@/lib/supabase/client'
+import { getLevelInfo, catImagePath } from '@/lib/levels'
 
 const ORANGE = '#FF8716'
 const ORANGE_DARK = '#F55379'
@@ -16,18 +18,40 @@ const PURPLE_DARK = '#4A5BB5'
 
 type CreateMode = 'options' | 'escribiendo' | 'lio'
 
-function generateCode() {
-  return Math.floor(1000 + Math.random() * 9000).toString()
-}
-
 export default function RoomPage() {
   const router = useRouter()
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [createMode, setCreateMode] = useState<CreateMode>('options')
+  const [creating, setCreating] = useState(false)
+  const [streak, setStreak] = useState(0)
+  const [level, setLevel] = useState(1)
+  const [avatar, setAvatar] = useState('/images/nav/user-image.svg')
 
-  const handlePlay = () => {
-    const code = generateCode()
-    router.push(`/room/${code}`)
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      supabase.from('profiles').select('streak, total_xp').eq('id', user.id).single()
+        .then(({ data }) => {
+          if (!data) return
+          setStreak(data.streak)
+          const info = getLevelInfo(data.total_xp)
+          setLevel(info.level)
+          setAvatar(catImagePath(info.cat))
+        })
+    })
+  }, [])
+
+  const handlePlay = async () => {
+    if (creating) return
+    setCreating(true)
+    const res = await fetch('/api/rooms', { method: 'POST' })
+    const json = await res.json()
+    if (json.data?.code) {
+      router.push(`/room/${json.data.code}`)
+    } else {
+      setCreating(false)
+    }
   }
 
   const handleCreateToggle = () => {
@@ -46,15 +70,15 @@ export default function RoomPage() {
       <div className="relative px-5 pt-8 pb-12 overflow-hidden" style={{ backgroundColor: ORANGE }}>
         <Image src="/images/multiplayer/bg-star.png" alt="" width={220} height={220} className="absolute -top-6 -right-6 opacity-25 pointer-events-none select-none" draggable={false} />
         <div className="relative flex items-center justify-between mb-3">
-          <Image src="/images/nav/user-image.svg" alt="Avatar" width={36} height={36} className="rounded-full" />
+          <Image src={avatar} alt="Avatar" width={36} height={36} className="rounded-full object-contain" />
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 bg-white/15 rounded-full px-2.5 py-1">
               <Image src="/images/home/fxemoji_fire.svg" alt="Racha" width={16} height={16} />
-              <span className="text-white text-xs font-semibold">4</span>
+              <span className="text-white text-xs font-semibold">{streak}</span>
             </div>
             <div className="flex items-center gap-1.5 bg-white/15 rounded-full px-2.5 py-1">
               <Image src="/images/home/streamline-plump-color_star-circle-flat.svg" alt="Nivel" width={16} height={16} />
-              <span className="text-white text-xs font-semibold">Lvl 2.</span>
+              <span className="text-white text-xs font-semibold">Lvl {level}.</span>
             </div>
           </div>
         </div>

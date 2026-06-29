@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'motion/react'
 import { ChevronRight } from 'lucide-react'
 import BattleCarousel from '@/components/game/BattleCarousel'
+import { createClient } from '@/lib/supabase/client'
+import { getLevelInfo, catImagePath } from '@/lib/levels'
 
 type TransitionPhase = 'idle' | 'curtain-down' | 'cats'
 
@@ -14,6 +16,24 @@ export default function LioDeTiemposPage() {
   const router = useRouter()
   const [phase, setPhase] = useState<TransitionPhase>('idle')
   const pendingHref = useRef('')
+  const [streak, setStreak] = useState(0)
+  const [level, setLevel] = useState(1)
+  const [avatar, setAvatar] = useState('/images/nav/user-image.svg')
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      supabase.from('profiles').select('streak, total_xp').eq('id', user.id).single()
+        .then(({ data }) => {
+          if (!data) return
+          setStreak(data.streak)
+          const info = getLevelInfo(data.total_xp)
+          setLevel(info.level)
+          setAvatar(catImagePath(info.cat))
+        })
+    })
+  }, [])
 
   const handlePlay = useCallback((href: string) => {
     if (phase !== 'idle') return
@@ -34,15 +54,15 @@ export default function LioDeTiemposPage() {
       <div className="relative bg-bsp-blue px-5 pt-8 pb-12 overflow-hidden">
         <Image src="/images/lio-de-tiempos/background.png" alt="" fill className="object-cover opacity-20 pointer-events-none select-none scale-[1.3] translate-x-[15%]" />
         <div className="relative flex items-center justify-between mb-3">
-          <Image src="/images/nav/user-image.svg" alt="Avatar" width={36} height={36} className="rounded-full" />
+          <Image src={avatar} alt="Avatar" width={36} height={36} className="rounded-full object-contain" />
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 bg-white/15 rounded-full px-2.5 py-1">
               <Image src="/images/home/fxemoji_fire.svg" alt="Racha" width={16} height={16} />
-              <span className="text-white text-xs font-semibold">4</span>
+              <span className="text-white text-xs font-semibold">{streak}</span>
             </div>
             <div className="flex items-center gap-1.5 bg-white/15 rounded-full px-2.5 py-1">
               <Image src="/images/home/streamline-plump-color_star-circle-flat.svg" alt="Nivel" width={16} height={16} />
-              <span className="text-white text-xs font-semibold">Lvl 2.</span>
+              <span className="text-white text-xs font-semibold">Lvl {level}.</span>
             </div>
           </div>
         </div>

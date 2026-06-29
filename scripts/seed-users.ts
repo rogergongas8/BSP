@@ -33,42 +33,10 @@ type SeedUser = {
 }
 
 const USERS: SeedUser[] = [
-  {
-    username: 'akane',
-    pin: '1234',
-    total_xp: 232,
-    streak: 3,
-    activities_completed: 21,
-    top3_finishes: 2,
-    achievements: ['paso_a_paso', 'hola_de_nuevo', 'ni_un_fallo', 'reto_aceptado', 'cambio_de_look', 'campeones'],
-  },
-  {
-    username: 'roger',
-    pin: '1234',
-    total_xp: 1420,
-    streak: 12,
-    activities_completed: 87,
-    top3_finishes: 15,
-    achievements: ['paso_a_paso', 'hola_de_nuevo', 'ni_un_fallo', 'reto_aceptado', 'cambio_de_look', 'campeones', 'no_paras', 'vaya_semana', 'podio'],
-  },
-  {
-    username: 'carlos',
-    pin: '1234',
-    total_xp: 540,
-    streak: 5,
-    activities_completed: 34,
-    top3_finishes: 4,
-    achievements: ['paso_a_paso', 'cambio_de_look', 'hola_de_nuevo'],
-  },
-  {
-    username: 'jana',
-    pin: '1234',
-    total_xp: 3200,
-    streak: 28,
-    activities_completed: 156,
-    top3_finishes: 31,
-    achievements: ['paso_a_paso', 'hola_de_nuevo', 'ni_un_fallo', 'reto_aceptado', 'cambio_de_look', 'campeones', 'no_paras', 'vaya_semana', 'podio', 'viajero_del_tiempo', 'vaya_leyenda', 'senor_del_tiempo'],
-  },
+  { username: 'akane',  pin: '1234', total_xp: 0, streak: 0, activities_completed: 0, top3_finishes: 0, achievements: [] },
+  { username: 'roger',  pin: '1234', total_xp: 0, streak: 0, activities_completed: 0, top3_finishes: 0, achievements: [] },
+  { username: 'carlos', pin: '1234', total_xp: 0, streak: 0, activities_completed: 0, top3_finishes: 0, achievements: [] },
+  { username: 'jana',   pin: '1234', total_xp: 0, streak: 0, activities_completed: 0, top3_finishes: 0, achievements: [] },
 ]
 
 async function seedUsers() {

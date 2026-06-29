@@ -83,7 +83,30 @@ export default function ResultsPage({ params }: { params: Promise<{ tenseId: str
   const fixed     = Number(searchParams.get('fixed')     ?? 0)
   const withHints = Number(searchParams.get('withHints') ?? 0)
   const skipped   = Number(searchParams.get('skipped')   ?? 0)
+  const duration  = Number(searchParams.get('duration')  ?? 0)
   const total     = firstTry + fixed + withHints + skipped
+
+  const savedRef = useRef(false)
+  useEffect(() => {
+    if (savedRef.current || total === 0) return
+    savedRef.current = true
+    fetch('/api/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tense: meta.tense, total, first_try: firstTry, with_hints: withHints, skipped, duration_seconds: duration }),
+    })
+      .then(r => r.json())
+      .then(json => {
+        if (json.newAchievements?.length > 0 || json.leveledUp) {
+          sessionStorage.setItem('bsp_session_result', JSON.stringify({
+            newAchievements: json.newAchievements ?? [],
+            leveledUp:       json.leveledUp ?? false,
+            newLevel:        json.newLevel ?? 1,
+          }))
+        }
+      })
+      .catch(() => {})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const rawScore = total > 0
     ? (firstTry * SCORE_WEIGHTS.firstTry + fixed * SCORE_WEIGHTS.fixed + withHints * SCORE_WEIGHTS.withHints) / (total * 10) * 100

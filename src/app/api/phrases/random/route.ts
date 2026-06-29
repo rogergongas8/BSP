@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
@@ -14,6 +15,10 @@ export async function GET(request: NextRequest) {
   if (origin && origin !== process.env.NEXT_PUBLIC_SITE_URL) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
+
+  const supabaseAuth = await createClient()
+  const { data: { user } } = await supabaseAuth.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const parsed = QuerySchema.safeParse({
     tense:   request.nextUrl.searchParams.get('tense'),

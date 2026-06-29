@@ -41,95 +41,236 @@ export type Database = {
     Tables: {
       phrases: {
         Row: {
-          id: string
-          verb: string
-          sentence: string
           answer: string
-          type: string
+          created_at: string
+          expected_stem: string | null
+          id: string
           person: string
+          sentence: string
+          stem_group: string | null
           tense: string
+          type: string
+          verb: string
+        }
+        Insert: {
+          answer: string
+          created_at?: string
+          expected_stem?: string | null
+          id?: string
+          person: string
+          sentence: string
+          stem_group?: string | null
+          tense: string
+          type: string
+          verb: string
+        }
+        Update: {
+          answer?: string
+          created_at?: string
+          expected_stem?: string | null
+          id?: string
+          person?: string
+          sentence?: string
+          stem_group?: string | null
+          tense?: string
+          type?: string
+          verb?: string
+        }
+        Relationships: []
+      }
+      practice_sessions: {
+        Row: {
+          completed_at: string
+          correct: number
+          duration_seconds: number
+          first_try: number
+          id: string
+          skipped: number
+          tense: string
+          total: number
+          user_id: string
+          with_hints: number
+        }
+        Insert: {
+          completed_at?: string
+          correct: number
+          duration_seconds?: number
+          first_try?: number
+          id?: string
+          skipped?: number
+          tense: string
+          total: number
+          user_id: string
+          with_hints?: number
+        }
+        Update: {
+          completed_at?: string
+          correct?: number
+          duration_seconds?: number
+          first_try?: number
+          id?: string
+          skipped?: number
+          tense?: string
+          total?: number
+          user_id?: string
+          with_hints?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "practice_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_challenges: {
+        Row: {
+          id: number
+          day_index: number
+          text: string
+          xp_reward: number
+          type: 'activities' | 'tense_correct' | 'cross_correct'
+          target: number
+          tense: string | null
+        }
+        Insert: {
+          id?: number
+          day_index: number
+          text: string
+          xp_reward: number
+          type: 'activities' | 'tense_correct' | 'cross_correct'
+          target: number
+          tense?: string | null
+        }
+        Update: {
+          text?: string
+          xp_reward?: number
+          type?: 'activities' | 'tense_correct' | 'cross_correct'
+          target?: number
+          tense?: string | null
+        }
+        Relationships: []
+      }
+      room_players: {
+        Row: {
+          id: string
+          room_id: string
+          user_id: string
+          joined_at: string
+        }
+        Insert: {
+          id?: string
+          room_id: string
+          user_id: string
+          joined_at?: string
+        }
+        Update: {
+          id?: string
+          room_id?: string
+          user_id?: string
+          joined_at?: string
+        }
+        Relationships: []
+      }
+      rooms: {
+        Row: {
+          id: string
+          code: string
+          host_id: string
+          status: 'waiting' | 'playing' | 'finished'
+          max_players: number
           created_at: string
         }
         Insert: {
           id?: string
-          verb: string
-          sentence: string
-          answer: string
-          type: string
-          person: string
-          tense: string
+          code: string
+          host_id: string
+          status?: 'waiting' | 'playing' | 'finished'
+          max_players?: number
           created_at?: string
         }
         Update: {
-          id?: string
-          verb?: string
-          sentence?: string
-          answer?: string
-          type?: string
-          person?: string
-          tense?: string
-          created_at?: string
+          code?: string
+          host_id?: string
+          status?: 'waiting' | 'playing' | 'finished'
+          max_players?: number
         }
+        Relationships: []
       }
       profiles: {
         Row: {
-          id: string
-          username: string
-          total_xp: number
-          streak: number
           activities_completed: number
-          top3_finishes: number
           created_at: string
+          id: string
+          last_activity_date: string | null
+          streak: number
+          top3_finishes: number
+          total_xp: number
           updated_at: string
+          username: string
         }
         Insert: {
-          id: string
-          username: string
-          total_xp?: number
-          streak?: number
           activities_completed?: number
-          top3_finishes?: number
           created_at?: string
+          id: string
+          last_activity_date?: string | null
+          streak?: number
+          top3_finishes?: number
+          total_xp?: number
           updated_at?: string
+          username: string
         }
         Update: {
-          id?: string
-          username?: string
-          total_xp?: number
-          streak?: number
           activities_completed?: number
+          created_at?: string
+          id?: string
+          last_activity_date?: string | null
+          streak?: number
           top3_finishes?: number
+          total_xp?: number
           updated_at?: string
+          username?: string
         }
         Relationships: []
       }
       user_achievements: {
         Row: {
-          id: string
-          user_id: string
           achievement_id: string
+          id: string
           unlocked_at: string
+          user_id: string
         }
         Insert: {
-          id?: string
-          user_id: string
           achievement_id: string
+          id?: string
           unlocked_at?: string
+          user_id: string
         }
         Update: {
-          id?: string
-          user_id?: string
           achievement_id?: string
+          id?: string
           unlocked_at?: string
+          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_achievements_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_room_code: { Args: Record<never, never>; Returns: string }
+      increment_activities: { Args: { p_user_id: string }; Returns: undefined }
     }
     Enums: {
       [_ in never]: never

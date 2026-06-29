@@ -23,38 +23,11 @@ const ZAS  = '/images/profile/small-loading1.png'
 const MIMO = '/images/profile/small-loading2.png'
 const JAVI = '/images/profile/small-loading3.png'
 
-const ESCRIBIENDO_TENSES = [
-  { id: 'pp',  name: 'Pretérito Perfecto', accuracy: 85, barColor: 'bg-blue-500',   textColor: 'text-blue-500',   icon: ZAS },
-  { id: 'imp', name: 'Imperfecto',         accuracy: 79, barColor: 'bg-red-400',    textColor: 'text-red-400',    icon: MIMO },
-  { id: 'ind', name: 'Indefinido',         accuracy: 56, barColor: 'bg-orange-400', textColor: 'text-orange-400', icon: JAVI },
-]
-
-const LIO_COMBINATIONS = [
-  {
-    id: 'pp_ind',
-    name: 'Pretérito Perfecto - Indefinido',
-    accuracy: 98,
-    barColor: 'bg-blue-500',
-    textColor: 'text-blue-500',
-    icons: [ZAS, JAVI],
-  },
-  {
-    id: 'ind_imp',
-    name: 'Indefinido - Imperfecto',
-    accuracy: 67,
-    barColor: 'bg-blue-500',
-    textColor: 'text-blue-500',
-    icons: [JAVI, MIMO],
-  },
-  {
-    id: 'pp_ind_imp',
-    name: 'P.Perfecto - Indefinido - Imperfecto',
-    accuracy: 76,
-    barColor: 'bg-orange-400',
-    textColor: 'text-orange-400',
-    icons: [ZAS, JAVI, MIMO],
-  },
-]
+const TENSE_STYLES = {
+  pp:  { barColor: 'bg-blue-500',   textColor: 'text-blue-500' },
+  imp: { barColor: 'bg-red-400',    textColor: 'text-red-400'  },
+  ind: { barColor: 'bg-orange-400', textColor: 'text-orange-400' },
+}
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -79,6 +52,93 @@ export default async function ProfilePage() {
   const userAchievements = achievementsRaw as UserAchievement[] | null
   const unlockedIds = (userAchievements ?? []).map(r => r.achievement_id as AchievementId)
   const { level, xpInLevel, xpForNext, cat } = getLevelInfo(profile.total_xp)
+
+  // Per-tense accuracy from practice_sessions
+  const { data: sessionsRaw } = await supabase
+    .from('practice_sessions')
+    .select('tense, correct, total, skipped, first_try, duration_seconds, completed_at')
+    .eq('user_id', user.id)
+
+  type SessionRow = { tense: string; correct: number; total: number; skipped: number; first_try: number; duration_seconds: number; completed_at: string }
+  const sessions = (sessionsRaw ?? []) as SessionRow[]
+
+  function tenseAccuracy(tense: string) {
+    const rows = sessions.filter(s => s.tense === tense)
+    if (rows.length === 0) return null
+    const correct = rows.reduce((sum, r) => sum + r.correct, 0)
+    const total   = rows.reduce((sum, r) => sum + r.total,   0)
+    return total > 0 ? Math.round((correct / total) * 100) : null
+  }
+
+  const accIndefinido  = tenseAccuracy('indefinido')
+  const accImperfecto  = tenseAccuracy('imperfecto')
+  const accPerfecto    = tenseAccuracy('pretérito-perfecto')
+
+  // Overall Escribiendo avg (all sessions regardless of tense)
+  const totalCorrect = sessions.reduce((sum, r) => sum + r.correct, 0)
+  const totalAnswers = sessions.reduce((sum, r) => sum + r.total,   0)
+  const avgEscribiendo = totalAnswers > 0 ? Math.round((totalCorrect / totalAnswers) * 100) : null
+
+  // Practice Time
+  const totalSeconds  = sessions.reduce((sum, r) => sum + (r.duration_seconds ?? 0), 0)
+  const totalHours    = totalSeconds > 0 ? (totalSeconds / 3600).toFixed(1) : null
+
+  // This week (Mon–Sun)
+  const now = new Date()
+  const dayOfWeek = now.getDay() // 0=Sun
+  const startOfWeek = new Date(now)
+  startOfWeek.setDate(now.getDate() - ((dayOfWeek + 6) % 7)) // Mon
+  startOfWeek.setHours(0, 0, 0, 0)
+
+  const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const weekSeconds = Array(7).fill(0) as number[]
+  for (const s of sessions) {
+    const d = new Date(s.completed_at)
+    if (d >= startOfWeek) {
+      const idx = (d.getDay() + 6) % 7 // 0=Mon
+      weekSeconds[idx] += s.duration_seconds ?? 0
+    }
+  }
+  const weekTotalSeconds = weekSeconds.reduce((a, b) => a + b, 0)
+  const weekHoursLabel = weekTotalSeconds > 0
+    ? weekTotalSeconds >= 3600
+      ? `${(weekTotalSeconds / 3600).toFixed(1)}h`
+      : `${Math.round(weekTotalSeconds / 60)}min`
+    : null
+
+  const maxWeekSec = Math.max(...weekSeconds, 1)
+  const WEEK_BARS = DAYS.map((day, i) => ({
+    day,
+    height: Math.round((weekSeconds[i] / maxWeekSec) * 100),
+    hasData: weekSeconds[i] > 0,
+  }))
+
+  // Best day this week
+  const bestDayIdx = weekSeconds.indexOf(Math.max(...weekSeconds))
+  const bestDaySessionsCount = sessions.filter(s => {
+    const d = new Date(s.completed_at)
+    return d >= startOfWeek && (d.getDay() + 6) % 7 === bestDayIdx
+  }).length
+  const bestDayMinutes = Math.round(weekSeconds[bestDayIdx] / 60)
+  const hasPracticeData = weekTotalSeconds > 0
+
+  function avg(...vals: (number | null)[]) {
+    const nums = vals.filter((v): v is number => v !== null)
+    if (nums.length === 0) return null
+    return Math.round(nums.reduce((a, b) => a + b, 0) / nums.length)
+  }
+
+  const ESCRIBIENDO_TENSES = [
+    { id: 'pp',  name: 'Pretérito Perfecto', accuracy: accPerfecto,   ...TENSE_STYLES.pp,  icon: ZAS  },
+    { id: 'imp', name: 'Imperfecto',         accuracy: accImperfecto, ...TENSE_STYLES.imp, icon: MIMO },
+    { id: 'ind', name: 'Indefinido',         accuracy: accIndefinido, ...TENSE_STYLES.ind, icon: JAVI },
+  ]
+
+  const LIO_COMBINATIONS = [
+    { id: 'pp_ind',     name: 'Pretérito Perfecto - Indefinido',        accuracy: avg(accPerfecto, accIndefinido),              ...TENSE_STYLES.pp,  icons: [ZAS, JAVI]       },
+    { id: 'ind_imp',    name: 'Indefinido - Imperfecto',                 accuracy: avg(accIndefinido, accImperfecto),            ...TENSE_STYLES.pp,  icons: [JAVI, MIMO]      },
+    { id: 'pp_ind_imp', name: 'P.Perfecto - Indefinido - Imperfecto',   accuracy: avg(accPerfecto, accIndefinido, accImperfecto),...TENSE_STYLES.ind, icons: [ZAS, JAVI, MIMO] },
+  ]
 
   return (
     <div className="flex flex-col">
@@ -167,7 +227,10 @@ export default async function ProfilePage() {
           </div>
 
           <div className="bg-[#FFF0EE] rounded-xl px-4 py-4 mb-5 text-center">
-            <p className="font-black text-3xl text-gray-800 leading-tight">8 <span className="text-lg font-semibold">hours</span></p>
+            {totalHours !== null
+              ? <p className="font-black text-3xl text-gray-800 leading-tight">{totalHours} <span className="text-lg font-semibold">hours</span></p>
+              : <p className="font-black text-3xl text-gray-800 leading-tight">—</p>
+            }
             <p className="text-gray-400 text-sm mt-0.5">Total practice time</p>
           </div>
 
@@ -178,7 +241,7 @@ export default async function ProfilePage() {
                 <rect x="0.5" y="1.5" width="9" height="8" rx="1.5" stroke="#6B7280" strokeWidth="1" />
                 <path d="M3 0.5v2M7 0.5v2M0.5 4h9" stroke="#6B7280" strokeWidth="1" strokeLinecap="round" />
               </svg>
-              <span className="text-gray-500 text-sm font-semibold">2.5h</span>
+              <span className="text-gray-500 text-sm font-semibold">{weekHoursLabel ?? '—'}</span>
             </div>
           </div>
 
@@ -186,8 +249,8 @@ export default async function ProfilePage() {
             {WEEK_BARS.map(bar => (
               <div
                 key={bar.day}
-                className="flex-1 bg-[#2F54BA] rounded-t-sm"
-                style={{ height: `${bar.height}%` }}
+                className={`flex-1 rounded-t-sm ${bar.hasData ? 'bg-[#2F54BA]' : 'bg-gray-200'}`}
+                style={{ height: `${Math.max(bar.height, bar.hasData ? 8 : 4)}%` }}
               />
             ))}
           </div>
@@ -197,12 +260,14 @@ export default async function ProfilePage() {
             ))}
           </div>
 
-          <div className="flex items-center gap-2 mt-4 bg-orange-50 rounded-xl px-4 py-3">
-            <Image src="/images/home/fxemoji_fire.svg" alt="" width={16} height={16} />
-            <span className="text-gray-600 text-sm">
-              <span className="font-bold">Best day: Friday</span> · 4 activities · 32 min
-            </span>
-          </div>
+          {hasPracticeData && (
+            <div className="flex items-center gap-2 mt-4 bg-orange-50 rounded-xl px-4 py-3">
+              <Image src="/images/home/fxemoji_fire.svg" alt="" width={16} height={16} />
+              <span className="text-gray-600 text-sm">
+                <span className="font-bold">Best day: {DAYS[bestDayIdx]}</span> · {bestDaySessionsCount} {bestDaySessionsCount === 1 ? 'activity' : 'activities'} · {bestDayMinutes} min
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Accuracy */}
@@ -225,7 +290,7 @@ export default async function ProfilePage() {
                 <Image src="/images/profile/escribiendo.png" alt="Escribiendo" width={48} height={48} className="object-contain w-full h-full" />
               </div>
               <div>
-                <p className="text-2xl text-gray-800 leading-none">61 <span className="text-sm font-semibold">%</span></p>
+                <p className="text-2xl text-gray-800 leading-none">{avgEscribiendo !== null ? avgEscribiendo : '—'} {avgEscribiendo !== null && <span className="text-sm font-semibold">%</span>}</p>
                 <p className="text-gray-400 text-xs mt-0.5">Avg Accuracy</p>
               </div>
             </div>
@@ -234,7 +299,7 @@ export default async function ProfilePage() {
                 <Image src="/images/profile/lio.png" alt="Lio de tiempos" width={48} height={48} className="object-contain w-full h-full" />
               </div>
               <div>
-                <p className="text-2xl text-gray-800 leading-none">86 <span className="text-sm font-semibold">%</span></p>
+                <p className="text-2xl text-gray-800 leading-none">— </p>
                 <p className="text-gray-400 text-xs mt-0.5">Avg Accuracy</p>
               </div>
             </div>
@@ -252,9 +317,9 @@ export default async function ProfilePage() {
                   <p className="text-gray-700 text-xs font-medium mb-1">{t.name}</p>
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-3 bg-white rounded-full overflow-hidden">
-                      <div className={`h-full ${t.barColor} rounded-full`} style={{ width: `${t.accuracy}%` }} />
+                      <div className={`h-full ${t.barColor} rounded-full`} style={{ width: `${t.accuracy ?? 0}%` }} />
                     </div>
-                    <span className={`text-xs font-bold ${t.textColor} shrink-0`}>{t.accuracy}%</span>
+                    <span className={`text-xs font-bold ${t.textColor} shrink-0`}>{t.accuracy !== null ? `${t.accuracy}%` : '—'}</span>
                   </div>
                 </div>
               </div>
@@ -282,9 +347,9 @@ export default async function ProfilePage() {
                   <p className="text-gray-700 text-xs font-medium mb-1">{c.name}</p>
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-3 bg-white rounded-full overflow-hidden">
-                      <div className={`h-full ${c.barColor} rounded-full`} style={{ width: `${c.accuracy}%` }} />
+                      <div className={`h-full ${c.barColor} rounded-full`} style={{ width: `${c.accuracy ?? 0}%` }} />
                     </div>
-                    <span className={`text-xs font-bold ${c.textColor} shrink-0`}>{c.accuracy}%</span>
+                    <span className={`text-xs font-bold ${c.textColor} shrink-0`}>{c.accuracy !== null ? `${c.accuracy}%` : '—'}</span>
                   </div>
                 </div>
               </div>

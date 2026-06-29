@@ -1,26 +1,115 @@
 'use client'
 
-import { useState, use } from 'react'
+import { useState, use, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { motion } from 'motion/react'
 import { ChevronRight, Copy, Check, Plus } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { getLevelInfo, catImagePath } from '@/lib/levels'
 
 const ORANGE = '#FF8716'
-
-const PLACEHOLDER_PLAYERS = [
-  { id: '1', name: 'Carlos', level: 6, avatar: '/images/nav/user-image.svg', isHost: true },
-  { id: '2', name: 'Roger', level: 2, avatar: '/images/nav/user-image.svg', isHost: false },
-  { id: '3', name: 'Akane', level: 4, avatar: '/images/nav/user-image.svg', isHost: false },
-]
-
 const MAX_PLAYERS = 6
+
+type Player = {
+  user_id: string
+  username: string
+  level: number
+  avatar: string
+  isHost: boolean
+}
 
 export default function RoomLobbyPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = use(params)
+  const router = useRouter()
   const [copied, setCopied] = useState(false)
+  const [players, setPlayers] = useState<Player[]>([])
+  const [hostId, setHostId] = useState<string | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [roomId, setRoomId] = useState<string | null>(null)
+  const [streak, setStreak] = useState(0)
+  const [level, setLevel] = useState(1)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const channelRef = useRef<any>(null)
 
   const sessionCode = `BSP-${code}`
+
+  useEffect(() => {
+    const supabase = createClient()
+
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      setCurrentUserId(user.id)
+
+      // Fetch current user profile for header
+      const { data: myProfile } = await supabase
+        .from('profiles')
+        .select('streak, total_xp')
+        .eq('id', user.id)
+        .single()
+      if (myProfile) {
+        setStreak(myProfile.streak)
+        setLevel(getLevelInfo(myProfile.total_xp).level)
+      }
+
+      // Fetch room
+      const { data: room } = await supabase
+        .from('rooms')
+        .select('id, host_id')
+        .eq('code', code)
+        .single()
+      if (!room) { router.push('/room'); return }
+      setRoomId(room.id)
+      setHostId(room.host_id)
+
+      await fetchPlayers(supabase, room.id, room.host_id)
+
+      // Subscribe to room_players changes
+      const channel = supabase
+        .channel(`room:${room.id}`)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'room_players',
+          filter: `room_id=eq.${room.id}`,
+        }, () => fetchPlayers(supabase, room.id, room.host_id))
+        .subscribe()
+
+      channelRef.current = channel
+    }
+
+    load()
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+      }
+    }
+  }, [code]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function fetchPlayers(supabase: ReturnType<typeof createClient>, rId: string, hId: string) {
+    const { data } = await supabase
+      .from('room_players')
+      .select('user_id, profiles(username, total_xp)')
+      .eq('room_id', rId)
+      .order('joined_at')
+
+    if (!data) return
+
+    const mapped: Player[] = (data as unknown as { user_id: string; profiles: { username: string; total_xp: number } }[]).map(row => {
+      const info = getLevelInfo(row.profiles.total_xp)
+      return {
+        user_id:  row.user_id,
+        username: row.profiles.username,
+        level:    info.level,
+        avatar:   catImagePath(info.cat),
+        isHost:   row.user_id === hId,
+      }
+    })
+    setPlayers(mapped)
+  }
 
   const handleCopy = () => {
     navigator.clipboard.writeText(code)
@@ -35,15 +124,15 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
       <div className="relative px-5 pt-8 pb-12 overflow-hidden" style={{ backgroundColor: ORANGE }}>
         <Image src="/images/multiplayer/bg-star.png" alt="" width={220} height={220} className="absolute -top-6 -right-6 opacity-25 pointer-events-none select-none" draggable={false} />
         <div className="relative flex items-center justify-between mb-3">
-          <Image src="/images/nav/user-image.svg" alt="Avatar" width={36} height={36} className="rounded-full" />
+          <Image src={catImagePath(getLevelInfo(level === 1 ? 0 : level).cat)} alt="Avatar" width={36} height={36} className="rounded-full object-contain" />
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 bg-white/15 rounded-full px-2.5 py-1">
               <Image src="/images/home/fxemoji_fire.svg" alt="Racha" width={16} height={16} />
-              <span className="text-white text-xs font-semibold">4</span>
+              <span className="text-white text-xs font-semibold">{streak}</span>
             </div>
             <div className="flex items-center gap-1.5 bg-white/15 rounded-full px-2.5 py-1">
               <Image src="/images/home/streamline-plump-color_star-circle-flat.svg" alt="Nivel" width={16} height={16} />
-              <span className="text-white text-xs font-semibold">Lvl 2.</span>
+              <span className="text-white text-xs font-semibold">Lvl {level}.</span>
             </div>
           </div>
         </div>
@@ -67,46 +156,32 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
       <div className="bg-gray-100 flex-1 px-5 pt-6 pb-28 flex flex-col gap-4">
 
         {/* Session Code card */}
-        <div
-          className="w-full bg-white rounded-2xl p-4 flex flex-col gap-3"
-          style={{ border: `2px solid ${ORANGE}` }}
-        >
+        <div className="w-full bg-white rounded-2xl p-4 flex flex-col gap-3" style={{ border: `2px solid ${ORANGE}` }}>
           <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase">Session Code</p>
-
           <div className="flex items-center gap-3">
             <div className="flex-1 rounded-xl px-4 py-3" style={{ backgroundColor: '#FFF4E8' }}>
               <p className="text-2xl font-bold tracking-[0.12em] text-center" style={{ color: ORANGE }}>{sessionCode}</p>
             </div>
-            <motion.button
-              whileTap={{ scale: 0.88 }}
-              onClick={handleCopy}
+            <motion.button whileTap={{ scale: 0.88 }} onClick={handleCopy}
               className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-              style={{ backgroundColor: ORANGE }}
-            >
-              {copied
-                ? <Check className="w-5 h-5 text-white stroke-[3]" />
-                : <Copy className="w-5 h-5 text-white stroke-[2.5]" />
-              }
+              style={{ backgroundColor: ORANGE }}>
+              {copied ? <Check className="w-5 h-5 text-white stroke-[3]" /> : <Copy className="w-5 h-5 text-white stroke-[2.5]" />}
             </motion.button>
           </div>
-
           <p className="text-xs text-gray-400 text-center font-medium">Share this code with your friends</p>
         </div>
 
         {/* Players card */}
-        <div
-          className="w-full bg-white rounded-2xl p-4 flex flex-col gap-1"
-          style={{ border: `2px solid ${ORANGE}` }}
-        >
+        <div className="w-full bg-white rounded-2xl p-4 flex flex-col gap-1" style={{ border: `2px solid ${ORANGE}` }}>
           <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase mb-2">
-            Players ({PLACEHOLDER_PLAYERS.length}/{MAX_PLAYERS})
+            Players ({players.length}/{MAX_PLAYERS})
           </p>
 
-          {PLACEHOLDER_PLAYERS.map((player, index) => (
-            <div key={player.id}>
+          {players.map((player, index) => (
+            <div key={player.user_id}>
               <div className="flex items-center gap-3 py-2.5">
-                <Image src={player.avatar} alt={player.name} width={40} height={40} className="rounded-full shrink-0" />
-                <span className="font-bold text-gray-800 text-sm">{player.name}</span>
+                <Image src={player.avatar} alt={player.username} width={40} height={40} className="rounded-full shrink-0 object-contain" />
+                <span className="font-bold text-gray-800 text-sm">{player.username}</span>
                 <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ backgroundColor: '#D4DAEF', color: '#4A5BB5' }}>
                   lvl. {player.level}
                 </span>
@@ -116,35 +191,35 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
                   </span>
                 )}
               </div>
-              {index < PLACEHOLDER_PLAYERS.length - 1 && (
-                <div className="h-px bg-gray-100 mx-1" />
-              )}
+              {index < players.length - 1 && <div className="h-px bg-gray-100 mx-1" />}
             </div>
           ))}
 
-          {/* Waiting slot */}
-          <div className="h-px bg-gray-100 mx-1" />
-          <div className="flex items-center gap-3 py-2.5">
-            <div className="w-10 h-10 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center shrink-0">
-              <Plus className="w-4 h-4 text-gray-300" />
-            </div>
-            <span className="text-sm text-gray-400 font-medium">Waiting for players...</span>
-          </div>
+          {players.length < MAX_PLAYERS && (
+            <>
+              {players.length > 0 && <div className="h-px bg-gray-100 mx-1" />}
+              <div className="flex items-center gap-3 py-2.5">
+                <div className="w-10 h-10 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center shrink-0">
+                  <Plus className="w-4 h-4 text-gray-300" />
+                </div>
+                <span className="text-sm text-gray-400 font-medium">Waiting for players...</span>
+              </div>
+            </>
+          )}
         </div>
-
       </div>
 
-      {/* ── JUGAR button — always visible ── */}
+      {/* ── JUGAR button ── */}
       <div className="fixed bottom-0 left-0 right-0 px-5 pb-6 pt-3 bg-gray-100">
         <motion.button
           whileTap={{ scale: 0.97 }}
-          className="w-full py-4 rounded-2xl font-black text-white text-base tracking-widest uppercase shadow-lg"
+          disabled={currentUserId !== hostId || players.length < 2}
+          className="w-full py-4 rounded-2xl font-black text-white text-base tracking-widest uppercase shadow-lg disabled:opacity-40"
           style={{ backgroundColor: ORANGE }}
         >
           Jugar
         </motion.button>
       </div>
-
     </div>
   )
 }
