@@ -7,6 +7,31 @@ import { motion, AnimatePresence } from 'motion/react'
 import { X, ChevronRight, Check, Send } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
+// ─── Keyboard-aware bottom offset ────────────────────────────────────────────
+// On iOS Safari, `fixed bottom-0` is anchored to the layout viewport (full page height),
+// so the virtual keyboard slides over it. We use visualViewport to track the real
+// visible bottom and shift the button up to stay above the keyboard.
+
+function useKeyboardBottom() {
+  const [bottom, setBottom] = useState(0)
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+    const update = () => {
+      const gap = window.innerHeight - (vv.height + vv.offsetTop)
+      setBottom(Math.max(0, gap))
+    }
+    vv.addEventListener('resize', update)
+    vv.addEventListener('scroll', update)
+    update()
+    return () => {
+      vv.removeEventListener('resize', update)
+      vv.removeEventListener('scroll', update)
+    }
+  }, [])
+  return bottom
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Standing = {
@@ -185,8 +210,11 @@ function RoundView({
   onNext: () => void
 }) {
   const [typedInput, setTypedInput] = useState('')
+  const [skipping, setSkipping] = useState(false)
+  const [nexting, setNexting] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const timerEndedRef = useRef(false)
+  const kbBottom = useKeyboardBottom()
 
   const round = phase.round
   const hasSubmitted = phase.type === 'collecting' || phase.type === 'results'
@@ -353,8 +381,11 @@ function RoundView({
         </AnimatePresence>
       </div>
 
-      {/* Fixed bottom button — changes based on phase */}
-      <div className="fixed bottom-0 left-0 right-0 px-5 pb-6 pt-3 bg-white">
+      {/* Fixed bottom button — floats above keyboard via visualViewport offset */}
+      <div
+        className="fixed left-0 right-0 px-5 pb-6 pt-3 bg-white transition-[bottom] duration-100"
+        style={{ bottom: kbBottom }}
+      >
         <AnimatePresence mode="wait">
           {phase.type === 'active' && (
             <motion.button
@@ -379,11 +410,16 @@ function RoundView({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              whileTap={{ scale: 0.96 }}
-              onClick={onSkip}
-              className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl border-2 border-gray-300 text-sm font-bold text-gray-700"
+              whileTap={skipping ? {} : { scale: 0.96 }}
+              onClick={() => {
+                if (skipping) return
+                setSkipping(true)
+                onSkip()
+              }}
+              disabled={skipping}
+              className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl border-2 border-gray-300 text-sm font-bold text-gray-700 disabled:opacity-60"
             >
-              Skip to next question
+              {skipping ? 'Skipping...' : 'Skip to next question'}
               <ChevronRight className="w-4 h-4 stroke-[2.5]" />
             </motion.button>
           )}
@@ -394,11 +430,17 @@ function RoundView({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={onNext}
-              className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl border-2 border-gray-200 font-black text-sm text-gray-800 tracking-wider uppercase"
+              whileTap={nexting ? {} : { scale: 0.97 }}
+              onClick={() => {
+                if (nexting) return
+                setNexting(true)
+                onNext()
+              }}
+              disabled={nexting}
+              className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-black text-sm text-white tracking-wider uppercase disabled:opacity-60"
+              style={{ backgroundColor: '#3B82F6' }}
             >
-              Next
+              {nexting ? 'Loading...' : 'Next'}
               <ChevronRight className="w-4 h-4" />
             </motion.button>
           )}
@@ -421,6 +463,7 @@ function ScoreboardView({
   onNext: () => void
 }) {
   const roundsLeft = totalRounds - roundNumber
+  const [nexting, setNexting] = useState(false)
 
   return (
     <div className="flex-1 flex flex-col" style={{ backgroundColor: '#F5F3EF' }}>
@@ -449,7 +492,7 @@ function ScoreboardView({
       </div>
 
       {/* Standings list */}
-      <div className="flex-1 px-4 pt-3 pb-6 flex flex-col overflow-y-auto">
+      <div className="flex-1 px-4 pt-3 flex flex-col overflow-y-auto" style={{ paddingBottom: isHost ? 96 : 24 }}>
         {standings.map((s, index) => {
           const isFirst = s.rank === 1
           const isMe = s.user_id === currentUserId
@@ -517,15 +560,21 @@ function ScoreboardView({
       </div>
 
       {isHost && (
-        <div className="px-4 pb-6 pt-3">
+        <div className="fixed bottom-0 left-0 right-0 px-4 pb-6 pt-3" style={{ backgroundColor: '#F5F3EF' }}>
           <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={onNext}
-            className="w-full py-4 rounded-2xl font-black text-white text-sm tracking-widest uppercase flex items-center justify-center gap-2"
+            whileTap={nexting ? {} : { scale: 0.97 }}
+            onClick={async () => {
+              if (nexting) return
+              setNexting(true)
+              onNext()
+            }}
+            disabled={nexting}
+            className="w-full py-4 rounded-2xl font-black text-white text-sm tracking-widest uppercase flex items-center justify-center gap-2 disabled:opacity-60"
             style={{ backgroundColor: '#FF8716' }}
           >
-            Next question
-            <ChevronRight className="w-4 h-4 stroke-[3]" />
+            {nexting ? 'Loading...' : (
+              <>Next question <ChevronRight className="w-4 h-4 stroke-[3]" /></>
+            )}
           </motion.button>
         </div>
       )}

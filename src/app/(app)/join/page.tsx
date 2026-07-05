@@ -48,8 +48,8 @@ export default function JoinPage() {
   }, [])
 
   const handleChange = useCallback((index: number, value: string) => {
-    const char = value.slice(-1).toUpperCase()
-    if (!/^[A-Z0-9]$/.test(char) && char !== '') return
+    const char = value.slice(-1)
+    if (!/^[0-9]$/.test(char) && char !== '') return
 
     const next = [...digits]
     next[index] = char
@@ -64,8 +64,7 @@ export default function JoinPage() {
   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault()
     const chars = e.clipboardData.getData('text')
-      .replace(/[^A-Za-z0-9]/g, '')
-      .toUpperCase()
+      .replace(/[^0-9]/g, '')
       .slice(0, CODE_LENGTH)
       .split('')
     if (chars.length === 0) return
@@ -174,7 +173,7 @@ export default function JoinPage() {
                   key={i}
                   ref={i === 0 ? firstInputRef : (el => { inputRefs.current[i] = el })}
                   type="text"
-                  inputMode="text"
+                  inputMode="numeric"
                   maxLength={2}
                   value={digits[i]}
                   onChange={e => handleChange(i, e.target.value)}
