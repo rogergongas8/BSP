@@ -278,10 +278,9 @@ function RoundView({
             <motion.div
               key="cat"
               className="flex flex-col items-center justify-center gap-4 pt-8 pb-36"
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -16 }}
-              transition={{ duration: 0.3 }}
+              initial={{ opacity: 0, y: 32 }}
+              animate={{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 280, damping: 24, delay: 0.05 } }}
+              exit={{ opacity: 0, y: -12, transition: { duration: 0.2 } }}
             >
               <motion.div
                 animate={{ y: [0, -14, 0] }}
@@ -381,71 +380,82 @@ function RoundView({
         </AnimatePresence>
       </div>
 
-      {/* Fixed bottom button — floats above keyboard via visualViewport offset */}
-      <div
-        className="fixed left-0 right-0 px-5 pb-6 pt-3 bg-white transition-[bottom] duration-100"
-        style={{ bottom: kbBottom }}
-      >
-        <AnimatePresence mode="wait">
-          {phase.type === 'active' && (
-            <motion.button
-              key="submit"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              whileTap={typedInput.trim() ? { scale: 0.96 } : {}}
-              onClick={handleSubmit}
-              disabled={!typedInput.trim()}
-              className="w-full py-4 rounded-2xl font-black text-white text-sm tracking-wider uppercase flex items-center justify-center gap-2 transition-colors duration-200"
-              style={{ backgroundColor: typedInput.trim() ? '#3B82F6' : '#D1D5DB' }}
-            >
-              <Send className="w-4 h-4 stroke-[2.5]" />
-              Submit
-            </motion.button>
-          )}
+      {/* Fixed bottom button — floats above keyboard via visualViewport offset.
+          Background is transparent when no button is showing so it never
+          bleeds over the cat animation below. */}
+      {(() => {
+        const hasButton =
+          phase.type === 'active' ||
+          (isHost && (phase.type === 'collecting' || phase.type === 'results'))
+        return (
+          <motion.div
+            className="fixed left-0 right-0 px-5 pb-6 pt-3 transition-[bottom] duration-100"
+            style={{ bottom: kbBottom }}
+            animate={{ backgroundColor: hasButton ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0)' }}
+            transition={{ duration: 0.25 }}
+          >
+            <AnimatePresence mode="wait">
+              {phase.type === 'active' && (
+                <motion.button
+                  key="submit"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 340, damping: 26 } }}
+                  exit={{ opacity: 0, y: 6, transition: { duration: 0.18 } }}
+                  whileTap={typedInput.trim() ? { scale: 0.96 } : {}}
+                  onClick={handleSubmit}
+                  disabled={!typedInput.trim()}
+                  className="w-full py-4 rounded-2xl font-black text-white text-sm tracking-wider uppercase flex items-center justify-center gap-2 transition-colors duration-200"
+                  style={{ backgroundColor: typedInput.trim() ? '#3B82F6' : '#D1D5DB' }}
+                >
+                  <Send className="w-4 h-4 stroke-[2.5]" />
+                  Submit
+                </motion.button>
+              )}
 
-          {phase.type === 'collecting' && isHost && (
-            <motion.button
-              key="skip"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              whileTap={skipping ? {} : { scale: 0.96 }}
-              onClick={() => {
-                if (skipping) return
-                setSkipping(true)
-                onSkip()
-              }}
-              disabled={skipping}
-              className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl border-2 border-gray-300 text-sm font-bold text-gray-700 disabled:opacity-60"
-            >
-              {skipping ? 'Skipping...' : 'Skip to next question'}
-              <ChevronRight className="w-4 h-4 stroke-[2.5]" />
-            </motion.button>
-          )}
+              {phase.type === 'collecting' && isHost && (
+                <motion.button
+                  key="skip"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 340, damping: 26 } }}
+                  exit={{ opacity: 0, y: 6, transition: { duration: 0.18 } }}
+                  whileTap={skipping ? {} : { scale: 0.96 }}
+                  onClick={() => {
+                    if (skipping) return
+                    setSkipping(true)
+                    onSkip()
+                  }}
+                  disabled={skipping}
+                  className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl border-2 border-gray-300 text-sm font-bold text-gray-700 disabled:opacity-60"
+                >
+                  {skipping ? 'Skipping...' : 'Skip to next question'}
+                  <ChevronRight className="w-4 h-4 stroke-[2.5]" />
+                </motion.button>
+              )}
 
-          {phase.type === 'results' && isHost && (
-            <motion.button
-              key="next"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              whileTap={nexting ? {} : { scale: 0.97 }}
-              onClick={() => {
-                if (nexting) return
-                setNexting(true)
-                onNext()
-              }}
-              disabled={nexting}
-              className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-black text-sm text-white tracking-wider uppercase disabled:opacity-60"
-              style={{ backgroundColor: '#3B82F6' }}
-            >
-              {nexting ? 'Loading...' : 'Next'}
-              <ChevronRight className="w-4 h-4" />
-            </motion.button>
-          )}
-        </AnimatePresence>
-      </div>
+              {phase.type === 'results' && isHost && (
+                <motion.button
+                  key="next"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 340, damping: 26 } }}
+                  exit={{ opacity: 0, y: 6, transition: { duration: 0.18 } }}
+                  whileTap={nexting ? {} : { scale: 0.97 }}
+                  onClick={() => {
+                    if (nexting) return
+                    setNexting(true)
+                    onNext()
+                  }}
+                  disabled={nexting}
+                  className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-black text-sm text-white tracking-wider uppercase disabled:opacity-60"
+                  style={{ backgroundColor: '#3B82F6' }}
+                >
+                  {nexting ? 'Loading...' : 'Next'}
+                  <ChevronRight className="w-4 h-4" />
+                </motion.button>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        )
+      })()}
     </div>
   )
 }
