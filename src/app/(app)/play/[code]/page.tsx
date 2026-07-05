@@ -800,7 +800,7 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
       startTimer(round)
       setPhase({ type: 'active', round, secondsLeft: round.duration_seconds })
     } else if (round.status === 'collecting') {
-      stopTimer()
+      // Timer keeps running so it stays visible during collecting phase
       const supabase = createClient()
       const { count: answered } = await supabase
         .from('round_answers')
@@ -963,7 +963,7 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
         totalCount: playerCountRef.current,
       }
     })
-    stopTimer()
+    // Keep timer running so it stays visible during collecting phase
 
     fetch(`/api/rounds/${roundId}/answer`, {
       method: 'POST',
@@ -1050,7 +1050,7 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
             />
           </div>
 
-          {phase.type === 'active' ? (
+          {(phase.type === 'active' || phase.type === 'collecting') ? (
             <CountdownCircle seconds={secondsLeft} total={phase.round.duration_seconds} />
           ) : (
             <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
