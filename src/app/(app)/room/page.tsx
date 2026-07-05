@@ -43,14 +43,26 @@ export default function RoomPage() {
     })
   }, [])
 
-  const handlePlay = async () => {
+  const handlePlay = async (href: string) => {
+    // Only indefinido has phrases right now
+    if (!href.includes('indefinido')) {
+      alert('Coming soon! Only Indefinido is available for now.')
+      return
+    }
     if (creating) return
     setCreating(true)
-    const res = await fetch('/api/rooms', { method: 'POST' })
-    const json = await res.json()
-    if (json.data?.code) {
-      router.push(`/room/${json.data.code}`)
-    } else {
+    try {
+      const res = await fetch('/api/rooms', { method: 'POST' })
+      const json = await res.json()
+      if (json.data?.code) {
+        router.push(`/room/${json.data.code}`)
+      } else {
+        console.error('Room creation failed:', json)
+        alert(json.error ?? 'Error creating room. Check console.')
+        setCreating(false)
+      }
+    } catch (err) {
+      console.error('Room creation error:', err)
       setCreating(false)
     }
   }

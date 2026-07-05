@@ -10,6 +10,14 @@ import { createClient } from '@/lib/supabase/client'
 import { getLevelInfo, catImagePath } from '@/lib/levels'
 import OverscrollColor from '@/components/overscroll-color'
 
+type PresencePayload = {
+  user_id: string
+  username: string
+  level: number
+  avatar: string
+  isHost: boolean
+}
+
 const ORANGE = '#FF8716'
 const MAX_PLAYERS = 6
 
@@ -28,26 +36,29 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
   const [players, setPlayers] = useState<Player[]>([])
   const [hostId, setHostId] = useState<string | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
-  const [roomId, setRoomId] = useState<string | null>(null)
   const [streak, setStreak] = useState(0)
   const [level, setLevel] = useState(1)
+  const [starting, setStarting] = useState(false)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const channelRef = useRef<any>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const roomsChannelRef = useRef<any>(null)
 
   const sessionCode = `BSP-${code}`
 
   useEffect(() => {
     const supabase = createClient()
+    let presenceChannel: ReturnType<typeof supabase.channel> | null = null
+    let roomsChannel: ReturnType<typeof supabase.channel> | null = null
 
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
       setCurrentUserId(user.id)
 
-      // Fetch current user profile for header
       const { data: myProfile } = await supabase
         .from('profiles')
-        .select('streak, total_xp')
+        .select('streak, total_xp, username')
         .eq('id', user.id)
         .single()
       if (myProfile) {
@@ -55,67 +66,100 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
         setLevel(getLevelInfo(myProfile.total_xp).level)
       }
 
-      // Fetch room
       const { data: room } = await supabase
         .from('rooms')
         .select('id, host_id')
         .eq('code', code)
         .single()
       if (!room) { router.push('/room'); return }
-      setRoomId(room.id)
       setHostId(room.host_id)
 
-      await fetchPlayers(supabase, room.id, room.host_id)
+      const myInfo = getLevelInfo(myProfile?.total_xp ?? 0)
+      const myPresence: PresencePayload = {
+        user_id: user.id,
+        username: myProfile?.username ?? 'Player',
+        level: myInfo.level,
+        avatar: catImagePath(myInfo.cat),
+        isHost: user.id === room.host_id,
+      }
 
-      // Subscribe to room_players changes
-      const channel = supabase
-        .channel(`room:${room.id}`)
+      // ── Presence channel — tracks everyone who's on this lobby page ──
+      presenceChannel = supabase.channel(`lobby:${room.id}`, {
+        config: { presence: { key: user.id } },
+      })
+
+      presenceChannel
+        .on('presence', { event: 'sync' }, () => {
+          if (!presenceChannel) return
+          const state = presenceChannel.presenceState<PresencePayload>()
+          const list: Player[] = Object.values(state)
+            .map((entries) => entries[0])
+            .filter(Boolean)
+            .map((p) => ({
+              user_id: p.user_id,
+              username: p.username,
+              level: p.level,
+              avatar: p.avatar,
+              isHost: p.isHost,
+            }))
+            .sort((a, b) => (b.isHost ? 1 : 0) - (a.isHost ? 1 : 0))
+          setPlayers(list)
+        })
+        .subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await presenceChannel!.track(myPresence)
+          }
+        })
+
+      channelRef.current = presenceChannel
+
+      // ── postgres_changes only for room status (game start) ──
+      roomsChannel = supabase
+        .channel(`room-status:${room.id}:${Math.random()}`)
         .on('postgres_changes', {
-          event: '*',
+          event: 'UPDATE',
           schema: 'public',
-          table: 'room_players',
-          filter: `room_id=eq.${room.id}`,
-        }, () => fetchPlayers(supabase, room.id, room.host_id))
+          table: 'rooms',
+          filter: `id=eq.${room.id}`,
+        }, (payload) => {
+          const updated = payload.new as { status: string }
+          if (updated.status === 'playing') {
+            router.push(`/play/${code}`)
+          }
+        })
         .subscribe()
 
-      channelRef.current = channel
+      roomsChannelRef.current = roomsChannel
     }
 
     load()
 
     return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current)
-      }
+      if (channelRef.current) supabase.removeChannel(channelRef.current)
+      if (roomsChannelRef.current) supabase.removeChannel(roomsChannelRef.current)
     }
   }, [code]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function fetchPlayers(supabase: ReturnType<typeof createClient>, rId: string, hId: string) {
-    const { data } = await supabase
-      .from('room_players')
-      .select('user_id, profiles(username, total_xp)')
-      .eq('room_id', rId)
-      .order('joined_at')
-
-    if (!data) return
-
-    const mapped: Player[] = (data as unknown as { user_id: string; profiles: { username: string; total_xp: number } }[]).map(row => {
-      const info = getLevelInfo(row.profiles.total_xp)
-      return {
-        user_id:  row.user_id,
-        username: row.profiles.username,
-        level:    info.level,
-        avatar:   catImagePath(info.cat),
-        isHost:   row.user_id === hId,
-      }
-    })
-    setPlayers(mapped)
-  }
 
   const handleCopy = () => {
     navigator.clipboard.writeText(code)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleStart = async () => {
+    if (starting) return
+    setStarting(true)
+    try {
+      const res = await fetch(`/api/rooms/${code}/start`, { method: 'POST' })
+      if (!res.ok) {
+        const { error } = await res.json()
+        alert(error ?? 'Failed to start game')
+        setStarting(false)
+      }
+      // On success: Realtime UPDATE on rooms will trigger navigation for all players
+    } catch {
+      setStarting(false)
+    }
   }
 
   return (
@@ -215,11 +259,12 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
       <div className="fixed bottom-0 left-0 right-0 px-5 pb-6 pt-3 bg-gray-100">
         <motion.button
           whileTap={{ scale: 0.97 }}
-          disabled={currentUserId !== hostId || players.length < 2}
+          disabled={currentUserId !== hostId || players.length < 2 || starting}
+          onClick={handleStart}
           className="w-full py-4 rounded-2xl font-black text-white text-base tracking-widest uppercase shadow-lg disabled:opacity-40"
           style={{ backgroundColor: ORANGE }}
         >
-          Jugar
+          {starting ? 'Iniciando...' : 'Jugar'}
         </motion.button>
       </div>
     </div>

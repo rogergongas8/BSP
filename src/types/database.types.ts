@@ -181,6 +181,7 @@ export type Database = {
           host_id: string
           status: 'waiting' | 'playing' | 'finished'
           max_players: number
+          total_rounds: number
           created_at: string
         }
         Insert: {
@@ -189,6 +190,7 @@ export type Database = {
           host_id: string
           status?: 'waiting' | 'playing' | 'finished'
           max_players?: number
+          total_rounds?: number
           created_at?: string
         }
         Update: {
@@ -196,6 +198,67 @@ export type Database = {
           host_id?: string
           status?: 'waiting' | 'playing' | 'finished'
           max_players?: number
+          total_rounds?: number
+        }
+        Relationships: []
+      }
+      rounds: {
+        Row: {
+          id: string
+          room_id: string
+          phrase_id: string
+          round_number: number
+          status: 'pending' | 'active' | 'collecting' | 'results' | 'scoreboard' | 'done'
+          started_at: string | null
+          duration_seconds: number
+        }
+        Insert: {
+          id?: string
+          room_id: string
+          phrase_id: string
+          round_number: number
+          status?: 'pending' | 'active' | 'collecting' | 'results' | 'scoreboard' | 'done'
+          started_at?: string | null
+          duration_seconds?: number
+        }
+        Update: {
+          id?: string
+          room_id?: string
+          phrase_id?: string
+          round_number?: number
+          status?: 'pending' | 'active' | 'collecting' | 'results' | 'scoreboard' | 'done'
+          started_at?: string | null
+          duration_seconds?: number
+        }
+        Relationships: []
+      }
+      round_answers: {
+        Row: {
+          id: string
+          round_id: string
+          user_id: string
+          answer: string | null
+          is_correct: boolean
+          points_awarded: number
+          response_time_ms: number | null
+          validation_status: string
+          submitted_at: string
+        }
+        Insert: {
+          id?: string
+          round_id: string
+          user_id: string
+          answer?: string | null
+          is_correct?: boolean
+          points_awarded?: number
+          response_time_ms?: number | null
+          validation_status?: string
+          submitted_at?: string
+        }
+        Update: {
+          is_correct?: boolean
+          points_awarded?: number
+          validation_status?: string
         }
         Relationships: []
       }
