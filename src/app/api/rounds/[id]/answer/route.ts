@@ -87,5 +87,20 @@ export async function POST(
     submitted_at: submittedAt.toISOString(),
   })
 
+  // Auto-advance to results when all players have answered
+  const { count: totalAnswers } = await admin
+    .from('round_answers')
+    .select('*', { count: 'exact', head: true })
+    .eq('round_id', id)
+
+  const { count: totalPlayers } = await admin
+    .from('room_players')
+    .select('*', { count: 'exact', head: true })
+    .eq('room_id', round.room_id)
+
+  if ((totalAnswers ?? 0) >= (totalPlayers ?? 0) && (totalPlayers ?? 0) > 0) {
+    await admin.from('rounds').update({ status: 'results' }).eq('id', id)
+  }
+
   return NextResponse.json({ ok: true, is_correct: isCorrect })
 }

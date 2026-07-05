@@ -48,12 +48,11 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
 
   useEffect(() => {
     const supabase = createClient()
-    let presenceChannel: ReturnType<typeof supabase.channel> | null = null
-    let roomsChannel: ReturnType<typeof supabase.channel> | null = null
+    let cancelled = false
 
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (cancelled || !user) return
       setCurrentUserId(user.id)
 
       const { data: myProfile } = await supabase
@@ -61,6 +60,7 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
         .select('streak, total_xp, username')
         .eq('id', user.id)
         .single()
+      if (cancelled) return
       if (myProfile) {
         setStreak(myProfile.streak)
         setLevel(getLevelInfo(myProfile.total_xp).level)
@@ -71,7 +71,7 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
         .select('id, host_id')
         .eq('code', code)
         .single()
-      if (!room) { router.push('/room'); return }
+      if (cancelled || !room) { if (!room) router.push('/room'); return }
       setHostId(room.host_id)
 
       const myInfo = getLevelInfo(myProfile?.total_xp ?? 0)
@@ -84,13 +84,12 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
       }
 
       // ── Presence channel — tracks everyone who's on this lobby page ──
-      presenceChannel = supabase.channel(`lobby:${room.id}`, {
+      const presenceChannel = supabase.channel(`lobby:${room.id}`, {
         config: { presence: { key: user.id } },
       })
 
       presenceChannel
         .on('presence', { event: 'sync' }, () => {
-          if (!presenceChannel) return
           const state = presenceChannel.presenceState<PresencePayload>()
           const list: Player[] = Object.values(state)
             .map((entries) => entries[0])
@@ -107,14 +106,14 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
         })
         .subscribe(async (status) => {
           if (status === 'SUBSCRIBED') {
-            await presenceChannel!.track(myPresence)
+            await presenceChannel.track(myPresence)
           }
         })
 
       channelRef.current = presenceChannel
 
       // ── postgres_changes only for room status (game start) ──
-      roomsChannel = supabase
+      const roomsChannel = supabase
         .channel(`room-status:${room.id}:${Math.random()}`)
         .on('postgres_changes', {
           event: 'UPDATE',
@@ -135,8 +134,9 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
     load()
 
     return () => {
-      if (channelRef.current) supabase.removeChannel(channelRef.current)
-      if (roomsChannelRef.current) supabase.removeChannel(roomsChannelRef.current)
+      cancelled = true
+      if (channelRef.current) { supabase.removeChannel(channelRef.current); channelRef.current = null }
+      if (roomsChannelRef.current) { supabase.removeChannel(roomsChannelRef.current); roomsChannelRef.current = null }
     }
   }, [code]) // eslint-disable-line react-hooks/exhaustive-deps
 

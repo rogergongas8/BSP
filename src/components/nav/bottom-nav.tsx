@@ -10,7 +10,7 @@ const NAV_ITEMS = [
   { icon: '/images/nav/profile-v2.svg', iconActive: '/images/nav/profile-hover-v2.svg', label: 'Profile', href: '/profile', size: 28 },
 ]
 
-const HIDE_NAV_PATHS = ['/escribiendo', '/practice', '/room']
+const HIDE_NAV_PATHS = ['/escribiendo', '/practice', '/room', '/play']
 
 export default function BottomNav() {
   const pathname = usePathname()

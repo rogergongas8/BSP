@@ -56,8 +56,8 @@ export async function POST(
   }
 
   if (to === 'results') {
-    if (round.status !== 'collecting') {
-      return NextResponse.json({ error: 'Round is not in collecting phase' }, { status: 409 })
+    if (round.status !== 'collecting' && round.status !== 'active') {
+      return NextResponse.json({ error: 'Round not in active/collecting phase' }, { status: 409 })
     }
 
     // Insert 0-point answers for players who haven't responded
