@@ -4,8 +4,9 @@ import { use, useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'motion/react'
-import { X, Check, SkipForward, Lightbulb, Send } from 'lucide-react'
-import { validate, TENSE_META, type Phrase, type ValidationStatus } from '@/lib/game-logic'
+import Link from 'next/link'
+import { X, Check, SkipForward, Lightbulb, Send, BookOpen } from 'lucide-react'
+import { validate, TENSE_META, resolveTenseId, type Phrase, type ValidationStatus } from '@/lib/game-logic'
 import OverscrollColor from '@/components/overscroll-color'
 
 const SESSION_TOTAL = 10
@@ -139,7 +140,8 @@ function StatusRow({ label, ok }: { label: string; ok: boolean }) {
 }
 
 export default function PracticePage({ params }: { params: Promise<{ tenseId: string }> }) {
-  const { tenseId } = use(params)
+  const { tenseId: rawTenseId } = use(params)
+  const tenseId = resolveTenseId(rawTenseId) ?? rawTenseId
   const router = useRouter()
   const meta = TENSE_META[tenseId] ?? TENSE_META['indefinido']
 
@@ -329,6 +331,9 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
             />
           </div>
           <span className="text-xs font-bold text-gray-400">{progress + 1}/{SESSION_TOTAL}</span>
+          <Link href={`/learn/${tenseId}`} className="p-2 -m-2 shrink-0">
+            <BookOpen className="w-5 h-5 text-gray-400" />
+          </Link>
         </div>
 
         {/* Game */}

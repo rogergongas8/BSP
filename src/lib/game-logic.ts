@@ -254,3 +254,26 @@ export const TENSE_META: Record<string, { tense: string; character: string; colo
   'imperfecto':         { tense: 'imperfecto',         character: 'mimo',         color: '#E8922A' },
   'pretérito-perfecto': { tense: 'pretérito-perfecto', character: 'javi-tostado', color: '#C85C6E' },
 }
+
+// Strips diacritics so URL slugs match regardless of how the browser/OS
+// encoded an accented character typed into the address bar (NFC vs NFD).
+function stripDiacritics(s: string) {
+  return s.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase()
+}
+
+const TENSE_ID_BY_SLUG = Object.fromEntries(
+  Object.keys(TENSE_META).map(id => [stripDiacritics(id), id])
+)
+
+/** Resolves a raw route param to a canonical TENSE_META key, accent-insensitively. */
+export function resolveTenseId(raw: string): string | undefined {
+  // Route params should already be decoded by Next.js, but some navigation
+  // paths (typed URLs) can leave them percent-encoded — decode defensively.
+  let decoded = raw
+  try {
+    decoded = decodeURIComponent(raw)
+  } catch {
+    // raw wasn't a valid percent-encoded sequence — use it as-is
+  }
+  return TENSE_ID_BY_SLUG[stripDiacritics(decoded)] ?? TENSE_ID_BY_SLUG[stripDiacritics(raw)]
+}

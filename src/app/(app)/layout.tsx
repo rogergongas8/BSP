@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation'
 import BottomNav from '@/components/nav/bottom-nav'
 
-const GAME_PATHS = ['/escribiendo/', '/play/']
+const GAME_PATHS = ['/escribiendo/', '/play/', '/learn/']
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()

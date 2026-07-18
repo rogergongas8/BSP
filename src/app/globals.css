@@ -131,6 +131,21 @@
   100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
 }
 
+.thin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #D1D5DB transparent;
+}
+.thin-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.thin-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background-color: #D1D5DB;
+  border-radius: 9999px;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
