@@ -20,6 +20,13 @@ type ComboReview = { comboId: string; label: string; characters: string[]; count
 const LESSON_ID_BY_TENSE: Record<string, string | undefined> = {
   'pretérito-perfecto': 'pretérito-perfecto',
 }
+
+// Small round character-head icons (Figma "loading" set) — one per tense character.
+const HEAD_ICON_BY_CHARACTER: Record<string, string> = {
+  'zas':          '/images/loading/small-loading1.png',
+  'mimo':         '/images/loading/small-loading2.png',
+  'javi-tostado': '/images/loading/small-loading3.png',
+}
 const SUBCATEGORIES_BY_TENSE: Record<string, { label: string; lessonId?: string }[]> = {
   'imperfecto': [
     { label: 'Regular', lessonId: 'imperfecto-regular' },
@@ -83,9 +90,7 @@ function TenseReviewCard({ tense }: { tense: TenseReview }) {
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center gap-3 px-3.5 py-3"
       >
-        <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 bg-white">
-          <Image src={`/images/escribiendo/${meta.character}.png`} alt="" width={64} height={64} className="w-full h-full object-cover object-top scale-150" />
-        </div>
+        <Image src={HEAD_ICON_BY_CHARACTER[meta.character]} alt="" width={28} height={28} className="object-contain shrink-0" />
         <div className="flex-1 text-left">
           <p className="text-sm font-bold text-gray-900">{name}</p>
           <p className="text-xs text-gray-400">{tense.count} mistakes</p>
@@ -171,11 +176,9 @@ function ComboReviewCard({ combo }: { combo: ComboReview }) {
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center gap-3 px-3.5 py-3"
       >
-        <div className="flex -space-x-2 shrink-0">
+        <div className="flex -space-x-1.5 shrink-0">
           {combo.characters.map(c => (
-            <div key={c} className="w-7 h-7 rounded-full overflow-hidden bg-white ring-2 ring-white">
-              <Image src={`/images/escribiendo/${c}.png`} alt="" width={56} height={56} className="w-full h-full object-cover object-top scale-150" />
-            </div>
+            <Image key={c} src={HEAD_ICON_BY_CHARACTER[c]} alt="" width={24} height={24} className="object-contain" />
           ))}
         </div>
         <div className="flex-1 text-left">
@@ -304,53 +307,57 @@ export default function LearnLandingPage() {
         </div>
 
         {/* Escribiendo section */}
-        <div className="rounded-3xl p-3 flex flex-col gap-3" style={{ backgroundColor: '#E4E9FA' }}>
-          <div className="flex items-center justify-center gap-2 pt-1">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-center gap-2">
             <Image src="/images/profile/escribiendo.png" alt="" width={22} height={22} className="object-contain" />
             <h2 className="text-base font-black text-gray-900">Escribiendo...</h2>
           </div>
-          <div className="flex flex-col gap-2.5">
-            {escribiendoReview.map(t => <TenseReviewCard key={t.tenseId} tense={t} />)}
+          <div className="rounded-3xl p-4 flex flex-col gap-6" style={{ backgroundColor: '#E4E9FA' }}>
+            <div className="flex flex-col gap-6">
+              {escribiendoReview.map(t => <TenseReviewCard key={t.tenseId} tense={t} />)}
+            </div>
+            <button
+              title="Próximamente"
+              className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-white"
+              style={{ backgroundColor: 'var(--bsp-blue)' }}
+            >
+              <span className="flex items-center gap-3">
+                <span className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                  <RotateCw className="w-4 h-4" />
+                </span>
+                <span className="text-left">
+                  <span className="block text-sm font-black">Redo all mistakes</span>
+                  <span className="block text-xs text-white/70">{escribiendoTotal} mistakes · mixed session</span>
+                </span>
+              </span>
+              <ChevronRight className="w-4 h-4 shrink-0" />
+            </button>
           </div>
-          <button
-            title="Próximamente"
-            className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-white"
-            style={{ backgroundColor: 'var(--bsp-blue)' }}
-          >
-            <span className="flex items-center gap-3">
-              <span className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-                <RotateCw className="w-4 h-4" />
-              </span>
-              <span className="text-left">
-                <span className="block text-sm font-black">Redo all mistakes</span>
-                <span className="block text-xs text-white/70">{escribiendoTotal} mistakes · mixed session</span>
-              </span>
-            </span>
-            <ChevronRight className="w-4 h-4 shrink-0" />
-          </button>
         </div>
 
         {/* Lío de tiempos section */}
-        <div className="rounded-3xl p-3 flex flex-col gap-3" style={{ backgroundColor: '#F4DCE1' }}>
-          <div className="flex items-center justify-center gap-2 pt-1">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-center gap-2">
             <Image src="/images/profile/lio.png" alt="" width={22} height={22} className="object-contain" />
             <h2 className="text-base font-black text-gray-900">Lío de tiempos</h2>
           </div>
-          <div className="flex flex-col gap-2.5">
-            {LIO_REVIEW.map(c => <ComboReviewCard key={c.comboId} combo={c} />)}
+          <div className="rounded-3xl p-4 flex flex-col gap-6" style={{ backgroundColor: '#F4DCE1' }}>
+            <div className="flex flex-col gap-6">
+              {LIO_REVIEW.map(c => <ComboReviewCard key={c.comboId} combo={c} />)}
+            </div>
+            <button title="Próximamente" className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-white bg-rose-600">
+              <span className="flex items-center gap-3">
+                <span className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                  <RotateCw className="w-4 h-4" />
+                </span>
+                <span className="text-left">
+                  <span className="block text-sm font-black">Redo all mistakes</span>
+                  <span className="block text-xs text-white/70">{LIO_TOTAL} mistakes · mixed session</span>
+                </span>
+              </span>
+              <ChevronRight className="w-4 h-4 shrink-0" />
+            </button>
           </div>
-          <button title="Próximamente" className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-white bg-rose-600">
-            <span className="flex items-center gap-3">
-              <span className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-                <RotateCw className="w-4 h-4" />
-              </span>
-              <span className="text-left">
-                <span className="block text-sm font-black">Redo all mistakes</span>
-                <span className="block text-xs text-white/70">{LIO_TOTAL} mistakes · mixed session</span>
-              </span>
-            </span>
-            <ChevronRight className="w-4 h-4 shrink-0" />
-          </button>
         </div>
       </div>
     </div>
