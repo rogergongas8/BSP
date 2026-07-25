@@ -455,8 +455,8 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
                   >
                     <Image
                       src={status === 'skipped'
-                        ? `/images/${meta.imageDir}/Mistake 1 - ${charName}.png`
-                        : `/images/escribiendo/${meta.character}.png`}
+                        ? `/images/${meta.imageDir}/${meta.character}.png`
+                        : `/images/${meta.imageDir}/Success - ${charName}.png`}
                       width={180} height={180} alt="" className="drop-shadow-lg"
                       priority
                     />
