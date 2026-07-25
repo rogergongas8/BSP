@@ -2,7 +2,7 @@
 
 import { use, useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'motion/react'
 import Link from 'next/link'
 import { X, Check, SkipForward, Lightbulb, Send, BookOpen } from 'lucide-react'
@@ -187,7 +187,11 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   const { tenseId: rawTenseId } = use(params)
   const tenseId = resolveTenseId(rawTenseId) ?? rawTenseId
   const router = useRouter()
+  const searchParams = useSearchParams()
   const meta = TENSE_META[tenseId] ?? TENSE_META['indefinido']
+
+  const isRedo = searchParams.get('mode') === 'redo'
+  const redoSubcategory = searchParams.get('subcategory') ?? undefined
 
   const [phrase, setPhrase] = useState<Phrase | null>(null)
   const [loading, setLoading] = useState(true)
@@ -208,6 +212,8 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   const charName = meta.characterName
 
   const prefetchRef = useRef<Phrase | null>(null)
+  const redoQueueRef = useRef<Phrase[] | null>(null)
+  const [sessionTotal, setSessionTotal] = useState(SESSION_TOTAL)
 
   const prefetchNext = useCallback(async (currentIds: Set<string>) => {
     try {
@@ -229,6 +235,20 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
     hadErrorRef.current = false
     usedHintRef.current = false
 
+    if (isRedo) {
+      if (redoQueueRef.current === null) {
+        const url = `/api/phrases/mistakes?tense=${encodeURIComponent(meta.tense)}${redoSubcategory ? `&subcategory=${encodeURIComponent(redoSubcategory)}` : ''}`
+        const res = await fetch(url)
+        const json = await res.json()
+        redoQueueRef.current = json.data ?? []
+        setSessionTotal(redoQueueRef.current!.length)
+      }
+      const next = redoQueueRef.current!.shift() ?? null
+      setPhrase(next)
+      setLoading(false)
+      return
+    }
+
     if (prefetchRef.current) {
       const phrase = prefetchRef.current
       prefetchRef.current = null
@@ -249,7 +269,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
     }
     setLoading(false)
     prefetchNext(new Set(usedIdsRef.current))
-  }, [meta.tense, prefetchNext])
+  }, [meta.tense, prefetchNext, isRedo, redoSubcategory])
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchPhrase() }, [fetchPhrase])
@@ -259,6 +279,10 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
       setTimeout(() => inputRef.current?.focus(), 10)
     }
   }, [phrase, loading])
+
+  useEffect(() => {
+    if (isRedo && !loading && !phrase) router.replace('/learn')
+  }, [isRedo, loading, phrase, router])
 
   const handleSubmit = useCallback(() => {
     if (!phrase || !input.trim()) return
@@ -272,8 +296,19 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
       hadErrorRef.current = true
       setShowHint(false)
       setMistakeIndex(i => (i + 1) % 4)
+      fetch('/api/mistakes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phrase_id: phrase.id, tense: meta.tense, phrase_type: phrase.type }),
+      }).catch(() => {})
+    } else {
+      fetch('/api/mistakes', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phrase_id: phrase.id }),
+      }).catch(() => {})
     }
-  }, [phrase, input])
+  }, [phrase, input, meta.tense])
 
   const handleNext = () => {
     inputRef.current?.focus()
@@ -285,8 +320,9 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
     else newStats.withHints++
     setStats(newStats)
 
-    if (next >= SESSION_TOTAL) {
+    if (next >= sessionTotal) {
       const duration = Math.round((Date.now() - sessionStart.current) / 1000)
+      if (isRedo) { router.push('/learn'); return }
       const p = new URLSearchParams({
         firstTry: String(newStats.firstTry),
         fixed: String(newStats.fixed),
@@ -310,7 +346,8 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   const handleSkipNext = () => {
     inputRef.current?.focus()
     const next = progress + 1
-    if (next >= SESSION_TOTAL) {
+    if (next >= sessionTotal) {
+      if (isRedo) { router.push('/learn'); return }
       const duration = Math.round((Date.now() - sessionStart.current) / 1000)
       const p = new URLSearchParams({
         firstTry: String(stats.firstTry),
@@ -376,11 +413,11 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
             <motion.div
               className="h-full rounded-full"
               style={{ backgroundColor: meta.color }}
-              animate={{ width: `${((progress + 1) / SESSION_TOTAL) * 100}%` }}
+              animate={{ width: `${((progress + 1) / sessionTotal) * 100}%` }}
               transition={{ type: 'spring', stiffness: 200, damping: 30 }}
             />
           </div>
-          <span className="text-xs font-bold text-gray-400">{progress + 1}/{SESSION_TOTAL}</span>
+          <span className="text-xs font-bold text-gray-400">{progress + 1}/{sessionTotal}</span>
           <Link href={`/learn/${tenseId}`} className="p-2 -m-2 shrink-0">
             <BookOpen className="w-5 h-5 text-gray-400" />
           </Link>
@@ -505,7 +542,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
                 style={{ backgroundColor: '#22C55E' }}
               >
                 <SkipForward className="w-5 h-5 stroke-[2.5]" />
-                {progress + 1 >= SESSION_TOTAL ? 'Finish' : 'Next!'}
+                {progress + 1 >= sessionTotal ? 'Finish' : 'Next!'}
               </motion.button>
             ) : status === 'skipped' ? (
               <motion.button whileTap={{ scale: 0.95 }} onClick={handleSkipNext}
@@ -514,7 +551,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
                 style={{ backgroundColor: '#F5B461' }}
               >
                 <SkipForward className="w-5 h-5 stroke-[2.5]" />
-                {progress + 1 >= SESSION_TOTAL ? 'Finish' : 'Ok, next!'}
+                {progress + 1 >= sessionTotal ? 'Finish' : 'Ok, next!'}
               </motion.button>
             ) : isError ? (
               <>

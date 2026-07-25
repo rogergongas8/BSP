@@ -10,41 +10,65 @@ import { createClient } from '@/lib/supabase/client'
 import { getLevelInfo, catImagePath } from '@/lib/levels'
 import OverscrollColor from '@/components/overscroll-color'
 
-// TODO: placeholder counts — replace with real mistake-tracking once that
-// feature exists (a table recording incorrect answers per session).
 type Subcategory = { label: string; count: number; lessonId?: string }
 type TenseReview = { tenseId: string; count: number; lessonId?: string; subcategories: Subcategory[] }
 type ComboReview = { comboId: string; label: string; characters: string[]; count: number }
 
-const ESCRIBIENDO_REVIEW: TenseReview[] = [
-  {
-    tenseId: 'pretérito-perfecto', count: 12, lessonId: 'pretérito-perfecto',
-    subcategories: [{ label: 'Regular', count: 3 }, { label: 'Irregular', count: 9 }],
-  },
-  {
-    tenseId: 'imperfecto', count: 5,
-    subcategories: [
-      { label: 'Regular', count: 3, lessonId: 'imperfecto-regular' },
-      { label: 'Irregular', count: 2, lessonId: 'imperfecto-irregular' },
-    ],
-  },
-  {
-    tenseId: 'indefinido', count: 24,
-    subcategories: [
-      { label: 'Regular', count: 7, lessonId: 'indefinido-regular' },
-      { label: 'Fully irregular', count: 5, lessonId: 'indefinido-fully-irregular' },
-      { label: 'Semi-irregular', count: 12, lessonId: 'indefinido-semi-irregular' },
-    ],
-  },
-]
+// Static lesson-content mapping: which theory page backs each tense/subcategory.
+// Also defines the fixed set of tenses/subcategories always shown, even with 0 mistakes,
+// so the "Ver teoría" link never disappears just because there's nothing to redo.
+const LESSON_ID_BY_TENSE: Record<string, string | undefined> = {
+  'pretérito-perfecto': 'pretérito-perfecto',
+}
+const SUBCATEGORIES_BY_TENSE: Record<string, { label: string; lessonId?: string }[]> = {
+  'imperfecto': [
+    { label: 'Regular', lessonId: 'imperfecto-regular' },
+    { label: 'Irregular', lessonId: 'imperfecto-irregular' },
+  ],
+  'indefinido': [
+    { label: 'Regular', lessonId: 'indefinido-regular' },
+    { label: 'Irregular', lessonId: 'indefinido-fully-irregular' },
+  ],
+}
+
+type MistakeRow = { phrase_id: string; tense: string; phrase_type: string }
+
+function subcategoryFor(phraseType: string) {
+  return phraseType.toLowerCase().includes('irreg') ? 'Irregular' : 'Regular'
+}
+
+function groupMistakes(rows: MistakeRow[]): TenseReview[] {
+  const byTense = new Map<string, Map<string, number>>()
+  for (const row of rows) {
+    const sub = subcategoryFor(row.phrase_type)
+    if (!byTense.has(row.tense)) byTense.set(row.tense, new Map())
+    const bySub = byTense.get(row.tense)!
+    bySub.set(sub, (bySub.get(sub) ?? 0) + 1)
+  }
+
+  const tenseIds = new Set([...Object.keys(TENSE_META), ...byTense.keys()])
+
+  return [...tenseIds].map(tenseId => {
+    const bySub = byTense.get(tenseId) ?? new Map<string, number>()
+    const fixedSubs = SUBCATEGORIES_BY_TENSE[tenseId]
+    const subcategories = fixedSubs
+      ? fixedSubs.map(({ label, lessonId }) => ({ label, lessonId, count: bySub.get(label) ?? 0 }))
+      : [...bySub.entries()].map(([label, count]) => ({ label, count }))
+
+    return {
+      tenseId,
+      count: [...bySub.values()].reduce((s, n) => s + n, 0),
+      lessonId: LESSON_ID_BY_TENSE[tenseId],
+      subcategories,
+    }
+  })
+}
 
 const LIO_REVIEW: ComboReview[] = [
   { comboId: 'perfecto-indefinido', label: 'P.Perfecto - Indefinido', characters: ['javi-tostado', 'zas'], count: 3 },
   { comboId: 'imperfecto-indefinido', label: 'Imperfecto - Indefinido', characters: ['mimo', 'zas'], count: 17 },
   { comboId: 'perfecto-imperfecto-indefinido', label: 'P.Perfecto - Imperfecto - Indefinido', characters: ['javi-tostado', 'mimo', 'zas'], count: 9 },
 ]
-
-const ESCRIBIENDO_TOTAL = ESCRIBIENDO_REVIEW.reduce((s, t) => s + t.count, 0)
 const LIO_TOTAL = LIO_REVIEW.reduce((s, t) => s + t.count, 0)
 
 function TenseReviewCard({ tense }: { tense: TenseReview }) {
@@ -54,12 +78,14 @@ function TenseReviewCard({ tense }: { tense: TenseReview }) {
     : tense.tenseId.charAt(0).toUpperCase() + tense.tenseId.slice(1)
 
   return (
-    <div className="rounded-2xl border border-blue-100 bg-blue-50/60 overflow-hidden">
+    <div className="rounded-2xl bg-white overflow-hidden">
       <button
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center gap-3 px-3.5 py-3"
       >
-        <Image src={`/images/escribiendo/${meta.character}.png`} alt="" width={32} height={32} className="rounded-full object-contain shrink-0" />
+        <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 bg-white">
+          <Image src={`/images/escribiendo/${meta.character}.png`} alt="" width={64} height={64} className="w-full h-full object-cover object-top scale-150" />
+        </div>
         <div className="flex-1 text-left">
           <p className="text-sm font-bold text-gray-900">{name}</p>
           <p className="text-xs text-gray-400">{tense.count} mistakes</p>
@@ -77,13 +103,19 @@ function TenseReviewCard({ tense }: { tense: TenseReview }) {
           >
             <div className="px-3.5 pb-3.5 flex flex-col gap-2.5">
               <div className="flex items-center gap-2">
-                <button
-                  title="Próximamente"
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white"
-                  style={{ backgroundColor: 'var(--bsp-blue)' }}
-                >
-                  Redo all
-                </button>
+                {tense.count > 0 ? (
+                  <Link
+                    href={`/escribiendo/${encodeURIComponent(tense.tenseId)}?mode=redo`}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white text-center"
+                    style={{ backgroundColor: 'var(--bsp-blue)' }}
+                  >
+                    Redo all
+                  </Link>
+                ) : (
+                  <span className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white text-center bg-gray-300">
+                    No mistakes
+                  </span>
+                )}
                 {tense.lessonId && (
                   <Link
                     href={`/learn/${tense.lessonId}`}
@@ -96,15 +128,20 @@ function TenseReviewCard({ tense }: { tense: TenseReview }) {
               </div>
               <div className="flex flex-col gap-1.5">
                 {tense.subcategories.map(sub => (
-                  <div key={sub.label} className="flex items-center justify-between gap-2 rounded-xl bg-white px-3 py-2">
+                  <div key={sub.label} className="flex items-center justify-between gap-2 rounded-xl bg-blue-50/60 px-3 py-2">
                     <span className="flex items-center gap-1.5 text-xs text-gray-600 min-w-0">
                       <span className="w-1.5 h-1.5 rounded-full bg-blue-300 shrink-0" />
                       <span className="truncate">{sub.label}</span> <span className="text-gray-400 shrink-0">· {sub.count} mistakes</span>
                     </span>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <button title="Próximamente" className="flex items-center gap-1 rounded-full border border-blue-200 px-2.5 py-1 text-xs font-bold text-blue-500">
-                        <RotateCw className="w-3 h-3" /> Redo
-                      </button>
+                      {sub.count > 0 && (
+                        <Link
+                          href={`/escribiendo/${encodeURIComponent(tense.tenseId)}?mode=redo&subcategory=${encodeURIComponent(sub.label)}`}
+                          className="flex items-center gap-1 rounded-full border border-blue-200 px-2.5 py-1 text-xs font-bold text-blue-500"
+                        >
+                          <RotateCw className="w-3 h-3" /> Redo
+                        </Link>
+                      )}
                       {sub.lessonId && (
                         <Link
                           href={`/learn/${sub.lessonId}`}
@@ -129,14 +166,16 @@ function TenseReviewCard({ tense }: { tense: TenseReview }) {
 function ComboReviewCard({ combo }: { combo: ComboReview }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="rounded-2xl border border-rose-100 bg-rose-50/60 overflow-hidden">
+    <div className="rounded-2xl bg-white overflow-hidden">
       <button
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center gap-3 px-3.5 py-3"
       >
         <div className="flex -space-x-2 shrink-0">
           {combo.characters.map(c => (
-            <Image key={c} src={`/images/escribiendo/${c}.png`} alt="" width={28} height={28} className="rounded-full object-contain" />
+            <div key={c} className="w-7 h-7 rounded-full overflow-hidden bg-white ring-2 ring-white">
+              <Image src={`/images/escribiendo/${c}.png`} alt="" width={56} height={56} className="w-full h-full object-cover object-top scale-150" />
+            </div>
           ))}
         </div>
         <div className="flex-1 text-left">
@@ -181,6 +220,8 @@ export default function LearnLandingPage() {
   const [level, setLevel] = useState(1)
   const [avatar, setAvatar] = useState('/images/nav/user-image.svg')
 
+  const [escribiendoReview, setEscribiendoReview] = useState<TenseReview[]>([])
+
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -195,6 +236,15 @@ export default function LearnLandingPage() {
         })
     })
   }, [])
+
+  useEffect(() => {
+    fetch('/api/mistakes')
+      .then(r => r.json())
+      .then((json: { data?: MistakeRow[] }) => setEscribiendoReview(groupMistakes(json.data ?? [])))
+      .catch(() => {})
+  }, [])
+
+  const escribiendoTotal = escribiendoReview.reduce((s, t) => s + t.count, 0)
 
   return (
     <div className="flex flex-col min-h-dvh">
@@ -240,7 +290,7 @@ export default function LearnLandingPage() {
           <div className="flex-1 flex items-center gap-2.5 rounded-2xl bg-blue-50 border border-blue-100 px-4 py-3.5">
             <Image src="/images/profile/escribiendo.png" alt="" width={32} height={32} className="object-contain" />
             <div>
-              <p className="text-xl font-black text-bsp-blue leading-none">{ESCRIBIENDO_TOTAL}</p>
+              <p className="text-xl font-black text-bsp-blue leading-none">{escribiendoTotal}</p>
               <p className="text-[11px] text-gray-400 mt-0.5">review items</p>
             </div>
           </div>
@@ -254,25 +304,35 @@ export default function LearnLandingPage() {
         </div>
 
         {/* Escribiendo section */}
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-2">
+        <div className="rounded-3xl p-3 flex flex-col gap-3" style={{ backgroundColor: '#E4E9FA' }}>
+          <div className="flex items-center justify-center gap-2 pt-1">
             <Image src="/images/profile/escribiendo.png" alt="" width={22} height={22} className="object-contain" />
             <h2 className="text-base font-black text-gray-900">Escribiendo...</h2>
           </div>
           <div className="flex flex-col gap-2.5">
-            {ESCRIBIENDO_REVIEW.map(t => <TenseReviewCard key={t.tenseId} tense={t} />)}
+            {escribiendoReview.map(t => <TenseReviewCard key={t.tenseId} tense={t} />)}
           </div>
-          <button title="Próximamente" className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-white" style={{ backgroundColor: 'var(--bsp-blue)' }}>
-            <span className="flex items-center gap-2 text-sm font-black">
-              <RotateCw className="w-4 h-4" /> Redo all mistakes
+          <button
+            title="Próximamente"
+            className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-white"
+            style={{ backgroundColor: 'var(--bsp-blue)' }}
+          >
+            <span className="flex items-center gap-3">
+              <span className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                <RotateCw className="w-4 h-4" />
+              </span>
+              <span className="text-left">
+                <span className="block text-sm font-black">Redo all mistakes</span>
+                <span className="block text-xs text-white/70">{escribiendoTotal} mistakes · mixed session</span>
+              </span>
             </span>
-            <span className="text-xs text-white/70">{ESCRIBIENDO_TOTAL} mistakes · mixed session</span>
+            <ChevronRight className="w-4 h-4 shrink-0" />
           </button>
         </div>
 
         {/* Lío de tiempos section */}
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-2">
+        <div className="rounded-3xl p-3 flex flex-col gap-3" style={{ backgroundColor: '#F4DCE1' }}>
+          <div className="flex items-center justify-center gap-2 pt-1">
             <Image src="/images/profile/lio.png" alt="" width={22} height={22} className="object-contain" />
             <h2 className="text-base font-black text-gray-900">Lío de tiempos</h2>
           </div>
@@ -280,10 +340,16 @@ export default function LearnLandingPage() {
             {LIO_REVIEW.map(c => <ComboReviewCard key={c.comboId} combo={c} />)}
           </div>
           <button title="Próximamente" className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-white bg-rose-600">
-            <span className="flex items-center gap-2 text-sm font-black">
-              <RotateCw className="w-4 h-4" /> Redo all mistakes
+            <span className="flex items-center gap-3">
+              <span className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                <RotateCw className="w-4 h-4" />
+              </span>
+              <span className="text-left">
+                <span className="block text-sm font-black">Redo all mistakes</span>
+                <span className="block text-xs text-white/70">{LIO_TOTAL} mistakes · mixed session</span>
+              </span>
             </span>
-            <span className="text-xs text-white/70">{LIO_TOTAL} mistakes · mixed session</span>
+            <ChevronRight className="w-4 h-4 shrink-0" />
           </button>
         </div>
       </div>

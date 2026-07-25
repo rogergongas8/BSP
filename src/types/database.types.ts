@@ -78,6 +78,51 @@ export type Database = {
         }
         Relationships: []
       }
+      phrase_mistakes: {
+        Row: {
+          id: string
+          user_id: string
+          phrase_id: string
+          tense: string
+          phrase_type: string
+          resolved_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          phrase_id: string
+          tense: string
+          phrase_type: string
+          resolved_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          phrase_id?: string
+          tense?: string
+          phrase_type?: string
+          resolved_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "phrase_mistakes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "phrase_mistakes_phrase_id_fkey"
+            columns: ["phrase_id"]
+            isOneToOne: false
+            referencedRelation: "phrases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       practice_sessions: {
         Row: {
           completed_at: string

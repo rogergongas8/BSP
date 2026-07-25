@@ -110,7 +110,7 @@ const TenseCard = memo(({ i, xValue, centerOffset, onClick, onPlay, isDragging, 
   const catBottom = useTransform(distance, [0, itemW], contained ? [35, 15] : [80, 60], { clamp: true })
   const height = useTransform(distance, [0, itemW], contained ? [210, 160] : [200, 155], { clamp: true })
   const buttonOpacity = useTransform(distance, [0, 40], [1, 0], { clamp: true })
-  const zIndex = useTransform(distance, (d) => Math.max(1, 100 - Math.floor(d / 10)))
+  const zIndex = useTransform(distance, (d) => Math.max(1, 40 - Math.floor(d / 10)))
   const tense = TENSES[i as 0 | 1 | 2]
   const bgRotate = useTransform(distance, [0, itemW], [tense.bgProps.rotate, 0], { clamp: true })
   const bgScaleX = useTransform(distance, [0, itemW], [tense.bgProps.scaleX, 1], { clamp: true })
