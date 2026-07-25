@@ -14,10 +14,18 @@ export type ValidationStatus =
   | 'structure_incomplete' | 'aux_invalid' | 'aux_wrong_person'
   | 'part_irreg_invalid' | 'part_ending_invalid' | 'part_stem_invalid'
 
+/** Marks a character range to render in red: within one of the two Pretérito Perfecto tokens, or 'all' for the whole input (structure errors). */
+export type PPHighlightRange = {
+  token: 'aux' | 'part' | 'all'
+  start: number
+  end: number
+}
+
 export type ValidationResult = {
   status: ValidationStatus
   hint?: string
   highlight?: string
+  ppHighlight?: PPHighlightRange
 }
 
 // ─── indef_full_irreg ────────────────────────────────────────────────────────
@@ -247,14 +255,34 @@ function deaccentToken(s: string): string {
   return deaccent(s.toLowerCase())
 }
 
-function validatePreteritoPerfecto(input: string, phrase: Phrase): ValidationResult {
-  const tokens = input.trim().split(/\s+/).filter(Boolean)
+const VOWELS = new Set(['a', 'e', 'i', 'o', 'u'])
 
-  if (tokens.length !== 2) {
-    return { status: 'structure_incomplete', hint: PP_STRUCTURE_HINT }
+/**
+ * PART_ENDING_INVALID highlight length, per the PDF:
+ * -ado/-ido → last 3; -ando → last 4; -iendo → last 5;
+ * else last 1 if the input ends in a vowel, last 2 if it ends in a consonant.
+ */
+function partEndingHighlightLen(partToken: string): number {
+  if (partToken.endsWith('ado') || partToken.endsWith('ido')) return 3
+  if (partToken.endsWith('ando')) return 4
+  if (partToken.endsWith('iendo')) return 5
+  const last = partToken.slice(-1)
+  return VOWELS.has(last) ? 1 : 2
+}
+
+function validatePreteritoPerfecto(input: string, phrase: Phrase): ValidationResult {
+  // Preserve original spacing/casing per token for highlight ranges (rendered against user input).
+  const rawTokens = input.trim().split(/\s+/).filter(Boolean)
+
+  if (rawTokens.length !== 2) {
+    return {
+      status: 'structure_incomplete',
+      hint: PP_STRUCTURE_HINT,
+      ppHighlight: { token: 'all', start: 0, end: input.trim().length },
+    }
   }
 
-  const [auxRaw, partRaw] = tokens
+  const [auxRaw, partRaw] = rawTokens
   const auxToken = deaccentToken(auxRaw)
   const partToken = deaccentToken(partRaw)
 
@@ -267,6 +295,7 @@ function validatePreteritoPerfecto(input: string, phrase: Phrase): ValidationRes
     return {
       status: 'aux_invalid',
       hint: isHaberAttempt ? PP_AUX_INVALID_ATTEMPT_HINT : PP_AUX_INVALID_NO_ATTEMPT_HINT,
+      ppHighlight: { token: 'aux', start: 0, end: auxRaw.length },
     }
   }
 
@@ -275,6 +304,8 @@ function validatePreteritoPerfecto(input: string, phrase: Phrase): ValidationRes
     return {
       status: 'aux_wrong_person',
       hint: isGustar ? PP_AUX_PERSON_WRONG_GUSTAR_HINT : PP_AUX_PERSON_WRONG_HINT,
+      // "all letters after h" — aux_token always starts with 'h' (he/has/ha/hemos/habéis/han)
+      ppHighlight: { token: 'aux', start: 1, end: auxRaw.length },
     }
   }
 
@@ -282,7 +313,11 @@ function validatePreteritoPerfecto(input: string, phrase: Phrase): ValidationRes
   if (phrase.type === 'PP_irreg') {
     const expectedPart = deaccentToken(phrase.expected_stem ?? '')
     if (partToken !== expectedPart) {
-      return { status: 'part_irreg_invalid', hint: PP_PART_IRREG_INVALID_HINT }
+      return {
+        status: 'part_irreg_invalid',
+        hint: PP_PART_IRREG_INVALID_HINT,
+        ppHighlight: { token: 'part', start: 0, end: partRaw.length },
+      }
     }
     return { status: 'correct' }
   }
@@ -293,7 +328,12 @@ function validatePreteritoPerfecto(input: string, phrase: Phrase): ValidationRes
   const expectedStem = phrase.expected_stem ?? deaccent(phrase.verb.toLowerCase()).slice(0, -2)
 
   if (!partToken.endsWith(expectedEnding)) {
-    return { status: 'part_ending_invalid', hint: PP_PART_ENDING_INVALID_HINT }
+    const len = partEndingHighlightLen(partToken)
+    return {
+      status: 'part_ending_invalid',
+      hint: PP_PART_ENDING_INVALID_HINT,
+      ppHighlight: { token: 'part', start: Math.max(0, partRaw.length - len), end: partRaw.length },
+    }
   }
 
   const partStem = partToken.slice(0, partToken.length - expectedEnding.length)
@@ -301,7 +341,8 @@ function validatePreteritoPerfecto(input: string, phrase: Phrase): ValidationRes
     return {
       status: 'part_stem_invalid',
       hint: PP_PART_STEM_INVALID_HINT,
-      highlight: expectedEnding,
+      // "all letters before part_ending" — part_ending is the trailing -ado/-ido, already confirmed valid above
+      ppHighlight: { token: 'part', start: 0, end: partRaw.length - expectedEnding.length },
     }
   }
 
@@ -353,10 +394,10 @@ export function validate(input: string, phrase: Phrase): ValidationResult {
 
 // ─── Tense metadata ───────────────────────────────────────────────────────────
 
-export const TENSE_META: Record<string, { tense: string; character: string; color: string }> = {
-  'indefinido':         { tense: 'indefinido',         character: 'zas',          color: '#4A5BB5' },
-  'imperfecto':         { tense: 'imperfecto',         character: 'mimo',         color: '#E8922A' },
-  'pretérito-perfecto': { tense: 'pretérito-perfecto', character: 'javi-tostado', color: '#C85C6E' },
+export const TENSE_META: Record<string, { tense: string; character: string; characterName: string; imageDir: string; color: string }> = {
+  'indefinido':         { tense: 'indefinido',         character: 'zas',          characterName: 'Zas',          imageDir: 'indefinido',  color: '#4A5BB5' },
+  'imperfecto':         { tense: 'imperfecto',         character: 'mimo',         characterName: 'Mimo',         imageDir: 'imperfecto',  color: '#E8922A' },
+  'pretérito-perfecto': { tense: 'pretérito-perfecto', character: 'javi-tostado', characterName: 'Javi Tostado', imageDir: 'pretperfect', color: '#C85C6E' },
 }
 
 // Strips diacritics so URL slugs match regardless of how the browser/OS

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'motion/react'
 import Link from 'next/link'
 import { X, Check, SkipForward, Lightbulb, Send, BookOpen } from 'lucide-react'
-import { validate, TENSE_META, resolveTenseId, type Phrase, type ValidationStatus } from '@/lib/game-logic'
+import { validate, TENSE_META, resolveTenseId, type Phrase, type ValidationStatus, type PPHighlightRange } from '@/lib/game-logic'
 import OverscrollColor from '@/components/overscroll-color'
 
 const SESSION_TOTAL = 10
@@ -53,14 +53,35 @@ const INPUT_STYLES: Record<ValidationStatus, { bg: string; border: string; color
   part_stem_invalid:    { bg: '#FFF1F2',  border: '#FECDD3', color: '#E11D48' },
 }
 
+/** Resolves a PPHighlightRange (relative to the aux or part token, or the whole input) to an absolute [start, end) range over the full input string. */
+function resolvePpHighlight(input: string, range: PPHighlightRange): { start: number; end: number } | null {
+  if (range.token === 'all') {
+    return { start: Math.min(range.start, input.length), end: Math.min(range.end, input.length) }
+  }
+  const spaceIdx = input.indexOf(' ')
+  if (range.token === 'aux') {
+    const auxLen = spaceIdx === -1 ? input.length : spaceIdx
+    return { start: Math.min(range.start, auxLen), end: Math.min(range.end, auxLen) }
+  }
+  // token === 'part': offset by aux token + the space
+  if (spaceIdx === -1) return null
+  const partStart = spaceIdx + 1
+  const partLen = input.length - partStart
+  return {
+    start: partStart + Math.min(range.start, partLen),
+    end: partStart + Math.min(range.end, partLen),
+  }
+}
+
 function InlineSentence({
-  sentence, verb, input, answer, highlight, onChange, onKeyDown, status, inputRef, color, showHint,
+  sentence, verb, input, answer, highlight, ppHighlight, onChange, onKeyDown, status, inputRef, color, showHint,
 }: {
   sentence: string
   verb: string
   input: string
   answer: string
   highlight: string | null
+  ppHighlight: PPHighlightRange | null
   onChange: (v: string) => void
   onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void
   status: ValidationStatus
@@ -83,6 +104,13 @@ function InlineSentence({
   const wrongSuffix   = showSplit ? input.slice(highlight!.length) : null
   // wrong_stem: stem part is wrong → reverse colors (prefix=red, suffix=theme)
   const stemIsWrong = status === 'wrong_stem'
+
+  // Pretérito Perfecto: arbitrary [start,end) range within either token, rendered in red
+  const showPpSplit = showHint && ppHighlight
+  const ppRange = showPpSplit ? resolvePpHighlight(input, ppHighlight) : null
+  const ppBefore = ppRange ? input.slice(0, ppRange.start) : null
+  const ppMid    = ppRange ? input.slice(ppRange.start, ppRange.end) : null
+  const ppAfter  = ppRange ? input.slice(ppRange.end) : null
 
   return (
     <div className="flex flex-wrap items-end justify-center gap-x-2 gap-y-3 px-4">
@@ -110,8 +138,8 @@ function InlineSentence({
               minWidth: 80,
               width: boxW,
               borderColor,
-              backgroundColor: correctPrefix !== null ? '#FFFFFF' : styles.bg,
-              color: correctPrefix !== null ? 'transparent'
+              backgroundColor: (correctPrefix !== null || ppRange !== null) ? '#FFFFFF' : styles.bg,
+              color: (correctPrefix !== null || ppRange !== null) ? 'transparent'
                 : status === 'idle' ? color : styles.color,
               fontSize: '16px',
             }}
@@ -123,6 +151,16 @@ function InlineSentence({
             >
               <span style={{ color: stemIsWrong ? 'rgb(239,68,68)' : color }}>{correctPrefix}</span>
               <span style={{ color: stemIsWrong ? color : 'rgb(239,68,68)' }}>{wrongSuffix}</span>
+            </div>
+          )}
+          {ppRange !== null && (
+            <div
+              className="absolute inset-0 flex items-center justify-center pointer-events-none font-medium"
+              style={{ fontSize: '16px', whiteSpace: 'pre' }}
+            >
+              <span style={{ color }}>{ppBefore}</span>
+              <span style={{ color: 'rgb(239,68,68)' }}>{ppMid}</span>
+              <span style={{ color }}>{ppAfter}</span>
             </div>
           )}
         </div>
@@ -157,6 +195,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   const [status, setStatus] = useState<ValidationStatus>('idle')
   const [hint, setHint] = useState<string | null>(null)
   const [highlight, setHighlight] = useState<string | null>(null)
+  const [ppHighlight, setPpHighlight] = useState<PPHighlightRange | null>(null)
   const [showHint, setShowHint] = useState(false)
   const [progress, setProgress] = useState(0)
   const [mistakeIndex, setMistakeIndex] = useState(0)
@@ -166,7 +205,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   const usedIdsRef    = useRef<Set<string>>(new Set())
   const sessionStart  = useRef(Date.now())
   const inputRef      = useRef<HTMLInputElement>(null)
-  const charName = meta.character.charAt(0).toUpperCase() + meta.character.slice(1)
+  const charName = meta.characterName
 
   const prefetchRef = useRef<Phrase | null>(null)
 
@@ -185,6 +224,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
     setStatus('idle')
     setHint(null)
     setHighlight(null)
+    setPpHighlight(null)
     setShowHint(false)
     hadErrorRef.current = false
     usedHintRef.current = false
@@ -226,6 +266,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
     setStatus(result.status)
     if (result.hint) setHint(result.hint)
     setHighlight(result.highlight ?? null)
+    setPpHighlight(result.ppHighlight ?? null)
     inputRef.current?.blur()
     if (result.status !== 'correct') {
       hadErrorRef.current = true
@@ -296,7 +337,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   const handleInputChange = (v: string) => {
     if (status === 'correct' || status === 'skipped') return
     setInput(v)
-    if (status !== 'idle') { setStatus('idle'); setHighlight(null) }
+    if (status !== 'idle') { setStatus('idle'); setHighlight(null); setPpHighlight(null) }
   }
 
   const isError = status === 'invalid_form' || status === 'wrong_stem' || status === 'wrong_ending' || status === 'wrong_person'
@@ -364,6 +405,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
                   input={input}
                   answer={phrase.answer}
                   highlight={highlight}
+                  ppHighlight={ppHighlight}
                   onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
                   status={status}
@@ -387,7 +429,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
                 >
                   <div className="flex items-center gap-4">
                     <Image
-                      src={`/images/${tenseId}/Mistake ${mistakeIndex + 1} - ${charName}.png`}
+                      src={`/images/${meta.imageDir}/Mistake ${mistakeIndex + 1} - ${charName}.png`}
                       width={120} height={120} alt=""
                       className="shrink-0"
                     />
@@ -413,7 +455,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
                   >
                     <Image
                       src={status === 'skipped'
-                        ? `/images/${tenseId}/Mistake 1 - ${charName}.png`
+                        ? `/images/${meta.imageDir}/Mistake 1 - ${charName}.png`
                         : `/images/escribiendo/${meta.character}.png`}
                       width={180} height={180} alt="" className="drop-shadow-lg"
                       priority
