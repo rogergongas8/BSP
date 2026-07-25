@@ -9,7 +9,10 @@ export type Phrase = {
   stem_group?: string | null
 }
 
-export type ValidationStatus = 'idle' | 'correct' | 'skipped' | 'invalid_form' | 'wrong_stem' | 'wrong_ending' | 'wrong_person'
+export type ValidationStatus =
+  | 'idle' | 'correct' | 'skipped' | 'invalid_form' | 'wrong_stem' | 'wrong_ending' | 'wrong_person'
+  | 'structure_incomplete' | 'aux_invalid' | 'aux_wrong_person'
+  | 'part_irreg_invalid' | 'part_ending_invalid' | 'part_stem_invalid'
 
 export type ValidationResult = {
   status: ValidationStatus
@@ -208,6 +211,103 @@ function validateIndefReg(normalized: string, phrase: Phrase): ValidationResult 
   return { status: 'correct' }
 }
 
+// ─── pretérito_perfecto ─────────────────────────────────────────────────────
+
+const HABER_FORMS = ['he', 'has', 'ha', 'hemos', 'habéis', 'han'].map(deaccent)
+
+const HABER_PERSON_MAP: Record<string, string> = {
+  '1s': 'he', '2s': 'has', '3s': 'ha', '1pl': 'hemos', '2pl': 'habéis', '3pl': 'han',
+}
+
+const PP_STRUCTURE_HINT =
+  "Careful! Pretérito Perfecto needs two parts: **helper verb + participle**."
+
+const PP_AUX_INVALID_NO_ATTEMPT_HINT =
+  "Quick check: in pretérito perfecto, the helper verb is **HABER**, not another verb."
+
+const PP_AUX_INVALID_ATTEMPT_HINT =
+  "Almost! The helper verb must be a valid present form of **haber**. Try to recall it, it's a small set."
+
+const PP_AUX_PERSON_WRONG_GUSTAR_HINT =
+  "Close! This is a **gustar**-type verb. The verb agrees with **what causes the feeling**, not with who experiences it."
+
+const PP_AUX_PERSON_WRONG_HINT =
+  "Close! The haber form has to match the subject. Recheck who is doing the action."
+
+const PP_PART_IRREG_INVALID_HINT =
+  "Agh, it's one of those. This verb uses an **irregular participle**. Try to recall its special form."
+
+const PP_PART_ENDING_INVALID_HINT =
+  "Quick check: Regular participles end in **-ado** (-ar) or **-ido** (-er/-ir). Which one fits here?"
+
+const PP_PART_STEM_INVALID_HINT =
+  "Nice! You've got the key part, the ending. Now use the **infinitive without the last two letters** before it."
+
+function deaccentToken(s: string): string {
+  return deaccent(s.toLowerCase())
+}
+
+function validatePreteritoPerfecto(input: string, phrase: Phrase): ValidationResult {
+  const tokens = input.trim().split(/\s+/).filter(Boolean)
+
+  if (tokens.length !== 2) {
+    return { status: 'structure_incomplete', hint: PP_STRUCTURE_HINT }
+  }
+
+  const [auxRaw, partRaw] = tokens
+  const auxToken = deaccentToken(auxRaw)
+  const partToken = deaccentToken(partRaw)
+
+  const isGustar = phrase.type === 'PP_reg_gustar'
+
+  // ── Auxiliary ──
+  const isHaberAttempt = auxToken.startsWith('ha') || auxToken.startsWith('he')
+
+  if (!HABER_FORMS.includes(auxToken)) {
+    return {
+      status: 'aux_invalid',
+      hint: isHaberAttempt ? PP_AUX_INVALID_ATTEMPT_HINT : PP_AUX_INVALID_NO_ATTEMPT_HINT,
+    }
+  }
+
+  const expectedAux = HABER_PERSON_MAP[phrase.person]
+  if (auxToken !== deaccentToken(expectedAux)) {
+    return {
+      status: 'aux_wrong_person',
+      hint: isGustar ? PP_AUX_PERSON_WRONG_GUSTAR_HINT : PP_AUX_PERSON_WRONG_HINT,
+    }
+  }
+
+  // ── Participle ──
+  if (phrase.type === 'PP_irreg') {
+    const expectedPart = deaccentToken(phrase.expected_stem ?? '')
+    if (partToken !== expectedPart) {
+      return { status: 'part_irreg_invalid', hint: PP_PART_IRREG_INVALID_HINT }
+    }
+    return { status: 'correct' }
+  }
+
+  // PP_reg / PP_reg_gustar
+  const isAR = phrase.verb.toLowerCase().endsWith('ar')
+  const expectedEnding = isAR ? 'ado' : 'ido'
+  const expectedStem = phrase.expected_stem ?? deaccent(phrase.verb.toLowerCase()).slice(0, -2)
+
+  if (!partToken.endsWith(expectedEnding)) {
+    return { status: 'part_ending_invalid', hint: PP_PART_ENDING_INVALID_HINT }
+  }
+
+  const partStem = partToken.slice(0, partToken.length - expectedEnding.length)
+  if (partStem !== expectedStem) {
+    return {
+      status: 'part_stem_invalid',
+      hint: PP_PART_STEM_INVALID_HINT,
+      highlight: expectedEnding,
+    }
+  }
+
+  return { status: 'correct' }
+}
+
 // ─── Strip accents ────────────────────────────────────────────────────────────
 
 function deaccent(s: string): string {
@@ -228,6 +328,10 @@ export function validate(input: string, phrase: Phrase): ValidationResult {
 
   if (phrase.type === 'Indef_reg' || phrase.type === 'Indef_reg_gustar') {
     return validateIndefReg(normalized, phrase)
+  }
+
+  if (phrase.type === 'PP_irreg' || phrase.type === 'PP_reg' || phrase.type === 'PP_reg_gustar') {
+    return validatePreteritoPerfecto(input, phrase)
   }
 
   // indef_full_irreg_A / B

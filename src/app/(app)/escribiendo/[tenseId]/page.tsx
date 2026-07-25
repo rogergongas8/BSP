@@ -38,13 +38,19 @@ function DottedWord({ word }: { word: string }) {
 }
 
 const INPUT_STYLES: Record<ValidationStatus, { bg: string; border: string; color: string }> = {
-  idle:         { bg: '#FFFFFF',  border: '',        color: '' },
-  correct:      { bg: '#DCFCE7',  border: '#22C55E', color: '#16A34A' },
-  skipped:      { bg: '#FFFFFF',  border: '#22C55E', color: '#16A34A' },
-  invalid_form: { bg: '#FEE2E2',  border: '#EF4444', color: '#DC2626' },
-  wrong_stem:   { bg: '#FEE2E2',  border: '#EF4444', color: '#DC2626' },
-  wrong_ending: { bg: '#FFF1F2',  border: '#FECDD3', color: '#E11D48' },
-  wrong_person: { bg: '#FFF1F2',  border: '#FECDD3', color: '#E11D48' },
+  idle:                 { bg: '#FFFFFF',  border: '',        color: '' },
+  correct:              { bg: '#DCFCE7',  border: '#22C55E', color: '#16A34A' },
+  skipped:              { bg: '#FFFFFF',  border: '#22C55E', color: '#16A34A' },
+  invalid_form:         { bg: '#FEE2E2',  border: '#EF4444', color: '#DC2626' },
+  wrong_stem:           { bg: '#FEE2E2',  border: '#EF4444', color: '#DC2626' },
+  wrong_ending:         { bg: '#FFF1F2',  border: '#FECDD3', color: '#E11D48' },
+  wrong_person:         { bg: '#FFF1F2',  border: '#FECDD3', color: '#E11D48' },
+  structure_incomplete: { bg: '#FEE2E2',  border: '#EF4444', color: '#DC2626' },
+  aux_invalid:          { bg: '#FEE2E2',  border: '#EF4444', color: '#DC2626' },
+  aux_wrong_person:     { bg: '#FFF1F2',  border: '#FECDD3', color: '#E11D48' },
+  part_irreg_invalid:   { bg: '#FEE2E2',  border: '#EF4444', color: '#DC2626' },
+  part_ending_invalid:  { bg: '#FEE2E2',  border: '#EF4444', color: '#DC2626' },
+  part_stem_invalid:    { bg: '#FFF1F2',  border: '#FECDD3', color: '#E11D48' },
 }
 
 function InlineSentence({
@@ -71,7 +77,7 @@ function InlineSentence({
   const displayValue = (status === 'correct' || status === 'skipped') ? answer : input
   const boxW = Math.max(80, Math.max(displayValue.length, answer.length) * 10 + 36)
 
-  // Split color only shown when hint is active
+  // Split color only shown when hint is active (indefinido-style prefix/suffix highlight)
   const showSplit = showHint && (status === 'wrong_person' || status === 'wrong_ending' || status === 'wrong_stem') && highlight
   const correctPrefix = showSplit ? input.slice(0, highlight!.length) : null
   const wrongSuffix   = showSplit ? input.slice(highlight!.length) : null
@@ -294,8 +300,11 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   }
 
   const isError = status === 'invalid_form' || status === 'wrong_stem' || status === 'wrong_ending' || status === 'wrong_person'
+    || status === 'structure_incomplete' || status === 'aux_invalid' || status === 'aux_wrong_person'
+    || status === 'part_irreg_invalid' || status === 'part_ending_invalid' || status === 'part_stem_invalid'
   const isStemIrreg = phrase?.type === 'Indef_stem_irreg'
   const isIndefReg  = phrase?.type === 'Indef_reg' || phrase?.type === 'Indef_reg_gustar'
+  const isPP        = phrase?.type === 'PP_irreg' || phrase?.type === 'PP_reg' || phrase?.type === 'PP_reg_gustar'
 
   return (
     <>
@@ -430,6 +439,13 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
                     <StatusRow label="Tense ending" ok={status !== 'wrong_ending'} />
                     <StatusRow label="Person/Number" ok={status === 'wrong_stem'} />
                     <StatusRow label="Stem"          ok={(status === 'wrong_person' || status === 'wrong_ending') && highlight !== null} />
+                  </>
+                ) : isPP ? (
+                  <>
+                    <StatusRow label="Structure"   ok={status !== 'structure_incomplete'} />
+                    <StatusRow label="Auxiliary"   ok={status !== 'structure_incomplete' && status !== 'aux_invalid' && status !== 'aux_wrong_person'} />
+                    <StatusRow label="Participle"  ok={status !== 'structure_incomplete' && status !== 'aux_invalid' && status !== 'aux_wrong_person'
+                      && status !== 'part_irreg_invalid' && status !== 'part_ending_invalid' && status !== 'part_stem_invalid'} />
                   </>
                 ) : (
                   <>
