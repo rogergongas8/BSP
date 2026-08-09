@@ -83,21 +83,23 @@ function splitSentence(sentence: string, gapCount: 1 | 2): string[] {
   return parts
 }
 
-/** Inline blank: infinitive label + dotted underline above a bordered input-style box, per Figma. */
-function GapBox({ verb, value, color }: { verb: string; value: string | null; color: string }) {
+/** Infinitive label, centered above its whole sentence line (not just the box), per Figma. */
+function GapLabel({ verb }: { verb: string }) {
   return (
-    <span className="inline-flex flex-col items-center align-bottom -mb-1">
-      <span
-        className="text-[9px] font-bold tracking-widest text-gray-400 uppercase pb-0.5 border-b border-dotted border-gray-300 mb-1"
-      >
-        {verb}
-      </span>
-      <span
-        className="min-w-[64px] px-3 py-1 rounded-lg border-2 text-center font-bold text-gray-900 whitespace-nowrap"
-        style={{ borderColor: color }}
-      >
-        {value ?? ' '}
-      </span>
+    <p className="text-[10px] font-bold tracking-widest text-gray-400 uppercase mb-1 inline-block border-b border-dotted border-gray-300 pb-0.5">
+      {verb}
+    </p>
+  )
+}
+
+/** Inline bordered input-style box for a blank, filled in once an option is selected. */
+function GapBox({ value, color }: { value: string | null; color: string }) {
+  return (
+    <span
+      className="inline-flex min-w-[70px] min-h-[36px] mx-1 px-3 items-center justify-center rounded-lg border-2 align-middle text-center font-bold text-gray-900 whitespace-nowrap"
+      style={{ borderColor: color }}
+    >
+      {value}
     </span>
   )
 }
@@ -259,35 +261,41 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId }) {
         {!loading && phrase ? (
           <>
             {/* Sentence with blank(s) as real input-style boxes */}
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 text-center text-base text-gray-800 leading-relaxed">
               {gapCount === 1 ? (
-                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-3 text-base text-gray-800 leading-loose">
-                  {sentenceParts[0]}
-                  <GapBox
-                    verb={phrase.infinitive_1}
-                    value={selected1 === 1 ? phrase.option_a_1 : selected1 === 2 ? phrase.option_b_1 : null}
-                    color={GAP_COLORS[1].border}
-                  />
-                  {sentenceParts[1]}
-                </div>
-              ) : (
-                <>
-                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-3 text-base text-gray-800 leading-loose">
+                <div>
+                  <GapLabel verb={phrase.infinitive_1} />
+                  <p>
                     {sentenceParts[0]}
                     <GapBox
-                      verb={phrase.infinitive_1}
                       value={selected1 === 1 ? phrase.option_a_1 : selected1 === 2 ? phrase.option_b_1 : null}
                       color={GAP_COLORS[1].border}
                     />
                     {sentenceParts[1]}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <GapLabel verb={phrase.infinitive_1} />
+                    <p>
+                      {sentenceParts[0]}
+                      <GapBox
+                        value={selected1 === 1 ? phrase.option_a_1 : selected1 === 2 ? phrase.option_b_1 : null}
+                        color={GAP_COLORS[1].border}
+                      />
+                      {sentenceParts[1]}
+                    </p>
                   </div>
-                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-3 text-base text-gray-800 leading-loose">
-                    <GapBox
-                      verb={phrase.infinitive_2 ?? ''}
-                      value={selected2 === 1 ? phrase.option_a_2 : selected2 === 2 ? phrase.option_b_2 : null}
-                      color={GAP_COLORS[2].border}
-                    />
-                    {sentenceParts[2]}
+                  <div>
+                    <GapLabel verb={phrase.infinitive_2 ?? ''} />
+                    <p>
+                      <GapBox
+                        value={selected2 === 1 ? phrase.option_a_2 : selected2 === 2 ? phrase.option_b_2 : null}
+                        color={GAP_COLORS[2].border}
+                      />
+                      {sentenceParts[2]}
+                    </p>
                   </div>
                 </>
               )}
