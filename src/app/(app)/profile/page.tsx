@@ -5,6 +5,7 @@ import { getLevelInfo, catImagePath } from '@/lib/levels'
 import type { AchievementId } from '@/lib/achievements'
 import type { Tables } from '@/types/database.types'
 import AchievementsGrid from './AchievementsGrid'
+import ProfileAvatar from './ProfileAvatar'
 import OverscrollColor from '@/components/overscroll-color'
 
 type Profile = Tables<'profiles'>
@@ -132,16 +133,7 @@ export default async function ProfilePage() {
 
         {/* Avatar + name */}
         <div className="flex items-center gap-4 mb-5">
-          <div className="relative shrink-0">
-            <div className="w-20 h-20 rounded-full overflow-hidden bg-white/20">
-              <Image src={catImagePath(cat)} alt="Avatar" width={80} height={80} className="w-full h-full object-contain" />
-            </div>
-            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-sm">
-              <svg width="11" height="11" viewBox="0 0 10 10" fill="none">
-                <path d="M7 1L9 3L3.5 8.5L1 9L1.5 6.5L7 1Z" stroke="#374151" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-          </div>
+          <ProfileAvatar avatarId={profile.avatar_id} fallbackImagePath={catImagePath(cat)} />
           <div>
             <h1 className="text-white font-black text-2xl leading-tight">{profile.username}</h1>
             <div className="flex items-center gap-1.5 mt-1">

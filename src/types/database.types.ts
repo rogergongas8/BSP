@@ -251,6 +251,7 @@ export type Database = {
       profiles: {
         Row: {
           activities_completed: number
+          avatar_id: string | null
           created_at: string
           id: string
           last_activity_date: string | null
@@ -262,6 +263,7 @@ export type Database = {
         }
         Insert: {
           activities_completed?: number
+          avatar_id?: string | null
           created_at?: string
           id: string
           last_activity_date?: string | null
@@ -273,6 +275,7 @@ export type Database = {
         }
         Update: {
           activities_completed?: number
+          avatar_id?: string | null
           created_at?: string
           id?: string
           last_activity_date?: string | null
