@@ -9,9 +9,8 @@ function cardState(opt: 1 | 2, selected: 1 | 2 | null, correct: 1 | 2, submitted
 }
 
 export default function ContrastGap({
-  label, optionA, optionB, correctOption, selected, submitted, showHints, iconA, iconB, onSelect,
+  optionA, optionB, correctOption, selected, submitted, showHints, iconA, iconB, bgClass, onSelect,
 }: {
-  label: string
   optionA: string
   optionB: string
   correctOption: 1 | 2
@@ -20,25 +19,23 @@ export default function ContrastGap({
   showHints: boolean
   iconA: string
   iconB: string
+  bgClass: string
   onSelect: (opt: 1 | 2) => void
 }) {
   return (
-    <div className="flex flex-col gap-2">
-      <span className="text-[10px] font-bold tracking-widest text-gray-400 text-center">{label}</span>
-      <div className="grid grid-cols-2 gap-3">
-        <ContrastOptionCard
-          label={optionA}
-          state={cardState(1, selected, correctOption, submitted)}
-          iconSrc={showHints ? iconA : null}
-          onClick={() => onSelect(1)}
-        />
-        <ContrastOptionCard
-          label={optionB}
-          state={cardState(2, selected, correctOption, submitted)}
-          iconSrc={showHints ? iconB : null}
-          onClick={() => onSelect(2)}
-        />
-      </div>
+    <div className={`flex flex-col gap-3 rounded-3xl p-3 ${bgClass}`}>
+      <ContrastOptionCard
+        label={optionA}
+        state={cardState(1, selected, correctOption, submitted)}
+        iconSrc={showHints ? iconA : null}
+        onClick={() => onSelect(1)}
+      />
+      <ContrastOptionCard
+        label={optionB}
+        state={cardState(2, selected, correctOption, submitted)}
+        iconSrc={showHints ? iconB : null}
+        onClick={() => onSelect(2)}
+      />
     </div>
   )
 }

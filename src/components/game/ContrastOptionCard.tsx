@@ -7,12 +7,12 @@ export type ContrastCardState =
   | 'default' | 'selected' | 'correct-selected' | 'correct-unselected' | 'incorrect-selected' | 'disabled'
 
 const STATE_CLASSES: Record<ContrastCardState, string> = {
-  'default':            'bg-white border-2 border-blue-600 text-gray-900',
-  'selected':           'bg-blue-800 border-2 border-blue-800 text-white',
-  'correct-selected':   'bg-green-600 border-2 border-green-600 text-white',
-  'correct-unselected': 'bg-white border-2 border-green-600 text-gray-900',
-  'incorrect-selected': 'bg-red-100 border-2 border-red-400 text-red-900',
-  'disabled':           'bg-gray-200 border-2 border-gray-200 text-gray-400',
+  'default':            'bg-white text-gray-800',
+  'selected':           'bg-white text-gray-900 ring-2 ring-gray-800',
+  'correct-selected':   'bg-green-500 text-white',
+  'correct-unselected': 'bg-white text-gray-800 ring-2 ring-green-500',
+  'incorrect-selected': 'bg-red-400 text-white',
+  'disabled':           'bg-white/60 text-gray-400',
 }
 
 export default function ContrastOptionCard({
@@ -26,10 +26,10 @@ export default function ContrastOptionCard({
   const clickable = state === 'default' || state === 'selected'
 
   return (
-    <div className="relative pt-5">
+    <div className="relative pt-4">
       {iconSrc && (
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10 w-9 h-9 rounded-full bg-white shadow-sm overflow-hidden">
-          <Image src={iconSrc} alt="" width={36} height={36} className="object-cover" />
+        <div className="absolute -top-1 left-1/2 -translate-x-1/2 z-10 w-8 h-8 rounded-full bg-white shadow-sm overflow-hidden ring-2 ring-white">
+          <Image src={iconSrc} alt="" width={32} height={32} className="object-cover" />
         </div>
       )}
       <motion.button
@@ -38,7 +38,7 @@ export default function ContrastOptionCard({
         whileTap={clickable ? { scale: 0.96 } : undefined}
         animate={state === 'correct-unselected' ? { x: [0, -4, 4, -4, 0] } : { x: 0 }}
         transition={state === 'correct-unselected' ? { duration: 0.4 } : undefined}
-        className={`w-full rounded-2xl px-2 py-5 text-center text-sm font-bold leading-tight break-words transition-colors ${STATE_CLASSES[state]} ${clickable ? 'cursor-pointer' : 'cursor-default'}`}
+        className={`w-full min-h-[64px] rounded-2xl px-3 py-4 text-center text-sm font-bold leading-tight break-words shadow-sm transition-colors ${STATE_CLASSES[state]} ${clickable ? 'cursor-pointer' : 'cursor-default'}`}
       >
         {label}
       </motion.button>

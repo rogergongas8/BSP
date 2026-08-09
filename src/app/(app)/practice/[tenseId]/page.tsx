@@ -10,7 +10,7 @@ import OverscrollColor from '@/components/overscroll-color'
 import { BATTLES, type BattleItem } from '@/components/game/BattleCarousel'
 import ContrastGap from '@/components/game/ContrastGap'
 import HintToggle from '@/components/game/HintToggle'
-import { CONTRAST_ICON, CONTRAST_META, isContrastBattle, phraseGapCount, type ContrastBattleId, type ContrastPhrase } from '@/lib/contrast-game-logic'
+import { CONTRAST_ICON, CONTRAST_META, GAP_COLORS, isContrastBattle, phraseGapCount, type ContrastBattleId, type ContrastPhrase } from '@/lib/contrast-game-logic'
 
 const SESSION_TOTAL = 10
 
@@ -81,6 +81,25 @@ function splitSentence(sentence: string, gapCount: 1 | 2): string[] {
   // parts.length should be gapCount + 1; pad defensively if the data is malformed
   while (parts.length < gapCount + 1) parts.push('')
   return parts
+}
+
+/** Inline blank: infinitive label + dotted underline above a bordered input-style box, per Figma. */
+function GapBox({ verb, value, color }: { verb: string; value: string | null; color: string }) {
+  return (
+    <span className="inline-flex flex-col items-center align-bottom -mb-1">
+      <span
+        className="text-[9px] font-bold tracking-widest text-gray-400 uppercase pb-0.5 border-b border-dotted border-gray-300 mb-1"
+      >
+        {verb}
+      </span>
+      <span
+        className="min-w-[64px] px-3 py-1 rounded-lg border-2 text-center font-bold text-gray-900 whitespace-nowrap"
+        style={{ borderColor: color }}
+      >
+        {value ?? ' '}
+      </span>
+    </span>
+  )
 }
 
 export default function BattlePracticePage({ params }: { params: Promise<{ tenseId: string }> }) {
@@ -236,32 +255,47 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId }) {
       </div>
 
       {/* Game */}
-      <div className="flex-1 flex flex-col px-5 pt-6 pb-28 gap-8">
+      <div className="flex-1 flex flex-col px-5 pt-6 pb-28 gap-6">
         {!loading && phrase ? (
           <>
-            {/* Sentence with blank(s) filled in */}
-            <div className="text-center text-base text-gray-800 leading-relaxed">
-              {sentenceParts.map((part, i) => (
-                <span key={i}>
-                  {part}
-                  {i === 0 && (
-                    <span className="font-bold" style={{ color: meta.color }}>
-                      {selected1 === 1 ? phrase.option_a_1 : selected1 === 2 ? phrase.option_b_1 : '___'}
-                    </span>
-                  )}
-                  {i === 1 && gapCount === 2 && (
-                    <span className="font-bold" style={{ color: meta.color }}>
-                      {selected2 === 1 ? phrase.option_a_2 : selected2 === 2 ? phrase.option_b_2 : '___'}
-                    </span>
-                  )}
-                </span>
-              ))}
+            {/* Sentence with blank(s) as real input-style boxes */}
+            <div className="flex flex-col gap-3">
+              {gapCount === 1 ? (
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-3 text-base text-gray-800 leading-loose">
+                  {sentenceParts[0]}
+                  <GapBox
+                    verb={phrase.infinitive_1}
+                    value={selected1 === 1 ? phrase.option_a_1 : selected1 === 2 ? phrase.option_b_1 : null}
+                    color={GAP_COLORS[1].border}
+                  />
+                  {sentenceParts[1]}
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-3 text-base text-gray-800 leading-loose">
+                    {sentenceParts[0]}
+                    <GapBox
+                      verb={phrase.infinitive_1}
+                      value={selected1 === 1 ? phrase.option_a_1 : selected1 === 2 ? phrase.option_b_1 : null}
+                      color={GAP_COLORS[1].border}
+                    />
+                    {sentenceParts[1]}
+                  </div>
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-3 text-base text-gray-800 leading-loose">
+                    <GapBox
+                      verb={phrase.infinitive_2 ?? ''}
+                      value={selected2 === 1 ? phrase.option_a_2 : selected2 === 2 ? phrase.option_b_2 : null}
+                      color={GAP_COLORS[2].border}
+                    />
+                    {sentenceParts[2]}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Gaps */}
             <div className={gapCount === 2 ? 'grid grid-cols-2 gap-4' : ''}>
               <ContrastGap
-                label={phrase.infinitive_1}
                 optionA={phrase.option_a_1}
                 optionB={phrase.option_b_1}
                 correctOption={phrase.correct_1}
@@ -270,11 +304,11 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId }) {
                 showHints={showHints}
                 iconA={icons.a}
                 iconB={icons.b}
+                bgClass={GAP_COLORS[1].bgClass}
                 onSelect={(opt) => !submitted && setSelected1(opt)}
               />
               {gapCount === 2 && phrase.option_a_2 && phrase.option_b_2 && phrase.correct_2 && (
                 <ContrastGap
-                  label={phrase.infinitive_2 ?? ''}
                   optionA={phrase.option_a_2}
                   optionB={phrase.option_b_2}
                   correctOption={phrase.correct_2}
@@ -283,6 +317,7 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId }) {
                   showHints={showHints}
                   iconA={icons.a}
                   iconB={icons.b}
+                  bgClass={GAP_COLORS[2].bgClass}
                   onSelect={(opt) => !submitted && setSelected2(opt)}
                 />
               )}

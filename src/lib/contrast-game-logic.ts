@@ -28,6 +28,14 @@ export const CONTRAST_META: Record<ContrastBattleId, { color: string; xpAt100: n
   'javi-mimo-zas': { color: '#4A5BB5', xpAt100: 30 },
 }
 
+// Fixed per-gap-slot colors (gap 1 = blue, gap 2 = orange), matching the Figma reference —
+// independent of battle_id, since the visual convention is the same across all contrast games.
+// Reuses the app's existing bsp-blue / bsp-orange tokens (globals.css) rather than new hex values.
+export const GAP_COLORS = {
+  1: { border: 'var(--bsp-blue)',   bgClass: 'bg-blue-100' },
+  2: { border: 'var(--bsp-orange)', bgClass: 'bg-orange-100' },
+} as const
+
 export function isContrastBattle(id: string): id is ContrastBattleId {
   return id === 'javi-zas' || id === 'mimo-zas' || id === 'javi-mimo-zas'
 }
