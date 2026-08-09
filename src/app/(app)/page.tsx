@@ -19,6 +19,7 @@ export default async function HomePage() {
   let level = 1
   let avatarSrc = '/images/nav/user-image.svg'
 
+  // eslint-disable-next-line react-hooks/purity
   const challengeDayIndex = Math.floor(Date.now() / (1000 * 60 * 60 * 24)) % 6
   const todayStart = new Date()
   todayStart.setHours(0, 0, 0, 0)
@@ -40,7 +41,7 @@ export default async function HomePage() {
 
   // Challenge progress for logged-in user
   let challengeProgress = 0
-  let challengeTarget = challenge?.target ?? 3
+  const challengeTarget = challenge?.target ?? 3
 
   if (user) {
     const { data: todaySessions } = await supabase
@@ -70,6 +71,7 @@ export default async function HomePage() {
   const CIRCUMFERENCE = 119.38
   const dashOffset = CIRCUMFERENCE * (1 - progressPct)
 
+  // eslint-disable-next-line react-hooks/purity
   const dayIndex = Math.floor(Date.now() / (1000 * 60 * 60 * 24)) % 3
   const pos = CAT_POSITIONS[dayIndex]
 

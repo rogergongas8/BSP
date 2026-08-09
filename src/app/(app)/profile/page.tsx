@@ -353,10 +353,12 @@ export default async function ProfilePage() {
               </div>
               <span className="font-bold text-gray-800 text-lg">Achievements</span>
             </div>
-            <span className="text-gray-400 text-sm font-medium">{unlockedIds.length}/15</span>
+            <span className="text-gray-400 text-sm font-medium">
+              <span className="font-bold text-bsp-orange">{unlockedIds.length}</span>/15
+            </span>
           </div>
 
-          <AchievementsGrid unlockedIds={unlockedIds} total={15} />
+          <AchievementsGrid unlockedIds={unlockedIds} />
         </div>
 
       </div>

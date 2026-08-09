@@ -970,7 +970,7 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ answer: ans }),
     })
-  }, [stopTimer])
+  }, [])
 
   const handleTimerEnd = useCallback(async () => {
     if (!isHost) return

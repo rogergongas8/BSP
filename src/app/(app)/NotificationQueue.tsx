@@ -33,6 +33,7 @@ export default function NotificationQueue() {
       }
 
       if (items.length > 0) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setQueue(items.slice(1))
         setCurrent(items[0])
       }

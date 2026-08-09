@@ -207,15 +207,18 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   const hadErrorRef   = useRef(false)
   const usedHintRef   = useRef(false)
   const usedIdsRef    = useRef<Set<string>>(new Set())
-  const sessionStart  = useRef(Date.now())
+  const sessionStart  = useRef<number | null>(null)
   const inputRef      = useRef<HTMLInputElement>(null)
   const charName = meta.characterName
 
   const prefetchRef = useRef<Phrase | null>(null)
   const redoQueueRef = useRef<Phrase[] | null>(null)
   const [sessionTotal, setSessionTotal] = useState(SESSION_TOTAL)
+  const fetchSeqRef = useRef(0)
+  const hasInitRef = useRef(false)
 
   const prefetchNext = useCallback(async (currentIds: Set<string>) => {
+    if (isRedo) return
     try {
       const exclude = [...currentIds].join(',')
       const url = `/api/phrases/random?tense=${encodeURIComponent(meta.tense)}${exclude ? `&exclude=${exclude}` : ''}`
@@ -223,9 +226,11 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
       const json = await res.json()
       if (json.data) prefetchRef.current = json.data
     } catch { /* silent */ }
-  }, [meta.tense])
+  }, [meta.tense, isRedo])
 
   const fetchPhrase = useCallback(async () => {
+    const seq = ++fetchSeqRef.current
+
     setInput('')
     setStatus('idle')
     setHint(null)
@@ -237,13 +242,16 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
 
     if (isRedo) {
       if (redoQueueRef.current === null) {
+        setLoading(true)
         const url = `/api/phrases/mistakes?tense=${encodeURIComponent(meta.tense)}${redoSubcategory ? `&subcategory=${encodeURIComponent(redoSubcategory)}` : ''}`
         const res = await fetch(url)
         const json = await res.json()
-        redoQueueRef.current = json.data ?? []
-        setSessionTotal(redoQueueRef.current!.length)
+        if (seq !== fetchSeqRef.current) return
+        const list: Phrase[] = json.data ?? []
+        redoQueueRef.current = list
+        setSessionTotal(list.length)
       }
-      const next = redoQueueRef.current!.shift() ?? null
+      const next = redoQueueRef.current ? (redoQueueRef.current.shift() ?? null) : null
       setPhrase(next)
       setLoading(false)
       return
@@ -259,20 +267,34 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
       return
     }
 
+    setLoading(true)
     const exclude = [...usedIdsRef.current].join(',')
     const url = `/api/phrases/random?tense=${encodeURIComponent(meta.tense)}${exclude ? `&exclude=${exclude}` : ''}`
-    const res = await fetch(url)
-    const json = await res.json()
-    if (json.data) {
-      usedIdsRef.current.add(json.data.id)
-      setPhrase(json.data)
+    try {
+      const res = await fetch(url)
+      const json = await res.json()
+      if (seq !== fetchSeqRef.current) return
+      if (json.data) {
+        usedIdsRef.current.add(json.data.id)
+        setPhrase(json.data)
+        prefetchNext(new Set(usedIdsRef.current))
+      }
+    } catch {
+      // silent
+    } finally {
+      if (seq === fetchSeqRef.current) {
+        setLoading(false)
+      }
     }
-    setLoading(false)
-    prefetchNext(new Set(usedIdsRef.current))
   }, [meta.tense, prefetchNext, isRedo, redoSubcategory])
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { fetchPhrase() }, [fetchPhrase])
+  useEffect(() => {
+    if (!hasInitRef.current) {
+      hasInitRef.current = true
+      sessionStart.current = Date.now()
+      fetchPhrase()
+    }
+  }, [fetchPhrase])
 
   useEffect(() => {
     if (phrase && !loading) {
@@ -321,7 +343,8 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
     setStats(newStats)
 
     if (next >= sessionTotal) {
-      const duration = Math.round((Date.now() - sessionStart.current) / 1000)
+      const start = sessionStart.current ?? Date.now()
+      const duration = Math.round((Date.now() - start) / 1000)
       if (isRedo) { router.push('/learn'); return }
       const p = new URLSearchParams({
         firstTry: String(newStats.firstTry),
@@ -330,7 +353,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
         skipped: String(newStats.skipped),
         duration: String(duration),
       })
-      router.push(`/escribiendo/${tenseId}/results?${p}`)
+      router.push(`/escribiendo/${encodeURIComponent(tenseId)}/results?${p.toString()}`)
       return
     }
     setProgress(next)
@@ -348,7 +371,8 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
     const next = progress + 1
     if (next >= sessionTotal) {
       if (isRedo) { router.push('/learn'); return }
-      const duration = Math.round((Date.now() - sessionStart.current) / 1000)
+      const start = sessionStart.current ?? Date.now()
+      const duration = Math.round((Date.now() - start) / 1000)
       const p = new URLSearchParams({
         firstTry: String(stats.firstTry),
         fixed: String(stats.fixed),
@@ -356,7 +380,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
         skipped: String(stats.skipped),
         duration: String(duration),
       })
-      router.push(`/escribiendo/${tenseId}/results?${p}`)
+      router.push(`/escribiendo/${encodeURIComponent(tenseId)}/results?${p.toString()}`)
       return
     }
     setProgress(next)

@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'motion/react'
 import { CheckCircle2 } from 'lucide-react'
-import { TENSE_META } from '@/lib/game-logic'
+import { TENSE_META, resolveTenseId } from '@/lib/game-logic'
 
 const XP_AT_100: Record<string, number> = {
   'indefinido':          30,
@@ -74,7 +74,8 @@ const STAT_ROWS = [
 ] as const
 
 export default function ResultsPage({ params }: { params: Promise<{ tenseId: string }> }) {
-  const { tenseId } = use(params)
+  const { tenseId: rawTenseId } = use(params)
+  const tenseId = resolveTenseId(rawTenseId) ?? rawTenseId
   const router = useRouter()
   const searchParams = useSearchParams()
   const meta = TENSE_META[tenseId] ?? TENSE_META['indefinido']
