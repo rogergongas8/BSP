@@ -219,6 +219,115 @@ function validateIndefReg(normalized: string, phrase: Phrase): ValidationResult 
   return { status: 'correct' }
 }
 
+// ─── imperfecto (imp_irreg) ─────────────────────────────────────────────────
+
+const IMP_IRREG_FORMS: Record<string, string[]> = {
+  imp_irreg_A: ['era', 'eras', 'era', 'éramos', 'erais', 'eran'],
+  imp_irreg_B: ['iba', 'ibas', 'iba', 'íbamos', 'ibais', 'iban'],
+  imp_irreg_C: ['veía', 'veías', 'veía', 'veíamos', 'veíais', 'veían'],
+}
+
+const IMP_IRREG_INVALID_HINTS: Record<string, string> = {
+  imp_irreg_A:
+    "Lucky you! Looks like you've run into one of the only three irregular imperfect verbs. *Ir* starts with \"i-\", but it's followed by an **unexpected consonant**. Does that ring a bell?",
+  imp_irreg_B:
+    "Lucky you! Looks like you've run into one of the only three irregular imperfect verbs. *Ser* doesn't even start with \"s-\"; it **starts with \"e-\"**. Does that ring a bell?",
+  imp_irreg_C:
+    "Lucky you! Looks like you've run into one of the only three irregular imperfect verbs. But don't worry, *ver* is the easiest one: it keeps the \"**ve-**\" base and adds the **imperfect endings**.",
+}
+
+const IMP_IRREG_WRONG_PERSON_HINT =
+  "Close! Now it just has to match the subject. Recheck who is doing the action."
+
+function validateImpIrreg(normalized: string, phrase: Phrase): ValidationResult {
+  const validForms = (IMP_IRREG_FORMS[phrase.type] ?? []).map(deaccent)
+
+  if (!validForms.includes(normalized)) {
+    return {
+      status: 'invalid_form',
+      hint: IMP_IRREG_INVALID_HINTS[phrase.type] ?? 'Check your answer.',
+    }
+  }
+
+  return { status: 'wrong_person', hint: IMP_IRREG_WRONG_PERSON_HINT }
+}
+
+// ─── imperfecto (imp_reg) ────────────────────────────────────────────────────
+
+const AR_IMP_ENDINGS   = ['ábamos', 'abais', 'aban', 'aba', 'abas'] as const
+const ERIR_IMP_ENDINGS = ['íamos', 'íais', 'ían', 'ía', 'ías'] as const
+
+const AR_IMP_PERSON_MAP: Record<string, string> = {
+  '1s': 'aba', '2s': 'abas', '3s': 'aba', '1pl': 'ábamos', '2pl': 'abais', '3pl': 'aban',
+}
+const ERIR_IMP_PERSON_MAP: Record<string, string> = {
+  '1s': 'ía', '2s': 'ías', '3s': 'ía', '1pl': 'íamos', '2pl': 'íais', '3pl': 'ían',
+}
+
+const IMP_REG_ENDING_WRONG_AR_HINT =
+  "Quick check: regular imperfect verbs use the **\"-aba\"** pattern (-ar) or **\"-ía\"** pattern (-er/-ir). Which one fits here?"
+
+const IMP_REG_ENDING_WRONG_ERIR_HINT =
+  "Quick check: regular imperfect verbs use the **\"-aba\"** pattern (-ar) or **\"-ía\"** pattern (-er/-ir). Which one fits here?"
+
+const IMP_REG_PERSON_WRONG_GUSTAR_HINT =
+  "Close! This is a **gustar**-type verb. The verb agrees with **what causes the feeling**, not with who experiences it."
+
+const IMP_REG_PERSON_WRONG_HINT =
+  "Close! Now it just has to match the subject. Recheck who is doing the action."
+
+const IMP_REG_STEM_HINT =
+  "It's a regular imperfecto, so for the stem just drop the last two letters of the infinitive and put it before your ending."
+
+function validateImpReg(normalized: string, phrase: Phrase): ValidationResult {
+  const isAR = phrase.verb.toLowerCase().endsWith('ar')
+  const endings   = isAR ? AR_IMP_ENDINGS   : ERIR_IMP_ENDINGS
+  const personMap = isAR ? AR_IMP_PERSON_MAP : ERIR_IMP_PERSON_MAP
+  const endingWrongHint = isAR ? IMP_REG_ENDING_WRONG_AR_HINT : IMP_REG_ENDING_WRONG_ERIR_HINT
+
+  const expectedStem = deaccent(phrase.verb.toLowerCase()).slice(0, -2)
+
+  // 1. Extract ending (longest first to avoid partial matches, e.g. '-aba' before '-abas')
+  let inputStem: string | null = null
+  let inputEnding: string | null = null
+  for (const ending of endings) {
+    const deaccentedEnding = deaccent(ending)
+    if (normalized.endsWith(deaccentedEnding) && normalized.length > deaccentedEnding.length) {
+      inputStem   = normalized.slice(0, normalized.length - deaccentedEnding.length)
+      inputEnding = deaccentedEnding
+      break
+    }
+  }
+
+  // 2. No valid imperfecto ending found
+  if (inputEnding === null) {
+    const stemCorrect = normalized.startsWith(expectedStem)
+    return {
+      status: 'wrong_ending',
+      hint: endingWrongHint,
+      highlight: stemCorrect ? expectedStem : undefined,
+    }
+  }
+
+  // 3. Check person/number
+  const expectedEnding = deaccent(personMap[phrase.person] ?? '')
+  if (inputEnding !== expectedEnding) {
+    const isGustar = phrase.type === 'Imp_reg_gustar'
+    return {
+      status: 'wrong_person',
+      hint: isGustar ? IMP_REG_PERSON_WRONG_GUSTAR_HINT : IMP_REG_PERSON_WRONG_HINT,
+      highlight: inputStem === expectedStem ? (inputStem ?? undefined) : undefined,
+    }
+  }
+
+  // 4. Check stem
+  if (inputStem !== expectedStem) {
+    return { status: 'wrong_stem', hint: IMP_REG_STEM_HINT, highlight: inputStem ?? undefined }
+  }
+
+  return { status: 'correct' }
+}
+
 // ─── pretérito_perfecto ─────────────────────────────────────────────────────
 
 const HABER_FORMS = ['he', 'has', 'ha', 'hemos', 'habéis', 'han'].map(deaccent)
@@ -373,6 +482,14 @@ export function validate(input: string, phrase: Phrase): ValidationResult {
 
   if (phrase.type === 'PP_irreg' || phrase.type === 'PP_reg' || phrase.type === 'PP_reg_gustar') {
     return validatePreteritoPerfecto(input, phrase)
+  }
+
+  if (phrase.type === 'imp_irreg_A' || phrase.type === 'imp_irreg_B' || phrase.type === 'imp_irreg_C') {
+    return validateImpIrreg(normalized, phrase)
+  }
+
+  if (phrase.type === 'Imp_reg' || phrase.type === 'Imp_reg_gustar') {
+    return validateImpReg(normalized, phrase)
   }
 
   // indef_full_irreg_A / B

@@ -9,7 +9,8 @@
     "lint": "eslint",
     "type-check": "tsc --noEmit",
     "db:seed-phrases": "tsx --env-file=.env.local scripts/seed-phrases.ts",
-    "db:seed-phrases-pp": "tsx --env-file=.env.local scripts/seed-phrases-pp.ts"
+    "db:seed-phrases-pp": "tsx --env-file=.env.local scripts/seed-phrases-pp.ts",
+    "db:seed-phrases-imp": "tsx --env-file=.env.local scripts/seed-phrases-imp.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

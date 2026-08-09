@@ -406,6 +406,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
     || status === 'part_irreg_invalid' || status === 'part_ending_invalid' || status === 'part_stem_invalid'
   const isStemIrreg = phrase?.type === 'Indef_stem_irreg'
   const isIndefReg  = phrase?.type === 'Indef_reg' || phrase?.type === 'Indef_reg_gustar'
+    || phrase?.type === 'Imp_reg' || phrase?.type === 'Imp_reg_gustar'
   const isPP        = phrase?.type === 'PP_irreg' || phrase?.type === 'PP_reg' || phrase?.type === 'PP_reg_gustar'
 
   return (
