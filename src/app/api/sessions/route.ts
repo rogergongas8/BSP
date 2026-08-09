@@ -5,12 +5,15 @@ import { getLevelInfo } from '@/lib/levels'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
-const VALID_TENSES = ['indefinido', 'imperfecto', 'pretérito-perfecto'] as const
+const VALID_TENSES = ['indefinido', 'imperfecto', 'pretérito-perfecto', 'javi-zas', 'mimo-zas', 'javi-mimo-zas'] as const
 
 const XP_AT_100: Record<string, number> = {
   'indefinido':         30,
   'imperfecto':         25,
   'pretérito-perfecto': 25,
+  'javi-zas':           25,
+  'mimo-zas':           30,
+  'javi-mimo-zas':      30,
 }
 
 const BodySchema = z.object({
@@ -19,6 +22,7 @@ const BodySchema = z.object({
   first_try:        z.number().int().min(0),
   with_hints:       z.number().int().min(0),
   skipped:          z.number().int().min(0),
+  half_correct:     z.number().int().min(0).default(0),
   duration_seconds: z.number().int().min(0).max(7200).default(0),
 })
 
@@ -36,18 +40,18 @@ export async function POST(request: NextRequest) {
   const parsed = BodySchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
 
-  const { tense, total, first_try, with_hints, skipped, duration_seconds } = parsed.data
-  const fixed   = total - first_try - with_hints - skipped
+  const { tense, total, first_try, with_hints, skipped, half_correct, duration_seconds } = parsed.data
+  const fixed   = total - first_try - with_hints - skipped - half_correct
   const correct = Math.max(0, first_try + fixed)
 
-  // XP calculation (mirrors results page formula)
-  const scorePct  = total > 0 ? Math.round((first_try * 10 + fixed * 8 + with_hints * 6) / (total * 10) * 100) : 0
+  // XP calculation (mirrors results page formula); half_correct earns partial credit
+  const scorePct  = total > 0 ? Math.round((first_try * 10 + fixed * 8 + with_hints * 6 + half_correct * 5) / (total * 10) * 100) : 0
   const xpEarned  = Math.round((scorePct / 100) * (XP_AT_100[tense] ?? 25))
 
   // Save session
   const { error: sessionError } = await supabase
     .from('practice_sessions')
-    .insert({ user_id: user.id, tense, total, correct, first_try, with_hints, skipped, duration_seconds })
+    .insert({ user_id: user.id, tense, total, correct, first_try, with_hints, skipped, half_correct, duration_seconds })
 
   if (sessionError) return NextResponse.json({ error: 'Failed to save session' }, { status: 500 })
 

@@ -39,6 +39,126 @@ export type Database = {
   }
   public: {
     Tables: {
+      contrast_phrases: {
+        Row: {
+          battle_id: string
+          correct_1: number
+          correct_2: number | null
+          created_at: string
+          id: string
+          infinitive_1: string
+          infinitive_2: string | null
+          option_a_1: string
+          option_a_2: string | null
+          option_b_1: string
+          option_b_2: string | null
+          sentence: string
+        }
+        Insert: {
+          battle_id: string
+          correct_1: number
+          correct_2?: number | null
+          created_at?: string
+          id?: string
+          infinitive_1: string
+          infinitive_2?: string | null
+          option_a_1: string
+          option_a_2?: string | null
+          option_b_1: string
+          option_b_2?: string | null
+          sentence: string
+        }
+        Update: {
+          battle_id?: string
+          correct_1?: number
+          correct_2?: number | null
+          created_at?: string
+          id?: string
+          infinitive_1?: string
+          infinitive_2?: string | null
+          option_a_1?: string
+          option_a_2?: string | null
+          option_b_1?: string
+          option_b_2?: string | null
+          sentence?: string
+        }
+        Relationships: []
+      }
+      daily_challenges: {
+        Row: {
+          day_index: number
+          id: number
+          target: number
+          tense: string | null
+          text: string
+          type: string
+          xp_reward: number
+        }
+        Insert: {
+          day_index: number
+          id?: number
+          target: number
+          tense?: string | null
+          text: string
+          type: string
+          xp_reward: number
+        }
+        Update: {
+          day_index?: number
+          id?: number
+          target?: number
+          tense?: string | null
+          text?: string
+          type?: string
+          xp_reward?: number
+        }
+        Relationships: []
+      }
+      phrase_mistakes: {
+        Row: {
+          created_at: string
+          id: string
+          phrase_id: string
+          phrase_type: string
+          resolved_at: string | null
+          tense: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          phrase_id: string
+          phrase_type: string
+          resolved_at?: string | null
+          tense: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          phrase_id?: string
+          phrase_type?: string
+          resolved_at?: string | null
+          tense?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "phrase_mistakes_phrase_id_fkey"
+            columns: ["phrase_id"]
+            isOneToOne: false
+            referencedRelation: "phrases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "phrase_mistakes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       phrases: {
         Row: {
           answer: string
@@ -78,57 +198,13 @@ export type Database = {
         }
         Relationships: []
       }
-      phrase_mistakes: {
-        Row: {
-          id: string
-          user_id: string
-          phrase_id: string
-          tense: string
-          phrase_type: string
-          resolved_at: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          phrase_id: string
-          tense: string
-          phrase_type: string
-          resolved_at?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          phrase_id?: string
-          tense?: string
-          phrase_type?: string
-          resolved_at?: string | null
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "phrase_mistakes_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "phrase_mistakes_phrase_id_fkey"
-            columns: ["phrase_id"]
-            isOneToOne: false
-            referencedRelation: "phrases"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       practice_sessions: {
         Row: {
           completed_at: string
           correct: number
           duration_seconds: number
           first_try: number
+          half_correct: number
           id: string
           skipped: number
           tense: string
@@ -141,6 +217,7 @@ export type Database = {
           correct: number
           duration_seconds?: number
           first_try?: number
+          half_correct?: number
           id?: string
           skipped?: number
           tense: string
@@ -153,6 +230,7 @@ export type Database = {
           correct?: number
           duration_seconds?: number
           first_try?: number
+          half_correct?: number
           id?: string
           skipped?: number
           tense?: string
@@ -169,143 +247,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      daily_challenges: {
-        Row: {
-          id: number
-          day_index: number
-          text: string
-          xp_reward: number
-          type: 'activities' | 'tense_correct' | 'cross_correct'
-          target: number
-          tense: string | null
-        }
-        Insert: {
-          id?: number
-          day_index: number
-          text: string
-          xp_reward: number
-          type: 'activities' | 'tense_correct' | 'cross_correct'
-          target: number
-          tense?: string | null
-        }
-        Update: {
-          text?: string
-          xp_reward?: number
-          type?: 'activities' | 'tense_correct' | 'cross_correct'
-          target?: number
-          tense?: string | null
-        }
-        Relationships: []
-      }
-      room_players: {
-        Row: {
-          id: string
-          room_id: string
-          user_id: string
-          joined_at: string
-        }
-        Insert: {
-          id?: string
-          room_id: string
-          user_id: string
-          joined_at?: string
-        }
-        Update: {
-          id?: string
-          room_id?: string
-          user_id?: string
-          joined_at?: string
-        }
-        Relationships: []
-      }
-      rooms: {
-        Row: {
-          id: string
-          code: string
-          host_id: string
-          status: 'waiting' | 'playing' | 'finished'
-          max_players: number
-          total_rounds: number
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          code: string
-          host_id: string
-          status?: 'waiting' | 'playing' | 'finished'
-          max_players?: number
-          total_rounds?: number
-          created_at?: string
-        }
-        Update: {
-          code?: string
-          host_id?: string
-          status?: 'waiting' | 'playing' | 'finished'
-          max_players?: number
-          total_rounds?: number
-        }
-        Relationships: []
-      }
-      rounds: {
-        Row: {
-          id: string
-          room_id: string
-          phrase_id: string
-          round_number: number
-          status: 'pending' | 'active' | 'collecting' | 'results' | 'scoreboard' | 'done'
-          started_at: string | null
-          duration_seconds: number
-        }
-        Insert: {
-          id?: string
-          room_id: string
-          phrase_id: string
-          round_number: number
-          status?: 'pending' | 'active' | 'collecting' | 'results' | 'scoreboard' | 'done'
-          started_at?: string | null
-          duration_seconds?: number
-        }
-        Update: {
-          id?: string
-          room_id?: string
-          phrase_id?: string
-          round_number?: number
-          status?: 'pending' | 'active' | 'collecting' | 'results' | 'scoreboard' | 'done'
-          started_at?: string | null
-          duration_seconds?: number
-        }
-        Relationships: []
-      }
-      round_answers: {
-        Row: {
-          id: string
-          round_id: string
-          user_id: string
-          answer: string | null
-          is_correct: boolean
-          points_awarded: number
-          response_time_ms: number | null
-          validation_status: string
-          submitted_at: string
-        }
-        Insert: {
-          id?: string
-          round_id: string
-          user_id: string
-          answer?: string | null
-          is_correct?: boolean
-          points_awarded?: number
-          response_time_ms?: number | null
-          validation_status?: string
-          submitted_at?: string
-        }
-        Update: {
-          is_correct?: boolean
-          points_awarded?: number
-          validation_status?: string
-        }
-        Relationships: []
       }
       profiles: {
         Row: {
@@ -343,6 +284,176 @@ export type Database = {
         }
         Relationships: []
       }
+      room_players: {
+        Row: {
+          id: string
+          joined_at: string
+          room_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          room_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          room_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_players_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_players_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rooms: {
+        Row: {
+          code: string
+          created_at: string
+          host_id: string
+          id: string
+          max_players: number
+          status: string
+          total_rounds: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          host_id: string
+          id?: string
+          max_players?: number
+          status?: string
+          total_rounds?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          host_id?: string
+          id?: string
+          max_players?: number
+          status?: string
+          total_rounds?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rooms_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      round_answers: {
+        Row: {
+          answer: string | null
+          id: string
+          is_correct: boolean
+          points_awarded: number
+          response_time_ms: number | null
+          round_id: string
+          submitted_at: string
+          user_id: string
+          validation_status: string
+        }
+        Insert: {
+          answer?: string | null
+          id?: string
+          is_correct?: boolean
+          points_awarded?: number
+          response_time_ms?: number | null
+          round_id: string
+          submitted_at?: string
+          user_id: string
+          validation_status?: string
+        }
+        Update: {
+          answer?: string | null
+          id?: string
+          is_correct?: boolean
+          points_awarded?: number
+          response_time_ms?: number | null
+          round_id?: string
+          submitted_at?: string
+          user_id?: string
+          validation_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "round_answers_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "rounds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_answers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rounds: {
+        Row: {
+          duration_seconds: number
+          id: string
+          phrase_id: string
+          room_id: string
+          round_number: number
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          duration_seconds?: number
+          id?: string
+          phrase_id: string
+          room_id: string
+          round_number: number
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          duration_seconds?: number
+          id?: string
+          phrase_id?: string
+          room_id?: string
+          round_number?: number
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rounds_phrase_id_fkey"
+            columns: ["phrase_id"]
+            isOneToOne: false
+            referencedRelation: "phrases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rounds_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_achievements: {
         Row: {
           achievement_id: string
@@ -377,7 +488,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      generate_room_code: { Args: Record<never, never>; Returns: string }
+      generate_room_code: { Args: never; Returns: string }
       increment_activities: { Args: { p_user_id: string }; Returns: undefined }
     }
     Enums: {

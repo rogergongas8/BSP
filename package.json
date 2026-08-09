@@ -10,7 +10,8 @@
     "type-check": "tsc --noEmit",
     "db:seed-phrases": "tsx --env-file=.env.local scripts/seed-phrases.ts",
     "db:seed-phrases-pp": "tsx --env-file=.env.local scripts/seed-phrases-pp.ts",
-    "db:seed-phrases-imp": "tsx --env-file=.env.local scripts/seed-phrases-imp.ts"
+    "db:seed-phrases-imp": "tsx --env-file=.env.local scripts/seed-phrases-imp.ts",
+    "db:seed-contrast-phrases": "tsx --env-file=.env.local scripts/seed-contrast-phrases.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
