@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { checkOrigin } from '@/lib/security'
+import { clientIp, enforceRateLimit, signupLimiter } from '@/lib/rate-limit'
 import { z } from 'zod'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
@@ -12,6 +13,9 @@ const SignupSchema = z.object({
 export async function POST(request: NextRequest) {
   const originError = checkOrigin(request)
   if (originError) return originError
+
+  const rateLimitError = await enforceRateLimit(signupLimiter, clientIp(request))
+  if (rateLimitError) return rateLimitError
 
   const body = await request.json().catch(() => null)
   const parsed = SignupSchema.safeParse(body)

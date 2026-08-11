@@ -6,7 +6,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import AuthInput from '@/components/auth/auth-input'
 import PinInput from '@/components/auth/pin-input'
-import { createClient } from '@/lib/supabase/client'
 
 export default function LoginPage() {
   const [username, setUsername] = useState('')
@@ -22,16 +21,17 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
 
-    const supabase = createClient()
-    const email = `${username.trim().toLowerCase()}@bsp.internal`
-
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password: pin,
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: username.trim(), pin }),
     })
 
-    if (authError) {
-      setError('Usuario o PIN incorrecto.')
+    if (!res.ok) {
+      const json = await res.json().catch(() => null)
+      setError(json?.error === 'Too many requests'
+        ? 'Demasiados intentos. Inténtalo de nuevo en unos minutos.'
+        : 'Usuario o PIN incorrecto.')
       setLoading(false)
       return
     }
