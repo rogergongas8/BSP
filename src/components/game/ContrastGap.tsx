@@ -9,7 +9,7 @@ function cardState(opt: 1 | 2, selected: 1 | 2 | null, correct: 1 | 2, submitted
 }
 
 export default function ContrastGap({
-  optionA, optionB, correctOption, selected, submitted, showHints, iconA, iconB, bgClass, onSelect,
+  optionA, optionB, correctOption, selected, submitted, showHints, iconA, iconB, bgColor, onSelect,
 }: {
   optionA: string
   optionB: string
@@ -19,11 +19,11 @@ export default function ContrastGap({
   showHints: boolean
   iconA: string
   iconB: string
-  bgClass: string
+  bgColor: string
   onSelect: (opt: 1 | 2) => void
 }) {
   return (
-    <div className={`flex flex-col gap-3 rounded-3xl p-3 ${bgClass}`}>
+    <div className="flex flex-col gap-4 rounded-3xl p-4 pb-6" style={{ backgroundColor: bgColor }}>
       <ContrastOptionCard
         label={optionA}
         state={cardState(1, selected, correctOption, submitted)}

@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
 import { getLevelInfo, catImagePath } from '@/lib/levels'
+import { resolveAvatarPath } from '@/lib/avatars'
 
 export async function GET(
   request: NextRequest,
@@ -83,17 +84,17 @@ export async function GET(
   // Get all players with profiles
   const { data: players } = await admin
     .from('room_players')
-    .select('user_id, profiles(username, total_xp)')
+    .select('user_id, profiles(username, total_xp, avatar_id)')
     .eq('room_id', round.room_id)
 
   const standings = (players ?? [])
     .map(p => {
-      const profile = p.profiles as unknown as { username: string; total_xp: number }
+      const profile = p.profiles as unknown as { username: string; total_xp: number; avatar_id: string | null }
       const info = getLevelInfo(profile.total_xp)
       return {
         user_id: p.user_id,
         username: profile.username,
-        avatar: catImagePath(info.cat),
+        avatar: resolveAvatarPath(profile.avatar_id, catImagePath(info.cat)),
         total_points: pointsByUser.get(p.user_id) ?? 0,
         delta: deltaByUser.get(p.user_id) ?? 0,
       }

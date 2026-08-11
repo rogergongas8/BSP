@@ -9,6 +9,7 @@ import { ChevronRight } from 'lucide-react'
 import BattleCarousel from '@/components/game/BattleCarousel'
 import { createClient } from '@/lib/supabase/client'
 import { getLevelInfo, catImagePath } from '@/lib/levels'
+import { resolveAvatarPath } from '@/lib/avatars'
 import OverscrollColor from '@/components/overscroll-color'
 
 type TransitionPhase = 'idle' | 'curtain-down' | 'cats'
@@ -25,13 +26,13 @@ export default function LioDeTiemposPage() {
     const supabase = createClient()
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return
-      supabase.from('profiles').select('streak, total_xp').eq('id', user.id).single()
+      supabase.from('profiles').select('streak, total_xp, avatar_id').eq('id', user.id).single()
         .then(({ data }) => {
           if (!data) return
           setStreak(data.streak)
           const info = getLevelInfo(data.total_xp)
           setLevel(info.level)
-          setAvatar(catImagePath(info.cat))
+          setAvatar(resolveAvatarPath(data.avatar_id, catImagePath(info.cat)))
         })
     })
   }, [])

@@ -8,6 +8,7 @@ import { ChevronDown, ChevronRight, RotateCw, BookOpen } from 'lucide-react'
 import { TENSE_META } from '@/lib/game-logic'
 import { createClient } from '@/lib/supabase/client'
 import { getLevelInfo, catImagePath } from '@/lib/levels'
+import { resolveAvatarPath } from '@/lib/avatars'
 import OverscrollColor from '@/components/overscroll-color'
 
 type Subcategory = { label: string; count: number; lessonId?: string }
@@ -229,13 +230,13 @@ export default function LearnLandingPage() {
     const supabase = createClient()
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return
-      supabase.from('profiles').select('streak, total_xp').eq('id', user.id).single()
+      supabase.from('profiles').select('streak, total_xp, avatar_id').eq('id', user.id).single()
         .then(({ data }) => {
           if (!data) return
           setStreak(data.streak)
           const info = getLevelInfo(data.total_xp)
           setLevel(info.level)
-          setAvatar(catImagePath(info.cat))
+          setAvatar(resolveAvatarPath(data.avatar_id, catImagePath(info.cat)))
         })
     })
   }, [])

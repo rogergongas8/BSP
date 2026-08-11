@@ -13,3 +13,9 @@ export function avatarImagePath(id: AvatarId): string {
   const file = id === 'default' ? 'Default' : `Profile ${id.replace('profile-', '')}`
   return `/images/profilepictures/${file}.png`
 }
+
+/** Prefers the user's chosen avatar_id; falls back to the level-based cat image when unset. */
+export function resolveAvatarPath(avatarId: string | null | undefined, fallbackImagePath: string): string {
+  if (avatarId && isAvatarId(avatarId)) return avatarImagePath(avatarId)
+  return fallbackImagePath
+}

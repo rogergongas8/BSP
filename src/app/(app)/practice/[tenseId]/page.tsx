@@ -127,6 +127,10 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId }) {
   const [showHints, setShowHints] = useState(false)
   const [progress, setProgress] = useState(0)
   const [stats, setStats] = useState({ firstTry: 0, halfCorrect: 0, missed: 0 })
+  // Whether each gap's two options are shown swapped (top/bottom), re-rolled per phrase so the
+  // correct tense isn't always in the same visual slot.
+  const [swap1, setSwap1] = useState(false)
+  const [swap2, setSwap2] = useState(false)
 
   const usedIdsRef = useRef<Set<string>>(new Set())
   const prefetchRef = useRef<ContrastPhrase | null>(null)
@@ -149,6 +153,8 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId }) {
     setSelected1(null)
     setSelected2(null)
     setSubmitted(false)
+    setSwap1(Math.random() < 0.5)
+    setSwap2(Math.random() < 0.5)
 
     if (prefetchRef.current) {
       const p = prefetchRef.current
@@ -257,7 +263,7 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId }) {
       </div>
 
       {/* Game */}
-      <div className="flex-1 flex flex-col px-5 pt-6 pb-28 gap-6">
+      <div className="flex-1 flex flex-col px-5 pt-8 pb-28 gap-8">
         {!loading && phrase ? (
           <>
             {/* Sentence with blank(s) as real input-style boxes */}
@@ -265,7 +271,7 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId }) {
               {gapCount === 1 ? (
                 <div>
                   <GapLabel verb={phrase.infinitive_1} />
-                  <p>
+                  <p className="[text-wrap:balance]">
                     {sentenceParts[0]}
                     <GapBox
                       value={selected1 === 1 ? phrase.option_a_1 : selected1 === 2 ? phrase.option_b_1 : null}
@@ -278,7 +284,7 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId }) {
                 <>
                   <div>
                     <GapLabel verb={phrase.infinitive_1} />
-                    <p>
+                    <p className="[text-wrap:balance]">
                       {sentenceParts[0]}
                       <GapBox
                         value={selected1 === 1 ? phrase.option_a_1 : selected1 === 2 ? phrase.option_b_1 : null}
@@ -289,7 +295,7 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId }) {
                   </div>
                   <div>
                     <GapLabel verb={phrase.infinitive_2 ?? ''} />
-                    <p>
+                    <p className="[text-wrap:balance]">
                       <GapBox
                         value={selected2 === 1 ? phrase.option_a_2 : selected2 === 2 ? phrase.option_b_2 : null}
                         color={GAP_COLORS[2].border}
@@ -304,29 +310,37 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId }) {
             {/* Gaps */}
             <div className={gapCount === 2 ? 'grid grid-cols-2 gap-4' : ''}>
               <ContrastGap
-                optionA={phrase.option_a_1}
-                optionB={phrase.option_b_1}
-                correctOption={phrase.correct_1}
-                selected={selected1}
+                optionA={swap1 ? phrase.option_b_1 : phrase.option_a_1}
+                optionB={swap1 ? phrase.option_a_1 : phrase.option_b_1}
+                correctOption={swap1 ? (phrase.correct_1 === 1 ? 2 : 1) : phrase.correct_1}
+                selected={selected1 === null ? null : (swap1 ? (selected1 === 1 ? 2 : 1) : selected1)}
                 submitted={submitted}
                 showHints={showHints}
-                iconA={icons.a}
-                iconB={icons.b}
-                bgClass={GAP_COLORS[1].bgClass}
-                onSelect={(opt) => !submitted && setSelected1(opt)}
+                iconA={swap1 ? icons.b : icons.a}
+                iconB={swap1 ? icons.a : icons.b}
+                bgColor={GAP_COLORS[1].bg}
+                onSelect={(displayOpt) => {
+                  if (submitted) return
+                  const real = swap1 ? (displayOpt === 1 ? 2 : 1) : displayOpt
+                  setSelected1(real)
+                }}
               />
               {gapCount === 2 && phrase.option_a_2 && phrase.option_b_2 && phrase.correct_2 && (
                 <ContrastGap
-                  optionA={phrase.option_a_2}
-                  optionB={phrase.option_b_2}
-                  correctOption={phrase.correct_2}
-                  selected={selected2}
+                  optionA={swap2 ? phrase.option_b_2 : phrase.option_a_2}
+                  optionB={swap2 ? phrase.option_a_2 : phrase.option_b_2}
+                  correctOption={swap2 ? (phrase.correct_2 === 1 ? 2 : 1) : phrase.correct_2}
+                  selected={selected2 === null ? null : (swap2 ? (selected2 === 1 ? 2 : 1) : selected2)}
                   submitted={submitted}
                   showHints={showHints}
-                  iconA={icons.a}
-                  iconB={icons.b}
-                  bgClass={GAP_COLORS[2].bgClass}
-                  onSelect={(opt) => !submitted && setSelected2(opt)}
+                  iconA={swap2 ? icons.b : icons.a}
+                  iconB={swap2 ? icons.a : icons.b}
+                  bgColor={GAP_COLORS[2].bg}
+                  onSelect={(displayOpt) => {
+                    if (submitted) return
+                    const real = swap2 ? (displayOpt === 1 ? 2 : 1) : displayOpt
+                    setSelected2(real)
+                  }}
                 />
               )}
             </div>

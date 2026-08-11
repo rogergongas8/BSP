@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { motion } from 'motion/react'
-import { avatarImagePath, isAvatarId, type AvatarId } from '@/lib/avatars'
+import { isAvatarId, resolveAvatarPath, type AvatarId } from '@/lib/avatars'
 import AvatarPickerModal from './AvatarPickerModal'
 
 export default function ProfileAvatar({
@@ -14,7 +14,7 @@ export default function ProfileAvatar({
 }) {
   const [open, setOpen] = useState(false)
   const currentAvatarId: AvatarId | null = avatarId && isAvatarId(avatarId) ? avatarId : null
-  const imageSrc = currentAvatarId ? avatarImagePath(currentAvatarId) : fallbackImagePath
+  const imageSrc = resolveAvatarPath(avatarId, fallbackImagePath)
 
   return (
     <>
@@ -24,7 +24,7 @@ export default function ProfileAvatar({
         onClick={() => setOpen(true)}
         className="relative shrink-0"
       >
-        <div className="w-20 h-20 rounded-full overflow-hidden bg-white/20">
+        <div className="w-20 h-20 rounded-full overflow-hidden bg-white/20 p-2.5">
           <Image src={imageSrc} alt="Avatar" width={80} height={80} className="w-full h-full object-contain" />
         </div>
         <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-sm">

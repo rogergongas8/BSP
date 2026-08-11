@@ -8,6 +8,7 @@ import { motion } from 'motion/react'
 import { ChevronRight, Copy, Check, Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getLevelInfo, catImagePath } from '@/lib/levels'
+import { resolveAvatarPath } from '@/lib/avatars'
 import OverscrollColor from '@/components/overscroll-color'
 
 type PresencePayload = {
@@ -38,6 +39,7 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [streak, setStreak] = useState(0)
   const [level, setLevel] = useState(1)
+  const [avatar, setAvatar] = useState('/images/nav/user-image.svg')
   const [starting, setStarting] = useState(false)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const channelRef = useRef<any>(null)
@@ -57,13 +59,15 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
 
       const { data: myProfile } = await supabase
         .from('profiles')
-        .select('streak, total_xp, username')
+        .select('streak, total_xp, username, avatar_id')
         .eq('id', user.id)
         .single()
       if (cancelled) return
+      const myInfoEarly = getLevelInfo(myProfile?.total_xp ?? 0)
       if (myProfile) {
         setStreak(myProfile.streak)
-        setLevel(getLevelInfo(myProfile.total_xp).level)
+        setLevel(myInfoEarly.level)
+        setAvatar(resolveAvatarPath(myProfile.avatar_id, catImagePath(myInfoEarly.cat)))
       }
 
       const { data: room } = await supabase
@@ -74,12 +78,11 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
       if (cancelled || !room) { if (!room) router.push('/room'); return }
       setHostId(room.host_id)
 
-      const myInfo = getLevelInfo(myProfile?.total_xp ?? 0)
       const myPresence: PresencePayload = {
         user_id: user.id,
         username: myProfile?.username ?? 'Player',
-        level: myInfo.level,
-        avatar: catImagePath(myInfo.cat),
+        level: myInfoEarly.level,
+        avatar: resolveAvatarPath(myProfile?.avatar_id, catImagePath(myInfoEarly.cat)),
         isHost: user.id === room.host_id,
       }
 
@@ -170,7 +173,7 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
       <div className="relative px-5 pt-8 pb-12 overflow-hidden" style={{ backgroundColor: ORANGE }}>
         <Image src="/images/multiplayer/bg-star.png" alt="" width={220} height={220} className="absolute -top-6 -right-6 opacity-25 pointer-events-none select-none" draggable={false} />
         <div className="relative flex items-center justify-between mb-3">
-          <Image src={catImagePath(getLevelInfo(level === 1 ? 0 : level).cat)} alt="Avatar" width={36} height={36} className="rounded-full object-contain" />
+          <Image src={avatar} alt="Avatar" width={36} height={36} className="rounded-full object-contain" />
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 bg-white/15 rounded-full px-2.5 py-1">
               <Image src="/images/home/fxemoji_fire.svg" alt="Racha" width={16} height={16} />

@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 import { getLevelInfo, catImagePath } from '@/lib/levels'
+import { resolveAvatarPath } from '@/lib/avatars'
 import ActivityCard from './ActivityCard'
 import NotificationQueue from './NotificationQueue'
 import OverscrollColor from '@/components/overscroll-color'
@@ -28,7 +29,7 @@ export default async function HomePage() {
   const [{ data: challenge }, { data: profile }] = await Promise.all([
     supabase.from('daily_challenges').select('*').eq('day_index', challengeDayIndex).single(),
     user
-      ? supabase.from('profiles').select('streak, total_xp').eq('id', user.id).single()
+      ? supabase.from('profiles').select('streak, total_xp, avatar_id').eq('id', user.id).single()
       : Promise.resolve({ data: null, error: null }),
   ])
 
@@ -36,7 +37,7 @@ export default async function HomePage() {
     streak = profile.streak
     const info = getLevelInfo(profile.total_xp)
     level = info.level
-    avatarSrc = catImagePath(info.cat)
+    avatarSrc = resolveAvatarPath(profile.avatar_id, catImagePath(info.cat))
   }
 
   // Challenge progress for logged-in user
