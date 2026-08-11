@@ -14,7 +14,7 @@ import OverscrollColor from '@/components/overscroll-color'
 const ORANGE = '#FF8716'
 const CODE_LENGTH = 4
 
-type JoinState = 'input' | 'error' | 'joining' | 'waiting'
+type JoinState = 'input' | 'error' | 'joining'
 
 export default function JoinPage() {
   const router = useRouter()
@@ -104,10 +104,6 @@ export default function JoinPage() {
       setErrorMsg(json.error === 'Room is full' ? 'This room is already full.' : 'Looks like no host has started a session with this code. Make sure you entered the correct code.')
       setJoinState('error')
     }
-  }
-
-  if (joinState === 'waiting') {
-    return <WaitingRoom />
   }
 
   return (
@@ -226,8 +222,4 @@ export default function JoinPage() {
       </div>
     </div>
   )
-}
-
-function WaitingRoom() {
-  return null
 }

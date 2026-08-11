@@ -4,12 +4,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { checkOrigin } from '@/lib/security'
 import { z } from 'zod'
 
-const VALID_TENSES = ['indefinido', 'imperfecto', 'pretérito-perfecto'] as const
-const VALID_SUBCATEGORIES = ['Regular', 'Irregular'] as const
+const VALID_BATTLES = ['javi-zas', 'mimo-zas', 'javi-mimo-zas'] as const
 
 const QuerySchema = z.object({
-  tense:       z.enum(VALID_TENSES),
-  subcategory: z.enum(VALID_SUBCATEGORIES).optional(),
+  battle_id: z.enum(VALID_BATTLES),
 })
 
 export async function GET(request: NextRequest) {
@@ -21,33 +19,28 @@ export async function GET(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const parsed = QuerySchema.safeParse({
-    tense:       request.nextUrl.searchParams.get('tense'),
-    subcategory: request.nextUrl.searchParams.get('subcategory') ?? undefined,
+    battle_id: request.nextUrl.searchParams.get('battle_id'),
   })
   if (!parsed.success) return NextResponse.json({ error: 'Invalid params' }, { status: 400 })
 
-  const { tense, subcategory } = parsed.data
+  const { battle_id } = parsed.data
 
   const supabase = await createClient()
   const { data: mistakes, error: mistakesError } = await supabase
-    .from('phrase_mistakes')
-    .select('phrase_id, phrase_type')
+    .from('contrast_mistakes')
+    .select('contrast_phrase_id')
     .eq('user_id', user.id)
-    .eq('tense', tense)
+    .eq('battle_id', battle_id)
     .is('resolved_at', null)
   if (mistakesError) return NextResponse.json({ error: 'Failed to load mistakes' }, { status: 500 })
 
-  const filtered = subcategory
-    ? mistakes.filter(m => (m.phrase_type.toLowerCase().includes('irreg') ? 'Irregular' : 'Regular') === subcategory)
-    : mistakes
-
-  const phraseIds = [...new Set(filtered.map(m => m.phrase_id))]
+  const phraseIds = [...new Set(mistakes.map(m => m.contrast_phrase_id))]
   if (phraseIds.length === 0) return NextResponse.json({ data: [] })
 
   const admin = createAdminClient()
   const { data: phrases, error: phrasesError } = await admin
-    .from('phrases')
-    .select('id, verb, sentence, answer, type, person, expected_stem, stem_group')
+    .from('contrast_phrases')
+    .select('id, battle_id, sentence, infinitive_1, option_a_1, option_b_1, correct_1, infinitive_2, option_a_2, option_b_2, correct_2')
     .in('id', phraseIds)
 
   if (phrasesError) return NextResponse.json({ error: 'Failed to load phrases' }, { status: 500 })

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { checkOrigin } from '@/lib/security'
 import { z } from 'zod'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
@@ -9,10 +10,8 @@ const SignupSchema = z.object({
 })
 
 export async function POST(request: NextRequest) {
-  const origin = request.headers.get('origin')
-  if (origin && origin !== process.env.NEXT_PUBLIC_SITE_URL) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const originError = checkOrigin(request)
+  if (originError) return originError
 
   const body = await request.json().catch(() => null)
   const parsed = SignupSchema.safeParse(body)

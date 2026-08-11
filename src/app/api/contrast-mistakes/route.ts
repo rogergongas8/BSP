@@ -3,16 +3,15 @@ import { checkOrigin } from '@/lib/security'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
-const VALID_TENSES = ['indefinido', 'imperfecto', 'pretérito-perfecto'] as const
+const VALID_BATTLES = ['javi-zas', 'mimo-zas', 'javi-mimo-zas'] as const
 
 const PostBodySchema = z.object({
-  phrase_id:   z.string().uuid(),
-  tense:       z.enum(VALID_TENSES),
-  phrase_type: z.string().min(1).max(60),
+  contrast_phrase_id: z.string().uuid(),
+  battle_id:          z.enum(VALID_BATTLES),
 })
 
 const PatchBodySchema = z.object({
-  phrase_id: z.string().uuid(),
+  contrast_phrase_id: z.string().uuid(),
 })
 
 export async function POST(request: NextRequest) {
@@ -27,11 +26,11 @@ export async function POST(request: NextRequest) {
   const parsed = PostBodySchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
 
-  const { phrase_id, tense, phrase_type } = parsed.data
+  const { contrast_phrase_id, battle_id } = parsed.data
 
   const { error } = await supabase
-    .from('phrase_mistakes')
-    .insert({ user_id: user.id, phrase_id, tense, phrase_type })
+    .from('contrast_mistakes')
+    .insert({ user_id: user.id, contrast_phrase_id, battle_id })
 
   if (error) return NextResponse.json({ error: 'Failed to save mistake' }, { status: 500 })
 
@@ -51,10 +50,10 @@ export async function PATCH(request: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
 
   const { error } = await supabase
-    .from('phrase_mistakes')
+    .from('contrast_mistakes')
     .update({ resolved_at: new Date().toISOString() })
     .eq('user_id', user.id)
-    .eq('phrase_id', parsed.data.phrase_id)
+    .eq('contrast_phrase_id', parsed.data.contrast_phrase_id)
     .is('resolved_at', null)
 
   if (error) return NextResponse.json({ error: 'Failed to resolve mistake' }, { status: 500 })
@@ -71,8 +70,8 @@ export async function GET(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data, error } = await supabase
-    .from('phrase_mistakes')
-    .select('phrase_id, tense, phrase_type')
+    .from('contrast_mistakes')
+    .select('contrast_phrase_id, battle_id')
     .eq('user_id', user.id)
     .is('resolved_at', null)
 

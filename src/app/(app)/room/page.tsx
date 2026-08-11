@@ -45,15 +45,18 @@ export default function RoomPage() {
   }, [])
 
   const handlePlay = async (href: string) => {
-    // Only indefinido has phrases right now
-    if (!href.includes('indefinido')) {
-      alert('Coming soon! Only Indefinido is available for now.')
-      return
-    }
+    const [, section, mode] = href.split('/')
+    const game_type = section === 'escribiendo' ? 'escribiendo' : 'contraste'
+    const game_mode = mode
+
     if (creating) return
     setCreating(true)
     try {
-      const res = await fetch('/api/rooms', { method: 'POST' })
+      const res = await fetch('/api/rooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ game_type, game_mode }),
+      })
       const json = await res.json()
       if (json.data?.code) {
         router.push(`/room/${json.data.code}`)

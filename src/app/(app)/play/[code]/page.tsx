@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'motion/react'
 import { X, ChevronRight, Check, Send } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import ContrastGap from '@/components/game/ContrastGap'
+import { CONTRAST_ICON, GAP_COLORS, phraseGapCount, type ContrastPhrase } from '@/lib/contrast-game-logic'
 
 // ─── Keyboard-aware bottom offset ────────────────────────────────────────────
 // On iOS Safari, `fixed bottom-0` is anchored to the layout viewport (full page height),
@@ -44,8 +46,13 @@ type Standing = {
 }
 
 type RoundResults = {
-  correct_answer: string
-  my_answer: string | null
+  is_contraste: boolean
+  correct_answer?: string
+  my_answer?: string | null
+  correct_1?: 1 | 2
+  correct_2?: 1 | 2 | null
+  my_selected_1?: 1 | 2 | null
+  my_selected_2?: 1 | 2 | null
   my_validation_status: string
   my_points: number
   is_correct: boolean
@@ -59,6 +66,13 @@ type RoundResults = {
   round_number: number
 }
 
+/** The two answer shapes a round can take: free-text (escribiendo) or gap selections (contraste). */
+type MyAnswer =
+  | { kind: 'text'; value: string }
+  | { kind: 'contrast'; selected1: 1 | 2 | null; selected2: 1 | 2 | null }
+
+const EMPTY_TEXT_ANSWER: MyAnswer = { kind: 'text', value: '' }
+
 type Round = {
   id: string
   room_id: string
@@ -66,20 +80,17 @@ type Round = {
   status: 'pending' | 'active' | 'collecting' | 'results' | 'scoreboard' | 'done'
   started_at: string | null
   duration_seconds: number
-  phrase_id: string
-  phrases: {
-    id: string
-    verb: string
-    sentence: string
-    answer: string
-  }
+  phrase_id: string | null
+  contrast_phrase_id: string | null
+  phrases: { id: string; verb: string; sentence: string } | null
+  contrast_phrases: ContrastPhrase | null
 }
 
 type GamePhase =
   | { type: 'loading' }
   | { type: 'active'; round: Round; secondsLeft: number }
-  | { type: 'collecting'; round: Round; myAnswer: string; answeredCount: number; totalCount: number }
-  | { type: 'results'; round: Round; myAnswer: string; results: RoundResults }
+  | { type: 'collecting'; round: Round; myAnswer: MyAnswer; answeredCount: number; totalCount: number }
+  | { type: 'results'; round: Round; myAnswer: MyAnswer; results: RoundResults }
   | { type: 'scoreboard'; roundNumber: number; totalRounds: number; standings: Standing[] }
   | { type: 'finished'; standings: Standing[] }
 
@@ -196,29 +207,136 @@ function PhraseSentence({
 
 type RoundPhase =
   | { type: 'active'; round: Round; secondsLeft: number }
-  | { type: 'collecting'; round: Round; myAnswer: string; answeredCount: number; totalCount: number }
-  | { type: 'results'; round: Round; myAnswer: string; results: RoundResults }
+  | { type: 'collecting'; round: Round; myAnswer: MyAnswer; answeredCount: number; totalCount: number }
+  | { type: 'results'; round: Round; myAnswer: MyAnswer; results: RoundResults }
 
-function RoundView({
+/** Bottom action bar shared by both round types: Submit (active) / Skip (host, collecting) / Next (host, results). */
+function RoundActionBar({
+  phase, isHost, canSubmit, onSubmit, onSkip, onNext, kbBottom,
+}: {
+  phase: RoundPhase
+  isHost: boolean
+  canSubmit: boolean
+  onSubmit: () => void
+  onSkip: () => void
+  onNext: () => void
+  kbBottom: number
+}) {
+  const [skipping, setSkipping] = useState(false)
+  const [nexting, setNexting] = useState(false)
+
+  const hasButton =
+    phase.type === 'active' ||
+    (isHost && (phase.type === 'collecting' || phase.type === 'results'))
+
+  return (
+    <motion.div
+      className="fixed left-0 right-0 px-5 pb-6 pt-3 transition-[bottom] duration-100"
+      style={{ bottom: kbBottom }}
+      animate={{ backgroundColor: hasButton ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0)' }}
+      transition={{ duration: 0.25 }}
+    >
+      <AnimatePresence mode="wait">
+        {phase.type === 'active' && (
+          <motion.button
+            key="submit"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 340, damping: 26 } }}
+            exit={{ opacity: 0, y: 6, transition: { duration: 0.18 } }}
+            whileTap={canSubmit ? { scale: 0.96 } : {}}
+            onClick={onSubmit}
+            disabled={!canSubmit}
+            className="w-full py-4 rounded-2xl font-black text-white text-sm tracking-wider uppercase flex items-center justify-center gap-2 transition-colors duration-200"
+            style={{ backgroundColor: canSubmit ? '#3B82F6' : '#D1D5DB' }}
+          >
+            <Send className="w-4 h-4 stroke-[2.5]" />
+            Submit
+          </motion.button>
+        )}
+
+        {phase.type === 'collecting' && isHost && (
+          <motion.button
+            key="skip"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 340, damping: 26 } }}
+            exit={{ opacity: 0, y: 6, transition: { duration: 0.18 } }}
+            whileTap={skipping ? {} : { scale: 0.96 }}
+            onClick={() => {
+              if (skipping) return
+              setSkipping(true)
+              onSkip()
+            }}
+            disabled={skipping}
+            className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl border-2 border-gray-300 text-sm font-bold text-gray-700 disabled:opacity-60"
+          >
+            {skipping ? 'Skipping...' : 'Skip to next question'}
+            <ChevronRight className="w-4 h-4 stroke-[2.5]" />
+          </motion.button>
+        )}
+
+        {phase.type === 'results' && isHost && (
+          <motion.button
+            key="next"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 340, damping: 26 } }}
+            exit={{ opacity: 0, y: 6, transition: { duration: 0.18 } }}
+            whileTap={nexting ? {} : { scale: 0.97 }}
+            onClick={() => {
+              if (nexting) return
+              setNexting(true)
+              onNext()
+            }}
+            disabled={nexting}
+            className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-black text-sm text-white tracking-wider uppercase disabled:opacity-60"
+            style={{ backgroundColor: '#3B82F6' }}
+          >
+            {nexting ? 'Loading...' : 'Next'}
+            <ChevronRight className="w-4 h-4" />
+          </motion.button>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  )
+}
+
+/** Position/points footer shared by both results cards. */
+function ResultsFooter({ results }: { results: RoundResults }) {
+  return (
+    <>
+      <div className="text-center text-sm text-gray-600 font-medium px-2">
+        {results.my_rank === 1
+          ? 'You are in the lead!'
+          : `You are in ${ordinal(results.my_rank)} place, ${results.points_behind} points behind ${results.player_ahead_name}`}
+      </div>
+      {results.my_points > 0 && (
+        <div className="flex justify-center">
+          <div className="bg-amber-100 text-amber-700 px-4 py-1.5 rounded-full text-sm font-bold">
+            +{results.my_points} pts
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+function TextRoundView({
   phase, isHost, onAnswer, onTimerEnd, onSkip, onNext,
 }: {
   phase: RoundPhase
   isHost: boolean
-  onAnswer: (ans: string) => void
+  onAnswer: (ans: MyAnswer) => void
   onTimerEnd: () => void
   onSkip: () => void
   onNext: () => void
 }) {
   const [typedInput, setTypedInput] = useState('')
-  const [skipping, setSkipping] = useState(false)
-  const [nexting, setNexting] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const timerEndedRef = useRef(false)
   const kbBottom = useKeyboardBottom()
 
   const round = phase.round
   const hasSubmitted = phase.type === 'collecting' || phase.type === 'results'
-  const displayValue = hasSubmitted ? phase.myAnswer : typedInput
+  const displayValue = hasSubmitted && phase.myAnswer.kind === 'text' ? phase.myAnswer.value : typedInput
 
   // Input colors — blue during active+collecting, red/green at results
   let verbColor = '#3B82F6'
@@ -244,13 +362,15 @@ function RoundView({
   const handleSubmit = () => {
     if (phase.type !== 'active' || !typedInput.trim()) return
     inputRef.current?.blur()
-    onAnswer(typedInput.trim())
+    onAnswer({ kind: 'text', value: typedInput.trim() })
   }
 
   const checks = phase.type === 'results' ? validationToChecks(phase.results.my_validation_status) : null
   const correctRatio = phase.type === 'results' && phase.results.total_count > 0
     ? phase.results.correct_count / phase.results.total_count
     : 0
+
+  if (!round.phrases) return null
 
   return (
     <div className="flex-1 flex flex-col">
@@ -360,104 +480,247 @@ function RoundView({
                 </div>
               </div>
 
-              {/* Position info */}
-              <div className="text-center text-sm text-gray-600 font-medium px-2">
-                {phase.results.my_rank === 1
-                  ? 'You are in the lead!'
-                  : `You are in ${ordinal(phase.results.my_rank)} place, ${phase.results.points_behind} points behind ${phase.results.player_ahead_name}`}
-              </div>
-
-              {/* Points earned */}
-              {phase.results.my_points > 0 && (
-                <div className="flex justify-center">
-                  <div className="bg-amber-100 text-amber-700 px-4 py-1.5 rounded-full text-sm font-bold">
-                    +{phase.results.my_points} pts
-                  </div>
-                </div>
-              )}
+              <ResultsFooter results={phase.results} />
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Fixed bottom button — floats above keyboard via visualViewport offset.
-          Background is transparent when no button is showing so it never
-          bleeds over the cat animation below. */}
-      {(() => {
-        const hasButton =
-          phase.type === 'active' ||
-          (isHost && (phase.type === 'collecting' || phase.type === 'results'))
-        return (
-          <motion.div
-            className="fixed left-0 right-0 px-5 pb-6 pt-3 transition-[bottom] duration-100"
-            style={{ bottom: kbBottom }}
-            animate={{ backgroundColor: hasButton ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0)' }}
-            transition={{ duration: 0.25 }}
-          >
-            <AnimatePresence mode="wait">
-              {phase.type === 'active' && (
-                <motion.button
-                  key="submit"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 340, damping: 26 } }}
-                  exit={{ opacity: 0, y: 6, transition: { duration: 0.18 } }}
-                  whileTap={typedInput.trim() ? { scale: 0.96 } : {}}
-                  onClick={handleSubmit}
-                  disabled={!typedInput.trim()}
-                  className="w-full py-4 rounded-2xl font-black text-white text-sm tracking-wider uppercase flex items-center justify-center gap-2 transition-colors duration-200"
-                  style={{ backgroundColor: typedInput.trim() ? '#3B82F6' : '#D1D5DB' }}
-                >
-                  <Send className="w-4 h-4 stroke-[2.5]" />
-                  Submit
-                </motion.button>
-              )}
-
-              {phase.type === 'collecting' && isHost && (
-                <motion.button
-                  key="skip"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 340, damping: 26 } }}
-                  exit={{ opacity: 0, y: 6, transition: { duration: 0.18 } }}
-                  whileTap={skipping ? {} : { scale: 0.96 }}
-                  onClick={() => {
-                    if (skipping) return
-                    setSkipping(true)
-                    onSkip()
-                  }}
-                  disabled={skipping}
-                  className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl border-2 border-gray-300 text-sm font-bold text-gray-700 disabled:opacity-60"
-                >
-                  {skipping ? 'Skipping...' : 'Skip to next question'}
-                  <ChevronRight className="w-4 h-4 stroke-[2.5]" />
-                </motion.button>
-              )}
-
-              {phase.type === 'results' && isHost && (
-                <motion.button
-                  key="next"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 340, damping: 26 } }}
-                  exit={{ opacity: 0, y: 6, transition: { duration: 0.18 } }}
-                  whileTap={nexting ? {} : { scale: 0.97 }}
-                  onClick={() => {
-                    if (nexting) return
-                    setNexting(true)
-                    onNext()
-                  }}
-                  disabled={nexting}
-                  className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-black text-sm text-white tracking-wider uppercase disabled:opacity-60"
-                  style={{ backgroundColor: '#3B82F6' }}
-                >
-                  {nexting ? 'Loading...' : 'Next'}
-                  <ChevronRight className="w-4 h-4" />
-                </motion.button>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        )
-      })()}
+      <RoundActionBar
+        phase={phase}
+        isHost={isHost}
+        canSubmit={!!typedInput.trim()}
+        onSubmit={handleSubmit}
+        onSkip={onSkip}
+        onNext={onNext}
+        kbBottom={kbBottom}
+      />
     </div>
   )
+}
+
+/** Splits a contrast sentence on its blank(s) (___), returning text segments around each gap. */
+function splitContrastSentence(sentence: string, gapCount: 1 | 2): string[] {
+  const parts = sentence.split('___')
+  while (parts.length < gapCount + 1) parts.push('')
+  return parts
+}
+
+function ContrastRoundView({
+  phase, isHost, onAnswer, onTimerEnd, onSkip, onNext,
+}: {
+  phase: RoundPhase
+  isHost: boolean
+  onAnswer: (ans: MyAnswer) => void
+  onTimerEnd: () => void
+  onSkip: () => void
+  onNext: () => void
+}) {
+  const [selected1, setSelected1] = useState<1 | 2 | null>(null)
+  const [selected2, setSelected2] = useState<1 | 2 | null>(null)
+  const timerEndedRef = useRef(false)
+  const kbBottom = useKeyboardBottom()
+
+  const round = phase.round
+  const phrase = round.contrast_phrases
+  const hasSubmitted = phase.type === 'collecting' || phase.type === 'results'
+  const myAnswer = hasSubmitted && phase.myAnswer.kind === 'contrast' ? phase.myAnswer : null
+
+  const displaySelected1 = myAnswer ? myAnswer.selected1 : selected1
+  const displaySelected2 = myAnswer ? myAnswer.selected2 : selected2
+
+  useEffect(() => {
+    if (phase.type === 'active' && phase.secondsLeft <= 0 && !timerEndedRef.current) {
+      timerEndedRef.current = true
+      onTimerEnd()
+    }
+  }, [phase, onTimerEnd])
+
+  if (!phrase) return null
+
+  const gapCount = phraseGapCount(phrase)
+  const icons = CONTRAST_ICON[phrase.battle_id]
+  const canSubmit = selected1 !== null && (gapCount === 1 || selected2 !== null)
+
+  const handleSubmit = () => {
+    if (phase.type !== 'active' || !canSubmit) return
+    onAnswer({ kind: 'contrast', selected1, selected2: gapCount === 2 ? selected2 : null })
+  }
+
+  const submitted = phase.type === 'results'
+  const correctRatio = phase.type === 'results' && phase.results.total_count > 0
+    ? phase.results.correct_count / phase.results.total_count
+    : 0
+
+  const sentenceParts = splitContrastSentence(phrase.sentence, gapCount)
+
+  return (
+    <div className="flex-1 flex flex-col">
+      <div className="flex flex-col items-center pt-10 pb-6 px-5 gap-2">
+        <div className="flex flex-col gap-3 text-center text-base text-gray-800 leading-relaxed">
+          <div>
+            <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase mb-1">{phrase.infinitive_1}</p>
+            <p className="[text-wrap:balance]">
+              {sentenceParts[0]}
+              <span
+                className="inline-flex min-w-[70px] min-h-[36px] mx-1 px-3 items-center justify-center rounded-lg border-2 align-middle text-center font-bold text-gray-900 whitespace-nowrap"
+                style={{ borderColor: GAP_COLORS[1].border }}
+              >
+                {displaySelected1 === 1 ? phrase.option_a_1 : displaySelected1 === 2 ? phrase.option_b_1 : null}
+              </span>
+              {sentenceParts[1]}
+            </p>
+          </div>
+          {gapCount === 2 && phrase.option_a_2 && phrase.option_b_2 && (
+            <div>
+              <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase mb-1">{phrase.infinitive_2}</p>
+              <p className="[text-wrap:balance]">
+                <span
+                  className="inline-flex min-w-[70px] min-h-[36px] mx-1 px-3 items-center justify-center rounded-lg border-2 align-middle text-center font-bold text-gray-900 whitespace-nowrap"
+                  style={{ borderColor: GAP_COLORS[2].border }}
+                >
+                  {displaySelected2 === 1 ? phrase.option_a_2 : displaySelected2 === 2 ? phrase.option_b_2 : null}
+                </span>
+                {sentenceParts[2]}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-5 pb-36">
+        {phase.type === 'active' && (
+          <div className={gapCount === 2 ? 'grid grid-cols-2 gap-4' : ''}>
+            <ContrastGap
+              optionA={phrase.option_a_1}
+              optionB={phrase.option_b_1}
+              correctOption={phrase.correct_1}
+              selected={selected1}
+              submitted={false}
+              showHints={false}
+              iconA={icons.a}
+              iconB={icons.b}
+              bgColor={GAP_COLORS[1].bg}
+              onSelect={setSelected1}
+            />
+            {gapCount === 2 && phrase.option_a_2 && phrase.option_b_2 && phrase.correct_2 && (
+              <ContrastGap
+                optionA={phrase.option_a_2}
+                optionB={phrase.option_b_2}
+                correctOption={phrase.correct_2}
+                selected={selected2}
+                submitted={false}
+                showHints={false}
+                iconA={icons.a}
+                iconB={icons.b}
+                bgColor={GAP_COLORS[2].bg}
+                onSelect={setSelected2}
+              />
+            )}
+          </div>
+        )}
+
+        <AnimatePresence mode="wait">
+          {phase.type === 'collecting' && (
+            <motion.div
+              key="cat"
+              className="flex flex-col items-center justify-center gap-4 pt-8"
+              initial={{ opacity: 0, y: 32 }}
+              animate={{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 280, damping: 24, delay: 0.05 } }}
+              exit={{ opacity: 0, y: -12, transition: { duration: 0.2 } }}
+            >
+              <motion.div animate={{ y: [0, -14, 0] }} transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut' }}>
+                <Image src="/images/escribiendo/mimo.png" width={160} height={160} alt="" draggable={false} />
+              </motion.div>
+              <div className="text-center">
+                <p className="text-base font-bold text-gray-800">Collecting answers...</p>
+                <p className="text-sm text-gray-400 mt-1 font-medium">{phase.answeredCount}/{phase.totalCount}</p>
+              </div>
+            </motion.div>
+          )}
+
+          {phase.type === 'results' && (
+            <motion.div
+              key="results-card"
+              className="flex flex-col pt-2 gap-4"
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.35 }}
+            >
+              <div className={gapCount === 2 ? 'grid grid-cols-2 gap-4' : ''}>
+                <ContrastGap
+                  optionA={phrase.option_a_1}
+                  optionB={phrase.option_b_1}
+                  correctOption={phrase.correct_1}
+                  selected={displaySelected1}
+                  submitted={submitted}
+                  showHints={false}
+                  iconA={icons.a}
+                  iconB={icons.b}
+                  bgColor={GAP_COLORS[1].bg}
+                  onSelect={() => {}}
+                />
+                {gapCount === 2 && phrase.option_a_2 && phrase.option_b_2 && phrase.correct_2 && (
+                  <ContrastGap
+                    optionA={phrase.option_a_2}
+                    optionB={phrase.option_b_2}
+                    correctOption={phrase.correct_2}
+                    selected={displaySelected2}
+                    submitted={submitted}
+                    showHints={false}
+                    iconA={icons.a}
+                    iconB={icons.b}
+                    bgColor={GAP_COLORS[2].bg}
+                    onSelect={() => {}}
+                  />
+                )}
+              </div>
+
+              <div className="bg-white rounded-2xl p-4 border-2 border-green-200">
+                <div className="flex gap-1 h-6 rounded-lg overflow-hidden">
+                  {correctRatio > 0 && (
+                    <div className="bg-green-400 rounded-l-lg transition-all duration-700" style={{ width: `${correctRatio * 100}%` }} />
+                  )}
+                  {correctRatio < 1 && <div className="bg-red-300 rounded-r-lg flex-1 transition-all duration-700" />}
+                </div>
+                <div className="flex justify-between mt-1 text-[10px] text-gray-400 font-medium">
+                  <span>{phase.results.correct_count} correct</span>
+                  <span>{phase.results.total_count - phase.results.correct_count} incorrect</span>
+                </div>
+              </div>
+
+              <ResultsFooter results={phase.results} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <RoundActionBar
+        phase={phase}
+        isHost={isHost}
+        canSubmit={canSubmit}
+        onSubmit={handleSubmit}
+        onSkip={onSkip}
+        onNext={onNext}
+        kbBottom={kbBottom}
+      />
+    </div>
+  )
+}
+
+function RoundView(props: {
+  phase: RoundPhase
+  isHost: boolean
+  onAnswer: (ans: MyAnswer) => void
+  onTimerEnd: () => void
+  onSkip: () => void
+  onNext: () => void
+}) {
+  if (props.phase.round.contrast_phrase_id) {
+    return <ContrastRoundView {...props} />
+  }
+  return <TextRoundView {...props} />
 }
 
 // ─── Scoreboard phase ─────────────────────────────────────────────────────────
@@ -743,7 +1006,7 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
   const [totalRounds, setTotalRounds] = useState(8)
   const [secondsLeft, setSecondsLeft] = useState(30)
   const playerCountRef = useRef(0)
-  const myAnswerRef = useRef('')
+  const myAnswerRef = useRef<MyAnswer>(EMPTY_TEXT_ANSWER)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const channelRef = useRef<any>(null)
@@ -776,14 +1039,18 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
     const supabase = createClient()
     const { data } = await supabase
       .from('rounds')
-      .select('id, room_id, round_number, status, started_at, duration_seconds, phrase_id, phrases(id, verb, sentence, answer)')
+      .select(`
+        id, room_id, round_number, status, started_at, duration_seconds, phrase_id, contrast_phrase_id,
+        phrases(id, verb, sentence),
+        contrast_phrases(id, battle_id, sentence, infinitive_1, option_a_1, option_b_1, correct_1, infinitive_2, option_a_2, option_b_2, correct_2)
+      `)
       .eq('room_id', rId)
       .not('status', 'in', '(pending,done)')
       .order('round_number', { ascending: false })
       .limit(1)
       .single()
 
-    return data as Round | null
+    return data as unknown as Round | null
   }, [])
 
   const fetchResults = useCallback(async (roundId: string): Promise<RoundResults | null> => {
@@ -796,7 +1063,7 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
     currentRoundIdRef.current = round.id
 
     if (round.status === 'active') {
-      myAnswerRef.current = ''
+      myAnswerRef.current = EMPTY_TEXT_ANSWER
       startTimer(round)
       setPhase({ type: 'active', round, secondsLeft: round.duration_seconds })
     } else if (round.status === 'collecting') {
@@ -884,7 +1151,11 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
           if (['active', 'collecting', 'results', 'scoreboard'].includes(updated.status)) {
             const { data: fullRound } = await supabase
               .from('rounds')
-              .select('id, room_id, round_number, status, started_at, duration_seconds, phrase_id, phrases(id, verb, sentence, answer)')
+              .select(`
+                id, room_id, round_number, status, started_at, duration_seconds, phrase_id, contrast_phrase_id,
+                phrases(id, verb, sentence),
+                contrast_phrases(id, battle_id, sentence, infinitive_1, option_a_1, option_b_1, correct_1, infinitive_2, option_a_2, option_b_2, correct_2)
+              `)
               .eq('id', updated.id)
               .single()
 
@@ -947,7 +1218,7 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
     }
   }, [code]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleAnswer = useCallback(async (ans: string) => {
+  const handleAnswer = useCallback(async (ans: MyAnswer) => {
     const roundId = currentRoundIdRef.current
     if (!roundId) return
 
@@ -965,10 +1236,14 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
     })
     // Keep timer running so it stays visible during collecting phase
 
+    const body = ans.kind === 'text'
+      ? { answer: ans.value }
+      : { selected_1: ans.selected1, selected_2: ans.selected2 ?? undefined }
+
     fetch(`/api/rounds/${roundId}/answer`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ answer: ans }),
+      body: JSON.stringify(body),
     })
   }, [])
 

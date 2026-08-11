@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { AVATAR_IDS } from '@/lib/avatars'
 import { NextRequest, NextResponse } from 'next/server'
+import { checkOrigin } from '@/lib/security'
 import { z } from 'zod'
 
 const BodySchema = z.object({
@@ -8,10 +9,8 @@ const BodySchema = z.object({
 })
 
 export async function PATCH(request: NextRequest) {
-  const origin = request.headers.get('origin')
-  if (origin && origin !== process.env.NEXT_PUBLIC_SITE_URL) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const originError = checkOrigin(request)
+  if (originError) return originError
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

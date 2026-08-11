@@ -3,7 +3,7 @@
 import { use, useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'motion/react'
 import { ChevronRight, Sparkles, SkipForward } from 'lucide-react'
 import OverscrollColor from '@/components/overscroll-color'
@@ -108,6 +108,10 @@ export default function BattlePracticePage({ params }: { params: Promise<{ tense
   const { tenseId } = use(params)
   const battle = BATTLES.find(b => b.id === tenseId) ?? BATTLES[0]
 
+  if (tenseId === 'mixed') {
+    return <ContrastGame battleId="mixed" />
+  }
+
   if (!isContrastBattle(tenseId)) {
     return <PlaceholderComingSoon battle={battle} />
   }
@@ -115,9 +119,12 @@ export default function BattlePracticePage({ params }: { params: Promise<{ tense
   return <ContrastGame battleId={tenseId} />
 }
 
-function ContrastGame({ battleId }: { battleId: ContrastBattleId }) {
+function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
   const router = useRouter()
-  const meta = CONTRAST_META[battleId]
+  const searchParams = useSearchParams()
+  const isMixed = battleId === 'mixed'
+  const staticMeta = CONTRAST_META[isMixed ? 'javi-mimo-zas' : battleId]
+  const isRedo = searchParams.get('mode') === 'redo'
 
   const [phrase, setPhrase] = useState<ContrastPhrase | null>(null)
   const [loading, setLoading] = useState(true)
@@ -126,6 +133,7 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId }) {
   const [submitted, setSubmitted] = useState(false)
   const [showHints, setShowHints] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [sessionTotal, setSessionTotal] = useState(SESSION_TOTAL)
   const [stats, setStats] = useState({ firstTry: 0, halfCorrect: 0, missed: 0 })
   // Whether each gap's two options are shown swapped (top/bottom), re-rolled per phrase so the
   // correct tense isn't always in the same visual slot.
@@ -134,11 +142,16 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId }) {
 
   const usedIdsRef = useRef<Set<string>>(new Set())
   const prefetchRef = useRef<ContrastPhrase | null>(null)
+  const redoQueueRef = useRef<ContrastPhrase[] | null>(null)
   const sessionStart = useRef<number | null>(null)
   const fetchSeqRef = useRef(0)
   const hasInitRef = useRef(false)
 
+  // In mixed mode, each phrase carries its own battle_id — recompute meta per-phrase.
+  const meta = isMixed && phrase ? CONTRAST_META[phrase.battle_id] : staticMeta
+
   const prefetchNext = useCallback(async (currentIds: Set<string>) => {
+    if (isRedo || isMixed) return
     try {
       const exclude = [...currentIds].join(',')
       const url = `/api/contrast-phrases/random?battle_id=${battleId}${exclude ? `&exclude=${exclude}` : ''}`
@@ -146,7 +159,7 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId }) {
       const json = await res.json()
       if (json.data) prefetchRef.current = json.data
     } catch { /* silent */ }
-  }, [battleId])
+  }, [battleId, isRedo, isMixed])
 
   const fetchPhrase = useCallback(async () => {
     const seq = ++fetchSeqRef.current
@@ -155,6 +168,25 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId }) {
     setSubmitted(false)
     setSwap1(Math.random() < 0.5)
     setSwap2(Math.random() < 0.5)
+
+    if (isRedo) {
+      if (redoQueueRef.current === null) {
+        setLoading(true)
+        const url = isMixed
+          ? '/api/contrast-phrases/mistakes/all'
+          : `/api/contrast-phrases/mistakes?battle_id=${battleId}`
+        const res = await fetch(url)
+        const json = await res.json()
+        if (seq !== fetchSeqRef.current) return
+        const list: ContrastPhrase[] = json.data ?? []
+        redoQueueRef.current = list
+        setSessionTotal(list.length)
+      }
+      const next = redoQueueRef.current ? (redoQueueRef.current.shift() ?? null) : null
+      setPhrase(next)
+      setLoading(false)
+      return
+    }
 
     if (prefetchRef.current) {
       const p = prefetchRef.current
@@ -183,7 +215,7 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId }) {
     } finally {
       if (seq === fetchSeqRef.current) setLoading(false)
     }
-  }, [battleId, prefetchNext])
+  }, [battleId, prefetchNext, isRedo, isMixed])
 
   useEffect(() => {
     if (!hasInitRef.current) {
@@ -193,6 +225,10 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId }) {
     }
   }, [fetchPhrase])
 
+  useEffect(() => {
+    if (isRedo && !loading && !phrase) router.replace('/learn')
+  }, [isRedo, loading, phrase, router])
+
   const gapCount = phrase ? phraseGapCount(phrase) : 1
   const icons = phrase ? CONTRAST_ICON[phrase.battle_id] : CONTRAST_ICON['javi-zas']
   const canCheck = selected1 !== null && (gapCount === 1 || selected2 !== null)
@@ -200,6 +236,25 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId }) {
   const handleCheck = () => {
     if (!canCheck) setSubmitted(true) // no-op guard, canCheck already gates the button
     setSubmitted(true)
+
+    if (!phrase) return
+    const correct1 = selected1 === phrase.correct_1
+    const correct2 = gapCount === 2 ? selected2 === phrase.correct_2 : true
+    const isFull = correct1 && correct2
+
+    if (isFull) {
+      fetch('/api/contrast-mistakes', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contrast_phrase_id: phrase.id }),
+      }).catch(() => {})
+    } else {
+      fetch('/api/contrast-mistakes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contrast_phrase_id: phrase.id, battle_id: phrase.battle_id }),
+      }).catch(() => {})
+    }
   }
 
   const outcome = (() => {
@@ -221,7 +276,7 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId }) {
     else newStats.missed++
     setStats(newStats)
 
-    if (next >= SESSION_TOTAL) {
+    if (next >= sessionTotal) {
       const start = sessionStart.current ?? Date.now()
       const duration = Math.round((Date.now() - start) / 1000)
       const p = new URLSearchParams({
@@ -230,7 +285,7 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId }) {
         missed: String(newStats.missed),
         duration: String(duration),
       })
-      router.push(`/practice/${battleId}/results?${p.toString()}`)
+      router.push(`/practice/${phrase.battle_id}/results?${p.toString()}`)
       return
     }
     setProgress(next)

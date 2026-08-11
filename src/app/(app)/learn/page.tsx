@@ -9,11 +9,12 @@ import { TENSE_META } from '@/lib/game-logic'
 import { createClient } from '@/lib/supabase/client'
 import { getLevelInfo, catImagePath } from '@/lib/levels'
 import { resolveAvatarPath } from '@/lib/avatars'
+import type { ContrastBattleId } from '@/lib/contrast-game-logic'
 import OverscrollColor from '@/components/overscroll-color'
 
 type Subcategory = { label: string; count: number; lessonId?: string }
 type TenseReview = { tenseId: string; count: number; lessonId?: string; subcategories: Subcategory[] }
-type ComboReview = { comboId: string; label: string; characters: string[]; count: number }
+type ComboReview = { comboId: ContrastBattleId; label: string; characters: string[]; count: number }
 
 // Static lesson-content mapping: which theory page backs each tense/subcategory.
 // Also defines the fixed set of tenses/subcategories always shown, even with 0 mistakes,
@@ -72,12 +73,27 @@ function groupMistakes(rows: MistakeRow[]): TenseReview[] {
   })
 }
 
-const LIO_REVIEW: ComboReview[] = [
-  { comboId: 'perfecto-indefinido', label: 'P.Perfecto - Indefinido', characters: ['javi-tostado', 'zas'], count: 3 },
-  { comboId: 'imperfecto-indefinido', label: 'Imperfecto - Indefinido', characters: ['mimo', 'zas'], count: 17 },
-  { comboId: 'perfecto-imperfecto-indefinido', label: 'P.Perfecto - Imperfecto - Indefinido', characters: ['javi-tostado', 'mimo', 'zas'], count: 9 },
-]
-const LIO_TOTAL = LIO_REVIEW.reduce((s, t) => s + t.count, 0)
+const COMBO_META: Record<ContrastBattleId, { label: string; characters: string[] }> = {
+  'javi-zas':      { label: 'P.Perfecto - Indefinido', characters: ['javi-tostado', 'zas'] },
+  'mimo-zas':      { label: 'Imperfecto - Indefinido', characters: ['mimo', 'zas'] },
+  'javi-mimo-zas': { label: 'P.Perfecto - Imperfecto - Indefinido', characters: ['javi-tostado', 'mimo', 'zas'] },
+}
+
+type ContrastMistakeRow = { contrast_phrase_id: string; battle_id: ContrastBattleId }
+
+function groupContrastMistakes(rows: ContrastMistakeRow[]): ComboReview[] {
+  const byBattle = new Map<ContrastBattleId, number>()
+  for (const row of rows) {
+    byBattle.set(row.battle_id, (byBattle.get(row.battle_id) ?? 0) + 1)
+  }
+
+  return (Object.keys(COMBO_META) as ContrastBattleId[]).map(comboId => ({
+    comboId,
+    label: COMBO_META[comboId].label,
+    characters: COMBO_META[comboId].characters,
+    count: byBattle.get(comboId) ?? 0,
+  }))
+}
 
 function TenseReviewCard({ tense }: { tense: TenseReview }) {
   const [open, setOpen] = useState(false)
@@ -198,12 +214,18 @@ function ComboReviewCard({ combo }: { combo: ComboReview }) {
             className="overflow-hidden"
           >
             <div className="px-3.5 pb-3.5 flex items-center gap-2">
-              <button
-                title="Próximamente"
-                className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-rose-600"
-              >
-                Redo all
-              </button>
+              {combo.count > 0 ? (
+                <Link
+                  href={`/practice/${combo.comboId}?mode=redo`}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white text-center bg-rose-600"
+                >
+                  Redo all
+                </Link>
+              ) : (
+                <span className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white text-center bg-gray-300">
+                  No mistakes
+                </span>
+              )}
               <Link
                 href={`/learn/${combo.comboId}`}
                 title="Ver teoría"
@@ -225,6 +247,11 @@ export default function LearnLandingPage() {
   const [avatar, setAvatar] = useState('/images/nav/user-image.svg')
 
   const [escribiendoReview, setEscribiendoReview] = useState<TenseReview[]>([])
+  const [lioReview, setLioReview] = useState<ComboReview[]>(
+    (Object.keys(COMBO_META) as ContrastBattleId[]).map(comboId => ({
+      comboId, label: COMBO_META[comboId].label, characters: COMBO_META[comboId].characters, count: 0,
+    }))
+  )
 
   useEffect(() => {
     const supabase = createClient()
@@ -248,7 +275,15 @@ export default function LearnLandingPage() {
       .catch(() => {})
   }, [])
 
+  useEffect(() => {
+    fetch('/api/contrast-mistakes')
+      .then(r => r.json())
+      .then((json: { data?: ContrastMistakeRow[] }) => setLioReview(groupContrastMistakes(json.data ?? [])))
+      .catch(() => {})
+  }, [])
+
   const escribiendoTotal = escribiendoReview.reduce((s, t) => s + t.count, 0)
+  const lioTotal = lioReview.reduce((s, c) => s + c.count, 0)
 
   return (
     <div className="flex flex-col min-h-dvh">
@@ -301,7 +336,7 @@ export default function LearnLandingPage() {
           <div className="flex-1 flex items-center gap-2.5 rounded-2xl bg-rose-50 border border-rose-100 px-4 py-3.5">
             <Image src="/images/profile/lio.png" alt="" width={32} height={32} className="object-contain" />
             <div>
-              <p className="text-xl font-black text-rose-500 leading-none">{LIO_TOTAL}</p>
+              <p className="text-xl font-black text-rose-500 leading-none">{lioTotal}</p>
               <p className="text-[11px] text-gray-400 mt-0.5">review items</p>
             </div>
           </div>
@@ -317,22 +352,36 @@ export default function LearnLandingPage() {
             <div className="flex flex-col gap-6">
               {escribiendoReview.map(t => <TenseReviewCard key={t.tenseId} tense={t} />)}
             </div>
-            <button
-              title="Próximamente"
-              className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-white"
-              style={{ backgroundColor: 'var(--bsp-blue)' }}
-            >
-              <span className="flex items-center gap-3">
-                <span className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-                  <RotateCw className="w-4 h-4" />
+            {escribiendoTotal > 0 ? (
+              <Link
+                href="/escribiendo/mixed?mode=redo"
+                className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-white"
+                style={{ backgroundColor: 'var(--bsp-blue)' }}
+              >
+                <span className="flex items-center gap-3">
+                  <span className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                    <RotateCw className="w-4 h-4" />
+                  </span>
+                  <span className="text-left">
+                    <span className="block text-sm font-black">Redo all mistakes</span>
+                    <span className="block text-xs text-white/70">{escribiendoTotal} mistakes · mixed session</span>
+                  </span>
                 </span>
-                <span className="text-left">
-                  <span className="block text-sm font-black">Redo all mistakes</span>
-                  <span className="block text-xs text-white/70">{escribiendoTotal} mistakes · mixed session</span>
+                <ChevronRight className="w-4 h-4 shrink-0" />
+              </Link>
+            ) : (
+              <div className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-white bg-gray-300">
+                <span className="flex items-center gap-3">
+                  <span className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                    <RotateCw className="w-4 h-4" />
+                  </span>
+                  <span className="text-left">
+                    <span className="block text-sm font-black">Redo all mistakes</span>
+                    <span className="block text-xs text-white/70">No mistakes yet</span>
+                  </span>
                 </span>
-              </span>
-              <ChevronRight className="w-4 h-4 shrink-0" />
-            </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -344,20 +393,34 @@ export default function LearnLandingPage() {
           </div>
           <div className="rounded-3xl p-4 flex flex-col gap-6" style={{ backgroundColor: '#F4DCE1' }}>
             <div className="flex flex-col gap-6">
-              {LIO_REVIEW.map(c => <ComboReviewCard key={c.comboId} combo={c} />)}
+              {lioReview.map(c => <ComboReviewCard key={c.comboId} combo={c} />)}
             </div>
-            <button title="Próximamente" className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-white bg-rose-600">
-              <span className="flex items-center gap-3">
-                <span className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-                  <RotateCw className="w-4 h-4" />
+            {lioTotal > 0 ? (
+              <Link href="/practice/mixed?mode=redo" className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-white bg-rose-600">
+                <span className="flex items-center gap-3">
+                  <span className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                    <RotateCw className="w-4 h-4" />
+                  </span>
+                  <span className="text-left">
+                    <span className="block text-sm font-black">Redo all mistakes</span>
+                    <span className="block text-xs text-white/70">{lioTotal} mistakes · mixed session</span>
+                  </span>
                 </span>
-                <span className="text-left">
-                  <span className="block text-sm font-black">Redo all mistakes</span>
-                  <span className="block text-xs text-white/70">{LIO_TOTAL} mistakes · mixed session</span>
+                <ChevronRight className="w-4 h-4 shrink-0" />
+              </Link>
+            ) : (
+              <div className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-white bg-gray-300">
+                <span className="flex items-center gap-3">
+                  <span className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                    <RotateCw className="w-4 h-4" />
+                  </span>
+                  <span className="text-left">
+                    <span className="block text-sm font-black">Redo all mistakes</span>
+                    <span className="block text-xs text-white/70">No mistakes yet</span>
+                  </span>
                 </span>
-              </span>
-              <ChevronRight className="w-4 h-4 shrink-0" />
-            </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

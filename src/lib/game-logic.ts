@@ -7,6 +7,8 @@ export type Phrase = {
   person: string
   expected_stem?: string | null
   stem_group?: string | null
+  /** Only present when fetched from a pooled/mixed source (e.g. the cross-tense redo queue). */
+  tense?: string
 }
 
 export type ValidationStatus =

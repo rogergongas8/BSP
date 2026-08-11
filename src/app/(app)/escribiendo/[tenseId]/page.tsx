@@ -185,10 +185,11 @@ function StatusRow({ label, ok }: { label: string; ok: boolean }) {
 
 export default function PracticePage({ params }: { params: Promise<{ tenseId: string }> }) {
   const { tenseId: rawTenseId } = use(params)
+  const isMixed = rawTenseId === 'mixed'
   const tenseId = resolveTenseId(rawTenseId) ?? rawTenseId
   const router = useRouter()
   const searchParams = useSearchParams()
-  const meta = TENSE_META[tenseId] ?? TENSE_META['indefinido']
+  const staticMeta = TENSE_META[tenseId] ?? TENSE_META['indefinido']
 
   const isRedo = searchParams.get('mode') === 'redo'
   const redoSubcategory = searchParams.get('subcategory') ?? undefined
@@ -209,6 +210,9 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   const usedIdsRef    = useRef<Set<string>>(new Set())
   const sessionStart  = useRef<number | null>(null)
   const inputRef      = useRef<HTMLInputElement>(null)
+
+  // In mixed mode, each phrase carries its own tense — recompute meta per-phrase.
+  const meta = isMixed && phrase?.tense ? (TENSE_META[phrase.tense] ?? staticMeta) : staticMeta
   const charName = meta.characterName
 
   const prefetchRef = useRef<Phrase | null>(null)
@@ -218,15 +222,15 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   const hasInitRef = useRef(false)
 
   const prefetchNext = useCallback(async (currentIds: Set<string>) => {
-    if (isRedo) return
+    if (isRedo || isMixed) return
     try {
       const exclude = [...currentIds].join(',')
-      const url = `/api/phrases/random?tense=${encodeURIComponent(meta.tense)}${exclude ? `&exclude=${exclude}` : ''}`
+      const url = `/api/phrases/random?tense=${encodeURIComponent(staticMeta.tense)}${exclude ? `&exclude=${exclude}` : ''}`
       const res = await fetch(url)
       const json = await res.json()
       if (json.data) prefetchRef.current = json.data
     } catch { /* silent */ }
-  }, [meta.tense, isRedo])
+  }, [staticMeta.tense, isRedo, isMixed])
 
   const fetchPhrase = useCallback(async () => {
     const seq = ++fetchSeqRef.current
@@ -243,7 +247,9 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
     if (isRedo) {
       if (redoQueueRef.current === null) {
         setLoading(true)
-        const url = `/api/phrases/mistakes?tense=${encodeURIComponent(meta.tense)}${redoSubcategory ? `&subcategory=${encodeURIComponent(redoSubcategory)}` : ''}`
+        const url = isMixed
+          ? '/api/phrases/mistakes/all'
+          : `/api/phrases/mistakes?tense=${encodeURIComponent(staticMeta.tense)}${redoSubcategory ? `&subcategory=${encodeURIComponent(redoSubcategory)}` : ''}`
         const res = await fetch(url)
         const json = await res.json()
         if (seq !== fetchSeqRef.current) return
@@ -269,7 +275,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
 
     setLoading(true)
     const exclude = [...usedIdsRef.current].join(',')
-    const url = `/api/phrases/random?tense=${encodeURIComponent(meta.tense)}${exclude ? `&exclude=${exclude}` : ''}`
+    const url = `/api/phrases/random?tense=${encodeURIComponent(staticMeta.tense)}${exclude ? `&exclude=${exclude}` : ''}`
     try {
       const res = await fetch(url)
       const json = await res.json()
@@ -286,7 +292,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
         setLoading(false)
       }
     }
-  }, [meta.tense, prefetchNext, isRedo, redoSubcategory])
+  }, [staticMeta.tense, prefetchNext, isRedo, isMixed, redoSubcategory])
 
   useEffect(() => {
     if (!hasInitRef.current) {
@@ -321,7 +327,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
       fetch('/api/mistakes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phrase_id: phrase.id, tense: meta.tense, phrase_type: phrase.type }),
+        body: JSON.stringify({ phrase_id: phrase.id, tense: phrase.tense ?? staticMeta.tense, phrase_type: phrase.type }),
       }).catch(() => {})
     } else {
       fetch('/api/mistakes', {
@@ -330,7 +336,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
         body: JSON.stringify({ phrase_id: phrase.id }),
       }).catch(() => {})
     }
-  }, [phrase, input, meta.tense])
+  }, [phrase, input, staticMeta.tense])
 
   const handleNext = () => {
     inputRef.current?.focus()

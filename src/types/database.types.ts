@@ -39,6 +39,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      contrast_mistakes: {
+        Row: {
+          battle_id: string
+          contrast_phrase_id: string
+          created_at: string
+          id: string
+          resolved_at: string | null
+          user_id: string
+        }
+        Insert: {
+          battle_id: string
+          contrast_phrase_id: string
+          created_at?: string
+          id?: string
+          resolved_at?: string | null
+          user_id: string
+        }
+        Update: {
+          battle_id?: string
+          contrast_phrase_id?: string
+          created_at?: string
+          id?: string
+          resolved_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contrast_mistakes_contrast_phrase_id_fkey"
+            columns: ["contrast_phrase_id"]
+            isOneToOne: false
+            referencedRelation: "contrast_phrases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contrast_mistakes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contrast_phrases: {
         Row: {
           battle_id: string
@@ -327,6 +369,8 @@ export type Database = {
         Row: {
           code: string
           created_at: string
+          game_mode: string
+          game_type: string
           host_id: string
           id: string
           max_players: number
@@ -336,6 +380,8 @@ export type Database = {
         Insert: {
           code: string
           created_at?: string
+          game_mode?: string
+          game_type?: string
           host_id: string
           id?: string
           max_players?: number
@@ -345,6 +391,8 @@ export type Database = {
         Update: {
           code?: string
           created_at?: string
+          game_mode?: string
+          game_type?: string
           host_id?: string
           id?: string
           max_players?: number
@@ -369,6 +417,8 @@ export type Database = {
           points_awarded: number
           response_time_ms: number | null
           round_id: string
+          selected_1: number | null
+          selected_2: number | null
           submitted_at: string
           user_id: string
           validation_status: string
@@ -380,6 +430,8 @@ export type Database = {
           points_awarded?: number
           response_time_ms?: number | null
           round_id: string
+          selected_1?: number | null
+          selected_2?: number | null
           submitted_at?: string
           user_id: string
           validation_status?: string
@@ -391,6 +443,8 @@ export type Database = {
           points_awarded?: number
           response_time_ms?: number | null
           round_id?: string
+          selected_1?: number | null
+          selected_2?: number | null
           submitted_at?: string
           user_id?: string
           validation_status?: string
@@ -414,33 +468,43 @@ export type Database = {
       }
       rounds: {
         Row: {
+          contrast_phrase_id: string | null
           duration_seconds: number
           id: string
-          phrase_id: string
+          phrase_id: string | null
           room_id: string
           round_number: number
           started_at: string | null
           status: string
         }
         Insert: {
+          contrast_phrase_id?: string | null
           duration_seconds?: number
           id?: string
-          phrase_id: string
+          phrase_id?: string | null
           room_id: string
           round_number: number
           started_at?: string | null
           status?: string
         }
         Update: {
+          contrast_phrase_id?: string | null
           duration_seconds?: number
           id?: string
-          phrase_id?: string
+          phrase_id?: string | null
           room_id?: string
           round_number?: number
           started_at?: string | null
           status?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "rounds_contrast_phrase_id_fkey"
+            columns: ["contrast_phrase_id"]
+            isOneToOne: false
+            referencedRelation: "contrast_phrases"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "rounds_phrase_id_fkey"
             columns: ["phrase_id"]

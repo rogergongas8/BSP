@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { checkAndAwardAchievements } from '@/lib/check-achievements'
 import { getLevelInfo } from '@/lib/levels'
 import { NextRequest, NextResponse } from 'next/server'
+import { checkOrigin } from '@/lib/security'
 import { z } from 'zod'
 
 const VALID_TENSES = ['indefinido', 'imperfecto', 'pretérito-perfecto', 'javi-zas', 'mimo-zas', 'javi-mimo-zas'] as const
@@ -27,10 +28,8 @@ const BodySchema = z.object({
 })
 
 export async function POST(request: NextRequest) {
-  const origin = request.headers.get('origin')
-  if (origin && origin !== process.env.NEXT_PUBLIC_SITE_URL) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const originError = checkOrigin(request)
+  if (originError) return originError
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

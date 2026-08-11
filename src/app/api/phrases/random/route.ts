@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { checkOrigin } from '@/lib/security'
 import { z } from 'zod'
 
 const QuerySchema = z.object({
@@ -11,10 +12,8 @@ const QuerySchema = z.object({
 const UUID_RE = /^[0-9a-f-]{36}$/i
 
 export async function GET(request: NextRequest) {
-  const origin = request.headers.get('origin')
-  if (origin && origin !== process.env.NEXT_PUBLIC_SITE_URL) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const originError = checkOrigin(request)
+  if (originError) return originError
 
   const supabaseAuth = await createClient()
   const { data: { user } } = await supabaseAuth.auth.getUser()
@@ -39,7 +38,7 @@ export async function GET(request: NextRequest) {
       .select('*', { count: 'exact', head: true })
       .eq('tense', tense)
     if (withExclude && excludeIds.length > 0)
-      countQ = countQ.not('id', 'in', `(${excludeIds.join(',')})`)
+      countQ = countQ.not('id', 'in', excludeIds)
 
     const { count } = await countQ
     if (!count) return null
@@ -51,7 +50,7 @@ export async function GET(request: NextRequest) {
       .select('id, verb, sentence, answer, type, person, expected_stem, stem_group')
       .eq('tense', tense)
     if (withExclude && excludeIds.length > 0)
-      dataQ = dataQ.not('id', 'in', `(${excludeIds.join(',')})`)
+      dataQ = dataQ.not('id', 'in', excludeIds)
 
     const { data, error } = await dataQ.range(offset, offset).single()
     return error ? null : data

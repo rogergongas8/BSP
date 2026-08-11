@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
+import { checkOrigin } from '@/lib/security'
 
 export async function POST(
   request: NextRequest,
@@ -8,10 +9,8 @@ export async function POST(
 ) {
   const { code } = await params
 
-  const origin = request.headers.get('origin')
-  if (origin && origin !== process.env.NEXT_PUBLIC_SITE_URL) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const originError = checkOrigin(request)
+  if (originError) return originError
 
   if (!/^[0-9]{4}$/.test(code)) {
     return NextResponse.json({ error: 'Invalid room code' }, { status: 400 })

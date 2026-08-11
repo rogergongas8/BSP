@@ -2,16 +2,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { checkOrigin } from '@/lib/security'
-import { z } from 'zod'
 
-const VALID_TENSES = ['indefinido', 'imperfecto', 'pretérito-perfecto'] as const
-const VALID_SUBCATEGORIES = ['Regular', 'Irregular'] as const
-
-const QuerySchema = z.object({
-  tense:       z.enum(VALID_TENSES),
-  subcategory: z.enum(VALID_SUBCATEGORIES).optional(),
-})
-
+/** Same as /api/phrases/mistakes but pooled across every tense — backs the "Redo all" mixed session. */
 export async function GET(request: NextRequest) {
   const originError = checkOrigin(request)
   if (originError) return originError
@@ -20,34 +12,21 @@ export async function GET(request: NextRequest) {
   const { data: { user } } = await supabaseAuth.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const parsed = QuerySchema.safeParse({
-    tense:       request.nextUrl.searchParams.get('tense'),
-    subcategory: request.nextUrl.searchParams.get('subcategory') ?? undefined,
-  })
-  if (!parsed.success) return NextResponse.json({ error: 'Invalid params' }, { status: 400 })
-
-  const { tense, subcategory } = parsed.data
-
   const supabase = await createClient()
   const { data: mistakes, error: mistakesError } = await supabase
     .from('phrase_mistakes')
-    .select('phrase_id, phrase_type')
+    .select('phrase_id')
     .eq('user_id', user.id)
-    .eq('tense', tense)
     .is('resolved_at', null)
   if (mistakesError) return NextResponse.json({ error: 'Failed to load mistakes' }, { status: 500 })
 
-  const filtered = subcategory
-    ? mistakes.filter(m => (m.phrase_type.toLowerCase().includes('irreg') ? 'Irregular' : 'Regular') === subcategory)
-    : mistakes
-
-  const phraseIds = [...new Set(filtered.map(m => m.phrase_id))]
+  const phraseIds = [...new Set(mistakes.map(m => m.phrase_id))]
   if (phraseIds.length === 0) return NextResponse.json({ data: [] })
 
   const admin = createAdminClient()
   const { data: phrases, error: phrasesError } = await admin
     .from('phrases')
-    .select('id, verb, sentence, answer, type, person, expected_stem, stem_group')
+    .select('id, verb, sentence, answer, type, person, expected_stem, stem_group, tense')
     .in('id', phraseIds)
 
   if (phrasesError) return NextResponse.json({ error: 'Failed to load phrases' }, { status: 500 })

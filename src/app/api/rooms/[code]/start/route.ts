@@ -1,9 +1,18 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
+import { checkOrigin } from '@/lib/security'
 
 const TOTAL_ROUNDS = 8
 const DURATION_SECONDS = 30
+
+// javi-mimo-zas has no dedicated data — it draws from both underlying battles at random,
+// same convention as /api/contrast-phrases/random.
+const BATTLE_SOURCE_IDS: Record<string, string[]> = {
+  'javi-zas':      ['javi-zas'],
+  'mimo-zas':      ['mimo-zas'],
+  'javi-mimo-zas': ['javi-zas', 'mimo-zas'],
+}
 
 export async function POST(
   request: NextRequest,
@@ -11,10 +20,8 @@ export async function POST(
 ) {
   const { code } = await params
 
-  const origin = request.headers.get('origin')
-  if (origin && origin !== process.env.NEXT_PUBLIC_SITE_URL) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const originError = checkOrigin(request)
+  if (originError) return originError
 
   if (!/^[0-9]{4}$/.test(code)) {
     return NextResponse.json({ error: 'Invalid room code' }, { status: 400 })
@@ -28,7 +35,7 @@ export async function POST(
 
   const { data: room } = await admin
     .from('rooms')
-    .select('id, host_id, status')
+    .select('id, host_id, status, game_type, game_mode')
     .eq('code', code)
     .single()
 
@@ -45,26 +52,56 @@ export async function POST(
     return NextResponse.json({ error: 'Need at least 2 players' }, { status: 409 })
   }
 
-  // Pick TOTAL_ROUNDS random phrases
-  const { data: allPhrases } = await admin
-    .from('phrases')
-    .select('id')
-    .eq('tense', 'indefinido')
+  const isContraste = room.game_type === 'contraste'
 
-  if (!allPhrases || allPhrases.length < TOTAL_ROUNDS) {
-    return NextResponse.json({ error: 'Not enough phrases' }, { status: 500 })
+  // Pick TOTAL_ROUNDS random phrases from the pool matching this room's game_mode
+  const roundsToInsert: {
+    room_id: string
+    round_number: number
+    status: 'pending'
+    duration_seconds: number
+    phrase_id?: string
+    contrast_phrase_id?: string
+  }[] = []
+
+  if (isContraste) {
+    const sourceIds = BATTLE_SOURCE_IDS[room.game_mode] ?? [room.game_mode]
+    const { data: allPhrases } = await admin
+      .from('contrast_phrases')
+      .select('id')
+      .in('battle_id', sourceIds)
+
+    if (!allPhrases || allPhrases.length < TOTAL_ROUNDS) {
+      return NextResponse.json({ error: 'Not enough phrases' }, { status: 500 })
+    }
+
+    const shuffled = [...allPhrases].sort(() => Math.random() - 0.5).slice(0, TOTAL_ROUNDS)
+    roundsToInsert.push(...shuffled.map((p, i) => ({
+      room_id: room.id,
+      contrast_phrase_id: p.id,
+      round_number: i + 1,
+      status: 'pending' as const,
+      duration_seconds: DURATION_SECONDS,
+    })))
+  } else {
+    const { data: allPhrases } = await admin
+      .from('phrases')
+      .select('id')
+      .eq('tense', room.game_mode)
+
+    if (!allPhrases || allPhrases.length < TOTAL_ROUNDS) {
+      return NextResponse.json({ error: 'Not enough phrases' }, { status: 500 })
+    }
+
+    const shuffled = [...allPhrases].sort(() => Math.random() - 0.5).slice(0, TOTAL_ROUNDS)
+    roundsToInsert.push(...shuffled.map((p, i) => ({
+      room_id: room.id,
+      phrase_id: p.id,
+      round_number: i + 1,
+      status: 'pending' as const,
+      duration_seconds: DURATION_SECONDS,
+    })))
   }
-
-  const shuffled = [...allPhrases].sort(() => Math.random() - 0.5).slice(0, TOTAL_ROUNDS)
-
-  // Create all rounds as 'pending'
-  const roundsToInsert = shuffled.map((p, i) => ({
-    room_id: room.id,
-    phrase_id: p.id,
-    round_number: i + 1,
-    status: 'pending' as const,
-    duration_seconds: DURATION_SECONDS,
-  }))
 
   const { data: rounds, error: roundsError } = await admin
     .from('rounds')
