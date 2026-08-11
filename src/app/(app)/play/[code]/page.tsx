@@ -600,7 +600,7 @@ function ContrastRoundView({
               showHints={false}
               iconA={icons.a}
               iconB={icons.b}
-              bgColor={GAP_COLORS[1].bg}
+              bgColor={gapCount === 2 ? GAP_COLORS[1].bg : 'transparent'}
               onSelect={setSelected1}
             />
             {gapCount === 2 && phrase.option_a_2 && phrase.option_b_2 && phrase.correct_2 && (
@@ -658,7 +658,7 @@ function ContrastRoundView({
                   showHints={false}
                   iconA={icons.a}
                   iconB={icons.b}
-                  bgColor={GAP_COLORS[1].bg}
+                  bgColor={gapCount === 2 ? GAP_COLORS[1].bg : 'transparent'}
                   onSelect={() => {}}
                 />
                 {gapCount === 2 && phrase.option_a_2 && phrase.option_b_2 && phrase.correct_2 && (

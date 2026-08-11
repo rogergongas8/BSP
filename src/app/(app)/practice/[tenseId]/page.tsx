@@ -373,7 +373,7 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
                 showHints={showHints}
                 iconA={swap1 ? icons.b : icons.a}
                 iconB={swap1 ? icons.a : icons.b}
-                bgColor={GAP_COLORS[1].bg}
+                bgColor={gapCount === 2 ? GAP_COLORS[1].bg : 'transparent'}
                 onSelect={(displayOpt) => {
                   if (submitted) return
                   const real = swap1 ? (displayOpt === 1 ? 2 : 1) : displayOpt
