@@ -242,6 +242,7 @@ export type Database = {
       }
       practice_sessions: {
         Row: {
+          client_session_id: string | null
           completed_at: string
           correct: number
           duration_seconds: number
@@ -255,6 +256,7 @@ export type Database = {
           with_hints: number
         }
         Insert: {
+          client_session_id?: string | null
           completed_at?: string
           correct: number
           duration_seconds?: number
@@ -268,6 +270,7 @@ export type Database = {
           with_hints?: number
         }
         Update: {
+          client_session_id?: string | null
           completed_at?: string
           correct?: number
           duration_seconds?: number

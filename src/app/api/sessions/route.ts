@@ -18,13 +18,14 @@ const XP_AT_100: Record<string, number> = {
 }
 
 const BodySchema = z.object({
-  tense:            z.enum(VALID_TENSES),
-  total:            z.number().int().min(1).max(50),
-  first_try:        z.number().int().min(0),
-  with_hints:       z.number().int().min(0),
-  skipped:          z.number().int().min(0),
-  half_correct:     z.number().int().min(0).default(0),
-  duration_seconds: z.number().int().min(0).max(7200).default(0),
+  tense:              z.enum(VALID_TENSES),
+  total:              z.number().int().min(1).max(50),
+  first_try:          z.number().int().min(0),
+  with_hints:         z.number().int().min(0),
+  skipped:            z.number().int().min(0),
+  half_correct:       z.number().int().min(0).default(0),
+  duration_seconds:   z.number().int().min(0).max(7200).default(0),
+  client_session_id:  z.string().uuid(),
 })
 
 export async function POST(request: NextRequest) {
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
   const parsed = BodySchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
 
-  const { tense, total, first_try, with_hints, skipped, half_correct, duration_seconds } = parsed.data
+  const { tense, total, first_try, with_hints, skipped, half_correct, duration_seconds, client_session_id } = parsed.data
   const fixed   = total - first_try - with_hints - skipped - half_correct
   const correct = Math.max(0, first_try + fixed)
 
@@ -47,12 +48,30 @@ export async function POST(request: NextRequest) {
   const scorePct  = total > 0 ? Math.round((first_try * 10 + fixed * 8 + with_hints * 6 + half_correct * 5) / (total * 10) * 100) : 0
   const xpEarned  = Math.round((scorePct / 100) * (XP_AT_100[tense] ?? 25))
 
+  // Idempotency: a retried/duplicate mount of the results page must not double-save
+  const { data: existing } = await supabase
+    .from('practice_sessions')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('client_session_id', client_session_id)
+    .maybeSingle()
+
+  if (existing) {
+    return NextResponse.json({ ok: true, xpEarned: 0, newAchievements: [], leveledUp: false, newLevel: null })
+  }
+
   // Save session
   const { error: sessionError } = await supabase
     .from('practice_sessions')
-    .insert({ user_id: user.id, tense, total, correct, first_try, with_hints, skipped, half_correct, duration_seconds })
+    .insert({ user_id: user.id, tense, total, correct, first_try, with_hints, skipped, half_correct, duration_seconds, client_session_id })
 
-  if (sessionError) return NextResponse.json({ error: 'Failed to save session' }, { status: 500 })
+  if (sessionError) {
+    // Unique violation on (user_id, client_session_id) = a concurrent duplicate request won the race
+    if (sessionError.code === '23505') {
+      return NextResponse.json({ ok: true, xpEarned: 0, newAchievements: [], leveledUp: false, newLevel: null })
+    }
+    return NextResponse.json({ error: 'Failed to save session' }, { status: 500 })
+  }
 
   // Update profile: XP + streak + activities_completed (admin bypasses RLS)
   const admin = createAdminClient()

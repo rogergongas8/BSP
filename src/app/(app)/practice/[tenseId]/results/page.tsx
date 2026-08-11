@@ -72,6 +72,14 @@ export default function ContrastResultsPage({ params }: { params: Promise<{ tens
   useEffect(() => {
     if (savedRef.current || total === 0) return
     savedRef.current = true
+
+    const storageKey = `bsp_session_id_${tenseId}_${searchParams.toString()}`
+    let clientSessionId = sessionStorage.getItem(storageKey)
+    if (!clientSessionId) {
+      clientSessionId = crypto.randomUUID()
+      sessionStorage.setItem(storageKey, clientSessionId)
+    }
+
     fetch('/api/sessions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -83,6 +91,7 @@ export default function ContrastResultsPage({ params }: { params: Promise<{ tens
         skipped: 0,
         half_correct: halfCorrect,
         duration_seconds: duration,
+        client_session_id: clientSessionId,
       }),
     })
       .then(r => r.json())

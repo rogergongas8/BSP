@@ -91,10 +91,18 @@ export default function ResultsPage({ params }: { params: Promise<{ tenseId: str
   useEffect(() => {
     if (savedRef.current || total === 0) return
     savedRef.current = true
+
+    const storageKey = `bsp_session_id_${tenseId}_${searchParams.toString()}`
+    let clientSessionId = sessionStorage.getItem(storageKey)
+    if (!clientSessionId) {
+      clientSessionId = crypto.randomUUID()
+      sessionStorage.setItem(storageKey, clientSessionId)
+    }
+
     fetch('/api/sessions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tense: meta.tense, total, first_try: firstTry, with_hints: withHints, skipped, duration_seconds: duration }),
+      body: JSON.stringify({ tense: meta.tense, total, first_try: firstTry, with_hints: withHints, skipped, duration_seconds: duration, client_session_id: clientSessionId }),
     })
       .then(r => r.json())
       .then(json => {
