@@ -126,6 +126,35 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_challenge_completions: {
+        Row: {
+          completion_date: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          completion_date?: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          completion_date?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_challenge_completions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       daily_challenges: {
         Row: {
           day_index: number
@@ -240,6 +269,38 @@ export type Database = {
         }
         Relationships: []
       }
+      play_time_logs: {
+        Row: {
+          id: string
+          logged_at: string
+          seconds: number
+          source: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          logged_at?: string
+          seconds: number
+          source: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          logged_at?: string
+          seconds?: number
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "play_time_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       practice_sessions: {
         Row: {
           client_session_id: string | null
@@ -298,8 +359,12 @@ export type Database = {
           activities_completed: number
           avatar_id: string | null
           created_at: string
+          daily_challenge_streak: number
+          daily_challenges_completed: number
+          games_won: number
           id: string
           last_activity_date: string | null
+          last_daily_challenge_date: string | null
           streak: number
           top3_finishes: number
           total_xp: number
@@ -310,8 +375,12 @@ export type Database = {
           activities_completed?: number
           avatar_id?: string | null
           created_at?: string
+          daily_challenge_streak?: number
+          daily_challenges_completed?: number
+          games_won?: number
           id: string
           last_activity_date?: string | null
+          last_daily_challenge_date?: string | null
           streak?: number
           top3_finishes?: number
           total_xp?: number
@@ -322,8 +391,12 @@ export type Database = {
           activities_completed?: number
           avatar_id?: string | null
           created_at?: string
+          daily_challenge_streak?: number
+          daily_challenges_completed?: number
+          games_won?: number
           id?: string
           last_activity_date?: string | null
+          last_daily_challenge_date?: string | null
           streak?: number
           top3_finishes?: number
           total_xp?: number

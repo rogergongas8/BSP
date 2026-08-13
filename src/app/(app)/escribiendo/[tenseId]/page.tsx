@@ -4,8 +4,7 @@ import { use, useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'motion/react'
-import Link from 'next/link'
-import { X, Check, SkipForward, Lightbulb, Send, BookOpen } from 'lucide-react'
+import { X, Check, SkipForward, Lightbulb, Send } from 'lucide-react'
 import { validate, TENSE_META, resolveTenseId, type Phrase, type ValidationStatus, type PPHighlightRange } from '@/lib/game-logic'
 import OverscrollColor from '@/components/overscroll-color'
 
@@ -480,9 +479,6 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
             />
           </div>
           <span className="text-xs font-bold text-gray-400">{progress + 1}/{sessionTotal}</span>
-          <Link href={`/learn/${tenseId}`} className="p-2 -m-2 shrink-0">
-            <BookOpen className="w-5 h-5 text-gray-400" />
-          </Link>
         </div>
 
         {/* Game */}

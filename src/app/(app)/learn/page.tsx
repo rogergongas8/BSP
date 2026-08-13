@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'motion/react'
 import { ChevronDown, ChevronRight, RotateCw, BookOpen } from 'lucide-react'
-import { TENSE_META } from '@/lib/game-logic'
+import { TENSE_META, subcategoryFor } from '@/lib/game-logic'
 import { createClient } from '@/lib/supabase/client'
 import { getLevelInfo, catImagePath } from '@/lib/levels'
 import { resolveAvatarPath } from '@/lib/avatars'
@@ -36,20 +36,17 @@ const SUBCATEGORIES_BY_TENSE: Record<string, { label: string; lessonId?: string 
   ],
   'indefinido': [
     { label: 'Regular', lessonId: 'indefinido-regular' },
-    { label: 'Irregular', lessonId: 'indefinido-fully-irregular' },
+    { label: 'Semi-irregular', lessonId: 'indefinido-semi-irregular' },
+    { label: 'Fully irregular', lessonId: 'indefinido-fully-irregular' },
   ],
 }
 
 type MistakeRow = { phrase_id: string; tense: string; phrase_type: string }
 
-function subcategoryFor(phraseType: string) {
-  return phraseType.toLowerCase().includes('irreg') ? 'Irregular' : 'Regular'
-}
-
 function groupMistakes(rows: MistakeRow[]): TenseReview[] {
   const byTense = new Map<string, Map<string, number>>()
   for (const row of rows) {
-    const sub = subcategoryFor(row.phrase_type)
+    const sub = subcategoryFor(row.tense, row.phrase_type)
     if (!byTense.has(row.tense)) byTense.set(row.tense, new Map())
     const bySub = byTense.get(row.tense)!
     bySub.set(sub, (bySub.get(sub) ?? 0) + 1)
@@ -77,6 +74,13 @@ const COMBO_META: Record<ContrastBattleId, { label: string; characters: string[]
   'javi-zas':      { label: 'P.Perfecto - Indefinido', characters: ['javi-tostado', 'zas'] },
   'mimo-zas':      { label: 'Imperfecto - Indefinido', characters: ['mimo', 'zas'] },
   'javi-mimo-zas': { label: 'P.Perfecto - Imperfecto - Indefinido', characters: ['javi-tostado', 'mimo', 'zas'] },
+}
+
+// Which theory lesson backs each Lío de tiempos combo — comboId itself isn't a lessonId.
+const LESSON_ID_BY_COMBO: Record<ContrastBattleId, string> = {
+  'javi-zas':      'perfecto-indefinido',
+  'mimo-zas':      'imperfecto-indefinido',
+  'javi-mimo-zas': 'perfecto-imperfecto-indefinido',
 }
 
 type ContrastMistakeRow = { contrast_phrase_id: string; battle_id: ContrastBattleId }
@@ -227,7 +231,7 @@ function ComboReviewCard({ combo }: { combo: ComboReview }) {
                 </span>
               )}
               <Link
-                href={`/learn/${combo.comboId}`}
+                href={`/learn/${LESSON_ID_BY_COMBO[combo.comboId]}`}
                 title="Ver teoría"
                 className="shrink-0 w-10 h-10 flex items-center justify-center rounded-xl bg-bsp-orange text-white"
               >

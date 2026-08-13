@@ -2,10 +2,11 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { checkOrigin } from '@/lib/security'
+import { subcategoryFor } from '@/lib/game-logic'
 import { z } from 'zod'
 
 const VALID_TENSES = ['indefinido', 'imperfecto', 'pretérito-perfecto'] as const
-const VALID_SUBCATEGORIES = ['Regular', 'Irregular'] as const
+const VALID_SUBCATEGORIES = ['Regular', 'Semi-irregular', 'Fully irregular', 'Irregular'] as const
 
 const QuerySchema = z.object({
   tense:       z.enum(VALID_TENSES),
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
   if (mistakesError) return NextResponse.json({ error: 'Failed to load mistakes' }, { status: 500 })
 
   const filtered = subcategory
-    ? mistakes.filter(m => (m.phrase_type.toLowerCase().includes('irreg') ? 'Irregular' : 'Regular') === subcategory)
+    ? mistakes.filter(m => subcategoryFor(tense, m.phrase_type) === subcategory)
     : mistakes
 
   const phraseIds = [...new Set(filtered.map(m => m.phrase_id))]

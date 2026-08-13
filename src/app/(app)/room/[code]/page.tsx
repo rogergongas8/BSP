@@ -20,7 +20,7 @@ type PresencePayload = {
 }
 
 const ORANGE = '#FF8716'
-const MAX_PLAYERS = 6
+const MAX_PLAYERS = 10
 
 type Player = {
   user_id: string

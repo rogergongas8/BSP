@@ -94,7 +94,7 @@ const BattleCard = memo(({ i, xValue, centerOffset, onClick, onPlay, isDragging,
         onPointerDown={() => setIsPressed(true)}
         onPointerUp={() => setIsPressed(false)}
         onPointerLeave={() => setIsPressed(false)}
-        onPointerCancel={() => setIsPressed(false)}
+        onPointerCancel={() => setIsPressed(false)} 
       >
         <motion.div className="absolute top-1/2 left-1/2 rounded-[28px]" style={{ width: cardW, height, x: -cardW / 2, y: '-50%' }}>
           <img src={battle.bgFullSvg} alt="" className="absolute inset-[-6px] w-[calc(100%+12px)] h-[calc(100%+12px)] object-fill pointer-events-none" />

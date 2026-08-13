@@ -7,7 +7,9 @@ import { motion, AnimatePresence } from 'motion/react'
 import { X, ChevronRight, Check, Send } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import ContrastGap from '@/components/game/ContrastGap'
-import { CONTRAST_ICON, GAP_COLORS, phraseGapCount, type ContrastPhrase } from '@/lib/contrast-game-logic'
+import { CONTRAST_ICON, GAP_COLORS, gapVerbOnly, phraseGapCount, type ContrastPhrase } from '@/lib/contrast-game-logic'
+import { getLevelInfo, catImagePath } from '@/lib/levels'
+import { resolveAvatarPath } from '@/lib/avatars'
 
 // ─── Keyboard-aware bottom offset ────────────────────────────────────────────
 // On iOS Safari, `fixed bottom-0` is anchored to the layout viewport (full page height),
@@ -88,7 +90,7 @@ type Round = {
 
 type GamePhase =
   | { type: 'loading' }
-  | { type: 'active'; round: Round; secondsLeft: number }
+  | { type: 'active'; round: Round }
   | { type: 'collecting'; round: Round; myAnswer: MyAnswer; answeredCount: number; totalCount: number }
   | { type: 'results'; round: Round; myAnswer: MyAnswer; results: RoundResults }
   | { type: 'scoreboard'; roundNumber: number; totalRounds: number; standings: Standing[] }
@@ -206,7 +208,7 @@ function PhraseSentence({
 // ─── Unified round view (active → collecting → results, no unmount) ───────────
 
 type RoundPhase =
-  | { type: 'active'; round: Round; secondsLeft: number }
+  | { type: 'active'; round: Round }
   | { type: 'collecting'; round: Round; myAnswer: MyAnswer; answeredCount: number; totalCount: number }
   | { type: 'results'; round: Round; myAnswer: MyAnswer; results: RoundResults }
 
@@ -320,18 +322,18 @@ function ResultsFooter({ results }: { results: RoundResults }) {
 }
 
 function TextRoundView({
-  phase, isHost, onAnswer, onTimerEnd, onSkip, onNext,
+  phase, secondsLeft, isHost, onAnswer, onSkip, onNext,
 }: {
   phase: RoundPhase
+  secondsLeft: number
   isHost: boolean
   onAnswer: (ans: MyAnswer) => void
-  onTimerEnd: () => void
   onSkip: () => void
   onNext: () => void
 }) {
   const [typedInput, setTypedInput] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
-  const timerEndedRef = useRef(false)
+  const autoSubmittedRef = useRef(false)
   const kbBottom = useKeyboardBottom()
 
   const round = phase.round
@@ -352,15 +354,18 @@ function TextRoundView({
     inputTextColor = correct ? '#16A34A' : '#DC2626'
   }
 
+  // Time's up: lock in whatever was typed so far — the answer isn't lost just because Submit wasn't tapped.
   useEffect(() => {
-    if (phase.type === 'active' && phase.secondsLeft <= 0 && !timerEndedRef.current) {
-      timerEndedRef.current = true
-      onTimerEnd()
+    if (phase.type === 'active' && secondsLeft <= 0 && !autoSubmittedRef.current) {
+      autoSubmittedRef.current = true
+      if (typedInput.trim()) {
+        onAnswer({ kind: 'text', value: typedInput.trim() })
+      }
     }
-  }, [phase, onTimerEnd])
+  }, [phase, secondsLeft, onAnswer, typedInput])
 
   const handleSubmit = () => {
-    if (phase.type !== 'active' || !typedInput.trim()) return
+    if (phase.type !== 'active' || secondsLeft <= 0 || !typedInput.trim()) return
     inputRef.current?.blur()
     onAnswer({ kind: 'text', value: typedInput.trim() })
   }
@@ -380,7 +385,7 @@ function TextRoundView({
           sentence={round.phrases.sentence}
           verb={round.phrases.verb}
           value={displayValue}
-          editable={phase.type === 'active'}
+          editable={phase.type === 'active' && secondsLeft > 0}
           verbColor={verbColor}
           inputBorderColor={inputBorderColor}
           inputBg={inputBg}
@@ -489,7 +494,7 @@ function TextRoundView({
       <RoundActionBar
         phase={phase}
         isHost={isHost}
-        canSubmit={!!typedInput.trim()}
+        canSubmit={!!typedInput.trim() && secondsLeft > 0}
         onSubmit={handleSubmit}
         onSkip={onSkip}
         onNext={onNext}
@@ -507,18 +512,18 @@ function splitContrastSentence(sentence: string, gapCount: 1 | 2): string[] {
 }
 
 function ContrastRoundView({
-  phase, isHost, onAnswer, onTimerEnd, onSkip, onNext,
+  phase, secondsLeft, isHost, onAnswer, onSkip, onNext,
 }: {
   phase: RoundPhase
+  secondsLeft: number
   isHost: boolean
   onAnswer: (ans: MyAnswer) => void
-  onTimerEnd: () => void
   onSkip: () => void
   onNext: () => void
 }) {
   const [selected1, setSelected1] = useState<1 | 2 | null>(null)
   const [selected2, setSelected2] = useState<1 | 2 | null>(null)
-  const timerEndedRef = useRef(false)
+  const autoSubmittedRef = useRef(false)
   const kbBottom = useKeyboardBottom()
 
   const round = phase.round
@@ -529,18 +534,23 @@ function ContrastRoundView({
   const displaySelected1 = myAnswer ? myAnswer.selected1 : selected1
   const displaySelected2 = myAnswer ? myAnswer.selected2 : selected2
 
+  // Time's up: lock in whichever gaps were already picked — a half-finished answer isn't lost.
   useEffect(() => {
-    if (phase.type === 'active' && phase.secondsLeft <= 0 && !timerEndedRef.current) {
-      timerEndedRef.current = true
-      onTimerEnd()
+    if (phase.type === 'active' && secondsLeft <= 0 && !autoSubmittedRef.current && phrase) {
+      const needsGap2 = !!(phrase.option_a_2 && phrase.option_b_2 && phrase.correct_2)
+      if (selected1 !== null && (!needsGap2 || selected2 !== null)) {
+        autoSubmittedRef.current = true
+        onAnswer({ kind: 'contrast', selected1, selected2: needsGap2 ? selected2 : null })
+      }
     }
-  }, [phase, onTimerEnd])
+  }, [phase, secondsLeft, onAnswer, phrase, selected1, selected2])
 
   if (!phrase) return null
 
   const gapCount = phraseGapCount(phrase)
   const icons = CONTRAST_ICON[phrase.battle_id]
-  const canSubmit = selected1 !== null && (gapCount === 1 || selected2 !== null)
+  const timedOut = secondsLeft <= 0
+  const canSubmit = selected1 !== null && (gapCount === 1 || selected2 !== null) && !timedOut
 
   const handleSubmit = () => {
     if (phase.type !== 'active' || !canSubmit) return
@@ -558,32 +568,36 @@ function ContrastRoundView({
     <div className="flex-1 flex flex-col">
       <div className="flex flex-col items-center pt-10 pb-6 px-5 gap-2">
         <div className="flex flex-col gap-3 text-center text-base text-gray-800 leading-relaxed">
-          <div>
-            <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase mb-1">{phrase.infinitive_1}</p>
-            <p className="[text-wrap:balance]">
-              {sentenceParts[0]}
+          <p className="[text-wrap:balance]">
+            {sentenceParts[0]}
+            <span className="relative inline-block align-middle mx-1">
+              <span className="absolute left-1/2 -top-4 -translate-x-1/2 text-[10px] font-black tracking-widest text-gray-400 uppercase whitespace-nowrap">
+                {gapVerbOnly(phrase.infinitive_1)}
+              </span>
               <span
-                className="inline-flex min-w-[70px] min-h-[36px] mx-1 px-3 items-center justify-center rounded-lg border-2 align-middle text-center font-bold text-gray-900 whitespace-nowrap"
+                className="inline-flex min-w-[70px] min-h-[36px] px-3 items-center justify-center rounded-lg border-2 text-center font-bold text-gray-900 whitespace-nowrap"
                 style={{ borderColor: GAP_COLORS[1].border }}
               >
                 {displaySelected1 === 1 ? phrase.option_a_1 : displaySelected1 === 2 ? phrase.option_b_1 : null}
               </span>
-              {sentenceParts[1]}
-            </p>
-          </div>
+            </span>
+            {sentenceParts[1]}
+          </p>
           {gapCount === 2 && phrase.option_a_2 && phrase.option_b_2 && (
-            <div>
-              <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase mb-1">{phrase.infinitive_2}</p>
-              <p className="[text-wrap:balance]">
+            <p className="[text-wrap:balance]">
+              <span className="relative inline-block align-middle mx-1">
+                <span className="absolute left-1/2 -top-4 -translate-x-1/2 text-[10px] font-black tracking-widest text-gray-400 uppercase whitespace-nowrap">
+                  {gapVerbOnly(phrase.infinitive_2 ?? '')}
+                </span>
                 <span
-                  className="inline-flex min-w-[70px] min-h-[36px] mx-1 px-3 items-center justify-center rounded-lg border-2 align-middle text-center font-bold text-gray-900 whitespace-nowrap"
+                  className="inline-flex min-w-[70px] min-h-[36px] px-3 items-center justify-center rounded-lg border-2 text-center font-bold text-gray-900 whitespace-nowrap"
                   style={{ borderColor: GAP_COLORS[2].border }}
                 >
                   {displaySelected2 === 1 ? phrase.option_a_2 : displaySelected2 === 2 ? phrase.option_b_2 : null}
                 </span>
-                {sentenceParts[2]}
-              </p>
-            </div>
+              </span>
+              {sentenceParts[2]}
+            </p>
           )}
         </div>
       </div>
@@ -601,7 +615,7 @@ function ContrastRoundView({
               iconA={icons.a}
               iconB={icons.b}
               bgColor={gapCount === 2 ? GAP_COLORS[1].bg : 'transparent'}
-              onSelect={setSelected1}
+              onSelect={timedOut ? () => {} : setSelected1}
             />
             {gapCount === 2 && phrase.option_a_2 && phrase.option_b_2 && phrase.correct_2 && (
               <ContrastGap
@@ -614,7 +628,7 @@ function ContrastRoundView({
                 iconA={icons.a}
                 iconB={icons.b}
                 bgColor={GAP_COLORS[2].bg}
-                onSelect={setSelected2}
+                onSelect={timedOut ? () => {} : setSelected2}
               />
             )}
           </div>
@@ -711,9 +725,9 @@ function ContrastRoundView({
 
 function RoundView(props: {
   phase: RoundPhase
+  secondsLeft: number
   isHost: boolean
   onAnswer: (ans: MyAnswer) => void
-  onTimerEnd: () => void
   onSkip: () => void
   onNext: () => void
 }) {
@@ -725,9 +739,77 @@ function RoundView(props: {
 
 // ─── Scoreboard phase ─────────────────────────────────────────────────────────
 
-function ScoreboardView({
-  roundNumber, totalRounds, standings, isHost, currentUserId, onNext,
+/** Leave-the-game confirmation — copy and mascot differ for host (ends it for everyone) vs. player. */
+function LeaveConfirmModal({
+  open, isHost, leaving, onStay, onLeave,
 }: {
+  open: boolean
+  isHost: boolean
+  leaving: boolean
+  onStay: () => void
+  onLeave: () => void
+}) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center p-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <div className="absolute inset-0 bg-black/50" onClick={onStay} />
+          <motion.div
+            className="relative w-full max-w-[300px] bg-white rounded-3xl overflow-hidden"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+          >
+            <div className="flex flex-col items-center gap-3 px-6 pt-7 pb-6 text-center">
+              {isHost && (
+                <p className="text-sm text-gray-500">Tss host,</p>
+              )}
+              <Image
+                src="/images/multiplayer/catleave.png"
+                alt=""
+                width={130}
+                height={140}
+                className="object-contain"
+              />
+              <p className="text-sm text-gray-700 leading-relaxed">
+                You&apos;re about to leave the game.
+                {isHost && <> If you do, the game will <strong className="font-bold">end for everyone</strong>.</>}
+              </p>
+              <p className="text-sm text-gray-700">Are you sure?</p>
+            </div>
+            <div className="flex">
+              <button
+                onClick={onStay}
+                className="flex-1 py-4 font-bold text-sm text-white"
+                style={{ backgroundColor: '#1E2875' }}
+              >
+                Stay
+              </button>
+              <button
+                onClick={onLeave}
+                disabled={leaving}
+                className="flex-1 py-4 font-bold text-sm text-white disabled:opacity-60"
+                style={{ backgroundColor: '#4A5BB5' }}
+              >
+                {leaving ? '...' : 'Leave'}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
+function ScoreboardView({
+  code, roundNumber, totalRounds, standings, isHost, currentUserId, onNext,
+}: {
+  code: string
   roundNumber: number
   totalRounds: number
   standings: Standing[]
@@ -737,6 +819,16 @@ function ScoreboardView({
 }) {
   const roundsLeft = totalRounds - roundNumber
   const [nexting, setNexting] = useState(false)
+  const [confirmingLeave, setConfirmingLeave] = useState(false)
+  const [leaving, setLeaving] = useState(false)
+  const router = useRouter()
+
+  const leaveRoom = async () => {
+    if (leaving) return
+    setLeaving(true)
+    await fetch(`/api/rooms/${code}/leave`, { method: 'POST' })
+    router.push('/')
+  }
 
   return (
     <div className="flex-1 flex flex-col" style={{ backgroundColor: '#F5F3EF' }}>
@@ -751,11 +843,26 @@ function ScoreboardView({
           className="absolute -top-8 -right-8 opacity-25 pointer-events-none select-none"
           draggable={false}
         />
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setConfirmingLeave(true)}
+          className="absolute top-5 right-5 z-10 w-8 h-8 rounded-full bg-black/10 flex items-center justify-center"
+        >
+          <X className="w-4 h-4 text-gray-900 stroke-[3]" />
+        </motion.button>
         <p className="relative text-gray-900 text-[11px] font-semibold tracking-widest uppercase">
           Round {roundNumber} · {roundsLeft} left
         </p>
         <p className="relative text-gray-900 text-3xl font-bold tracking-tight mt-0.5">SCOREBOARD</p>
       </div>
+
+      <LeaveConfirmModal
+        open={confirmingLeave}
+        isHost={isHost}
+        leaving={leaving}
+        onStay={() => setConfirmingLeave(false)}
+        onLeave={leaveRoom}
+      />
 
       {/* Wave */}
       <div style={{ backgroundColor: '#FF8716' }} className="-mb-px">
@@ -865,6 +972,7 @@ function FinishedView({
   onFinish: () => void
 }) {
   const [revealed, setRevealed] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     const t = setTimeout(() => setRevealed(true), 1200)
@@ -889,6 +997,16 @@ function FinishedView({
           className="absolute -top-4 -right-4 opacity-20 pointer-events-none select-none"
           draggable={false}
         />
+        {/* Non-hosts have no "Finish battle" CTA (that also finalizes XP/stats, host-only) — give them a way out. */}
+        {!isHost && (
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => router.push('/')}
+            className="absolute top-5 right-5 z-10 w-8 h-8 rounded-full bg-white/20 flex items-center justify-center"
+          >
+            <X className="w-4 h-4 text-white stroke-[3]" />
+          </motion.button>
+        )}
         <p className="relative text-white/80 text-[10px] font-black tracking-widest uppercase">Final</p>
         <p className="relative text-white text-2xl font-black tracking-tight">SCOREBOARD</p>
       </div>
@@ -1005,6 +1123,7 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [totalRounds, setTotalRounds] = useState(8)
   const [secondsLeft, setSecondsLeft] = useState(30)
+  const [leftPlayerToast, setLeftPlayerToast] = useState<{ username: string; avatar: string } | null>(null)
   const playerCountRef = useRef(0)
   const myAnswerRef = useRef<MyAnswer>(EMPTY_TEXT_ANSWER)
 
@@ -1012,6 +1131,16 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
   const channelRef = useRef<any>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const currentRoundIdRef = useRef<string | null>(null)
+  const timedOutRoundIdRef = useRef<string | null>(null)
+  const currentRoundNumberRef = useRef(0)
+  const hostIdRef = useRef<string | null>(null)
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const showPlayerLeftToast = useCallback((username: string, avatar: string) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    setLeftPlayerToast({ username, avatar })
+    toastTimerRef.current = setTimeout(() => setLeftPlayerToast(null), 3500)
+  }, [])
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) {
@@ -1061,11 +1190,12 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
 
   const applyRound = useCallback(async (round: Round) => {
     currentRoundIdRef.current = round.id
+    currentRoundNumberRef.current = round.round_number
 
     if (round.status === 'active') {
       myAnswerRef.current = EMPTY_TEXT_ANSWER
       startTimer(round)
-      setPhase({ type: 'active', round, secondsLeft: round.duration_seconds })
+      setPhase({ type: 'active', round })
     } else if (round.status === 'collecting') {
       // Timer keeps running so it stays visible during collecting phase
       const supabase = createClient()
@@ -1119,8 +1249,10 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
         .single()
 
       if (!room) { router.push('/'); return }
+      const amHost = room.host_id === user.id
       setTotalRounds(room.total_rounds)
-      setIsHost(room.host_id === user.id)
+      setIsHost(amHost)
+      hostIdRef.current = room.host_id
 
       const { count: pCount } = await supabase
         .from('room_players')
@@ -1173,6 +1305,14 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
           const updatedRoom = payload.new as { status: string; total_rounds: number }
           if (updatedRoom.status === 'finished') {
             stopTimer()
+            // A finish reached before the last round means the host bailed out mid-game, not a natural finish —
+            // kick the remaining players straight to home with a modal explaining why, instead of the final scoreboard.
+            const endedEarly = currentRoundNumberRef.current > 0 && currentRoundNumberRef.current < room.total_rounds
+            if (endedEarly && !amHost) {
+              sessionStorage.setItem('bsp_host_ended_game', '1')
+              router.push('/')
+              return
+            }
             const { data: lastRound } = await supabase
               .from('rounds')
               .select('id')
@@ -1202,6 +1342,32 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
             if (prev.type !== 'collecting') return prev
             return { ...prev, answeredCount: count ?? prev.answeredCount }
           })
+        })
+        .on('postgres_changes', {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'room_players',
+          filter: `room_id=eq.${room.id}`,
+        }, async (payload) => {
+          const oldRow = payload.old as { user_id?: string }
+          // Skip our own leave and the host's — the host leaving already kicks everyone out with its own modal.
+          if (!oldRow.user_id || oldRow.user_id === user.id || oldRow.user_id === hostIdRef.current) return
+
+          // The round shouldn't keep waiting on an answer that's never coming.
+          playerCountRef.current = Math.max(0, playerCountRef.current - 1)
+          setPhase(prev => (prev.type === 'collecting' ? { ...prev, totalCount: playerCountRef.current } : prev))
+
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('username, total_xp, avatar_id')
+            .eq('id', oldRow.user_id)
+            .single()
+
+          if (profile) {
+            const info = getLevelInfo(profile.total_xp)
+            const avatar = resolveAvatarPath(profile.avatar_id, catImagePath(info.cat))
+            showPlayerLeftToast(profile.username, avatar)
+          }
         })
         .subscribe()
 
@@ -1258,6 +1424,17 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
     })
   }, [isHost])
 
+  // Real time limit: once it hits 0 the host force-advances the round (active or still
+  // collecting answers from other players), regardless of who has or hasn't answered yet.
+  useEffect(() => {
+    if (!isHost) return
+    if (phase.type !== 'active' && phase.type !== 'collecting') return
+    if (secondsLeft > 0) return
+    if (timedOutRoundIdRef.current === phase.round.id) return
+    timedOutRoundIdRef.current = phase.round.id
+    handleTimerEnd()
+  }, [isHost, phase, secondsLeft, handleTimerEnd])
+
   const handleSkip = useCallback(async () => {
     const roundId = currentRoundIdRef.current
     if (!roundId) return
@@ -1289,7 +1466,15 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
   }, [])
 
   const handleFinish = useCallback(async () => {
-    await fetch(`/api/rooms/${code}/finish`, { method: 'POST' })
+    const res = await fetch(`/api/rooms/${code}/finish`, { method: 'POST' })
+    const json = await res.json().catch(() => null)
+    if (json?.newAchievements?.length > 0) {
+      sessionStorage.setItem('bsp_session_result', JSON.stringify({
+        newAchievements: json.newAchievements,
+        leveledUp: false,
+        newLevel: 1,
+      }))
+    }
     router.push('/')
   }, [code, router])
 
@@ -1311,6 +1496,38 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
+      {/* Toast — a non-host player left; the round keeps going without them */}
+      <AnimatePresence>
+        {leftPlayerToast && (
+          <motion.div
+            className="fixed top-3 inset-x-4 z-40 flex justify-center"
+            initial={{ opacity: 0, y: -60 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -60 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+          >
+            <div
+              className="flex items-center gap-2 pl-2 pr-3 py-2 rounded-full shadow-lg"
+              style={{ backgroundColor: '#D9DFFA' }}
+            >
+              <Image
+                src={leftPlayerToast.avatar}
+                alt={leftPlayerToast.username}
+                width={28}
+                height={28}
+                className="rounded-full object-contain shrink-0"
+              />
+              <p className="text-[13px] text-gray-800 leading-tight">
+                <span className="font-black">{leftPlayerToast.username}</span> has left the game
+              </p>
+              <button onClick={() => setLeftPlayerToast(null)} className="shrink-0 ml-1">
+                <X className="w-3.5 h-3.5 text-gray-500 stroke-[2.5]" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       {showGameHeader && (
         <div className="flex items-center gap-3 px-4 pt-4 pb-3">
@@ -1369,9 +1586,9 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
           >
             <RoundView
               phase={phase}
+              secondsLeft={secondsLeft}
               isHost={isHost}
               onAnswer={handleAnswer}
-              onTimerEnd={handleTimerEnd}
               onSkip={handleSkip}
               onNext={handleNextFromResults}
             />
@@ -1387,6 +1604,7 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
             exit={{ opacity: 0 }}
           >
             <ScoreboardView
+              code={code}
               roundNumber={phase.roundNumber}
               totalRounds={phase.totalRounds}
               standings={phase.standings}

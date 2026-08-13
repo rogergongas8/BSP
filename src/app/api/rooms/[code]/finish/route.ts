@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { checkAndAwardAchievements } from '@/lib/check-achievements'
 import { NextRequest, NextResponse } from 'next/server'
 import { checkOrigin } from '@/lib/security'
 
@@ -41,12 +42,28 @@ export async function POST(
   if (!players || players.length === 0) return NextResponse.json({ ok: true })
 
   // Compute total points per player across all rounds
-  const { data: allRoundIds } = await admin
+  const { data: allRounds } = await admin
     .from('rounds')
-    .select('id')
+    .select('id, started_at')
     .eq('room_id', room.id)
 
-  const roundIds = (allRoundIds ?? []).map(r => r.id)
+  const roundIds = (allRounds ?? []).map(r => r.id)
+
+  // Wall-clock time the room was actually in play, from the first round's start to now (finish time) —
+  // there's no dedicated "game started" timestamp on rooms, so the earliest round start stands in for it.
+  const roundStartTimes = (allRounds ?? [])
+    .map(r => r.started_at)
+    .filter((t): t is string => t !== null)
+    .map(t => new Date(t).getTime())
+  const gameSecondsPlayed = roundStartTimes.length > 0
+    ? Math.max(0, Math.round((Date.now() - Math.min(...roundStartTimes)) / 1000))
+    : 0
+
+  if (gameSecondsPlayed > 0) {
+    await admin.from('play_time_logs').insert(
+      players.map(p => ({ user_id: p.user_id, seconds: gameSecondsPlayed, source: 'multiplayer' as const }))
+    )
+  }
 
   const { data: allAnswers } = await admin
     .from('round_answers')
@@ -63,19 +80,26 @@ export async function POST(
     .sort((a, b) => b[1] - a[1])
     .map(([userId, pts], i) => ({ userId, pts, rank: i + 1 }))
 
+  // A top-3 finish only counts toward the profile stat in games with at least 4 players.
+  const countsTowardTop3Stat = players.length >= 4
+
   // Award XP and update profiles
   const today = new Date().toISOString().slice(0, 10)
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+
+  // Only the caller (host) gets an in-app notification — everyone's unlocks are still recorded below.
+  let hostNewAchievements: string[] = []
 
   for (const player of players) {
     const totalPoints = pointsByUser.get(player.user_id) ?? 0
     const xpEarned = Math.round(totalPoints / 30) + 10
     const rankEntry = rankings.find(r => r.userId === player.user_id)
-    const isTop3 = (rankEntry?.rank ?? 99) <= 3
+    const isTop3 = countsTowardTop3Stat && (rankEntry?.rank ?? 99) <= 3
+    const isWin = (rankEntry?.rank ?? 99) === 1
 
     const { data: profile } = await admin
       .from('profiles')
-      .select('total_xp, streak, last_activity_date, top3_finishes, activities_completed')
+      .select('total_xp, streak, last_activity_date, top3_finishes, games_won, activities_completed')
       .eq('id', player.user_id)
       .single()
 
@@ -102,9 +126,13 @@ export async function POST(
         last_activity_date: today,
         activities_completed: profile.activities_completed + 1,
         top3_finishes: isTop3 ? profile.top3_finishes + 1 : profile.top3_finishes,
+        games_won: isWin ? profile.games_won + 1 : profile.games_won,
       })
       .eq('id', player.user_id)
+
+    const earned = await checkAndAwardAchievements(player.user_id).catch(() => [] as string[])
+    if (player.user_id === user.id) hostNewAchievements = earned
   }
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, newAchievements: hostNewAchievements })
 }

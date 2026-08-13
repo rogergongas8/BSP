@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { checkOrigin } from '@/lib/security'
+import { checkAndAwardAchievements } from '@/lib/check-achievements'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
@@ -33,7 +34,10 @@ export async function POST(request: NextRequest) {
     .from('phrase_mistakes')
     .insert({ user_id: user.id, phrase_id, tense, phrase_type })
 
-  if (error) return NextResponse.json({ error: 'Failed to save mistake' }, { status: 500 })
+  // 23505 = this phrase already has an open mistake (unique index) — already tracked, not an error
+  if (error && error.code !== '23505') {
+    return NextResponse.json({ error: 'Failed to save mistake' }, { status: 500 })
+  }
 
   return NextResponse.json({ ok: true })
 }
@@ -59,7 +63,9 @@ export async function PATCH(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: 'Failed to resolve mistake' }, { status: 500 })
 
-  return NextResponse.json({ ok: true })
+  const newAchievements = await checkAndAwardAchievements(user.id).catch(() => [] as string[])
+
+  return NextResponse.json({ ok: true, newAchievements })
 }
 
 export async function GET(request: NextRequest) {

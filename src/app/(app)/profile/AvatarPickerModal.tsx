@@ -30,6 +30,14 @@ export default function AvatarPickerModal({
         body: JSON.stringify({ avatar_id: selected }),
       })
       if (res.ok) {
+        const json = await res.json().catch(() => null)
+        if (json?.newAchievements?.length > 0) {
+          sessionStorage.setItem('bsp_session_result', JSON.stringify({
+            newAchievements: json.newAchievements,
+            leveledUp: false,
+            newLevel: 1,
+          }))
+        }
         onClose()
         router.refresh()
       }

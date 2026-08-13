@@ -7,12 +7,12 @@ export type ContrastCardState =
   | 'default' | 'selected' | 'correct-selected' | 'correct-unselected' | 'incorrect-selected' | 'disabled'
 
 const STATE_CLASSES: Record<ContrastCardState, string> = {
-  'default':            'bg-white text-gray-800 border-2 border-bsp-blue',
-  'selected':           'bg-bsp-blue text-white border-2 border-bsp-blue',
-  'correct-selected':   'bg-[#1D841D] text-white border-2 border-[#1D841D]',
-  'correct-unselected': 'bg-white text-gray-800 border-2 border-[#1D841D]',
-  'incorrect-selected': 'bg-[#FFD4D4] text-[#962F45] border-2 border-[#962F45]',
-  'disabled':           'bg-white/60 text-gray-400 border-2 border-gray-200',
+  'default':            'bg-white text-gray-800 border border-bsp-blue',
+  'selected':           'bg-bsp-blue text-white border border-bsp-blue',
+  'correct-selected':   'bg-[#DCFCE7] text-[#15803D] border border-[#22C55E]',
+  'correct-unselected': 'bg-white text-gray-800 border border-[#1D841D]',
+  'incorrect-selected': 'bg-[#FFD4D4] text-[#962F45] border border-[#962F45]',
+  'disabled':           'bg-white/60 text-gray-400 border border-gray-200',
 }
 
 export default function ContrastOptionCard({

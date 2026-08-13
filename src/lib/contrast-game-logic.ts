@@ -44,3 +44,8 @@ export function isContrastBattle(id: string): id is ContrastBattleId {
 export function phraseGapCount(phrase: ContrastPhrase): 1 | 2 {
   return phrase.option_a_2 && phrase.option_b_2 && phrase.correct_2 ? 2 : 1
 }
+
+/** Source data stores "infinitivo, persona" (e.g. "estar, nosotros") — the UI only shows the verb. */
+export function gapVerbOnly(infinitive: string): string {
+  return infinitive.split(',')[0].trim()
+}

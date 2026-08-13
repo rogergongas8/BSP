@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { AVATAR_IDS } from '@/lib/avatars'
+import { checkAndAwardAchievements } from '@/lib/check-achievements'
 import { NextRequest, NextResponse } from 'next/server'
 import { checkOrigin } from '@/lib/security'
 import { z } from 'zod'
@@ -27,5 +28,7 @@ export async function PATCH(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: 'Failed to update avatar' }, { status: 500 })
 
-  return NextResponse.json({ ok: true })
+  const newAchievements = await checkAndAwardAchievements(user.id).catch(() => [] as string[])
+
+  return NextResponse.json({ ok: true, newAchievements })
 }

@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getLevelInfo, catImagePath } from '@/lib/levels'
 import { resolveAvatarPath } from '@/lib/avatars'
@@ -85,13 +86,18 @@ export default async function HomePage() {
 
         {/* User row */}
         <div className="flex items-center justify-between mb-5">
-          <Image
-            src={avatarSrc}
-            alt="Avatar"
-            width={36}
-            height={36}
-            className="rounded-full object-contain"
-          />
+          <Link
+            href="/profile"
+            className="w-9 h-9 shrink-0 rounded-full flex items-center justify-center overflow-hidden"
+          >
+            <Image
+              src={avatarSrc}
+              alt="Avatar"
+              width={30}
+              height={30}
+              className="object-contain"
+            />
+          </Link>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 bg-white/15 rounded-full px-2.5 py-1">
               <Image src="/images/home/fxemoji_fire.svg" alt="Racha" width={16} height={16} />

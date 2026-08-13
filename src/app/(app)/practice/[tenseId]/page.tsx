@@ -10,7 +10,7 @@ import OverscrollColor from '@/components/overscroll-color'
 import { BATTLES, type BattleItem } from '@/components/game/BattleCarousel'
 import ContrastGap from '@/components/game/ContrastGap'
 import HintToggle from '@/components/game/HintToggle'
-import { CONTRAST_ICON, CONTRAST_META, GAP_COLORS, isContrastBattle, phraseGapCount, type ContrastBattleId, type ContrastPhrase } from '@/lib/contrast-game-logic'
+import { CONTRAST_ICON, CONTRAST_META, GAP_COLORS, gapVerbOnly, isContrastBattle, phraseGapCount, type ContrastBattleId, type ContrastPhrase } from '@/lib/contrast-game-logic'
 
 const SESSION_TOTAL = 10
 
@@ -83,23 +83,25 @@ function splitSentence(sentence: string, gapCount: 1 | 2): string[] {
   return parts
 }
 
-/** Infinitive label, centered above its whole sentence line (not just the box), per Figma. */
-function GapLabel({ verb }: { verb: string }) {
-  return (
-    <p className="text-[10px] font-bold tracking-widest text-gray-400 uppercase mb-1 inline-block border-b border-dotted border-gray-300 pb-0.5">
-      {verb}
-    </p>
-  )
-}
+/** Verb label stacked directly above its answer box, inline within the sentence flow. */
+function GapWithLabel({ verb, value, color, result }: { verb: string; value: string | null; color: string; result?: 'correct' | 'incorrect' }) {
+  const resultStyle = result === 'correct'
+    ? { borderColor: '#22C55E', backgroundColor: '#DCFCE7', color: '#15803D' }
+    : result === 'incorrect'
+      ? { borderColor: '#962F45', backgroundColor: '#FFD4D4', color: '#962F45' }
+      : { borderColor: color, color: '#111827' }
 
-/** Inline bordered input-style box for a blank, filled in once an option is selected. */
-function GapBox({ value, color }: { value: string | null; color: string }) {
   return (
-    <span
-      className="inline-flex min-w-[70px] min-h-[36px] mx-1 px-3 items-center justify-center rounded-lg border-2 align-middle text-center font-bold text-gray-900 whitespace-nowrap"
-      style={{ borderColor: color }}
-    >
-      {value}
+    <span className="relative inline-block align-middle mx-1">
+      <span className="absolute left-1/2 -top-4 -translate-x-1/2 text-[10px] font-bold tracking-widest text-gray-400 uppercase whitespace-nowrap">
+        {gapVerbOnly(verb)}
+      </span>
+      <span
+        className="inline-flex min-w-[70px] min-h-[36px] px-3 items-center justify-center rounded-lg border text-center font-medium whitespace-nowrap"
+        style={resultStyle}
+      >
+        {value}
+      </span>
     </span>
   )
 }
@@ -324,40 +326,37 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
             {/* Sentence with blank(s) as real input-style boxes */}
             <div className="flex flex-col gap-3 text-center text-base text-gray-800 leading-relaxed">
               {gapCount === 1 ? (
-                <div>
-                  <GapLabel verb={phrase.infinitive_1} />
+                <p className="[text-wrap:balance]">
+                  {sentenceParts[0]}
+                  <GapWithLabel
+                    verb={phrase.infinitive_1}
+                    value={selected1 === 1 ? phrase.option_a_1 : selected1 === 2 ? phrase.option_b_1 : null}
+                    color={GAP_COLORS[1].border}
+                    result={submitted ? (selected1 === phrase.correct_1 ? 'correct' : 'incorrect') : undefined}
+                  />
+                  {sentenceParts[1]}
+                </p>
+              ) : (
+                <>
                   <p className="[text-wrap:balance]">
                     {sentenceParts[0]}
-                    <GapBox
+                    <GapWithLabel
+                      verb={phrase.infinitive_1}
                       value={selected1 === 1 ? phrase.option_a_1 : selected1 === 2 ? phrase.option_b_1 : null}
                       color={GAP_COLORS[1].border}
+                      result={submitted ? (selected1 === phrase.correct_1 ? 'correct' : 'incorrect') : undefined}
                     />
                     {sentenceParts[1]}
                   </p>
-                </div>
-              ) : (
-                <>
-                  <div>
-                    <GapLabel verb={phrase.infinitive_1} />
-                    <p className="[text-wrap:balance]">
-                      {sentenceParts[0]}
-                      <GapBox
-                        value={selected1 === 1 ? phrase.option_a_1 : selected1 === 2 ? phrase.option_b_1 : null}
-                        color={GAP_COLORS[1].border}
-                      />
-                      {sentenceParts[1]}
-                    </p>
-                  </div>
-                  <div>
-                    <GapLabel verb={phrase.infinitive_2 ?? ''} />
-                    <p className="[text-wrap:balance]">
-                      <GapBox
-                        value={selected2 === 1 ? phrase.option_a_2 : selected2 === 2 ? phrase.option_b_2 : null}
-                        color={GAP_COLORS[2].border}
-                      />
-                      {sentenceParts[2]}
-                    </p>
-                  </div>
+                  <p className="[text-wrap:balance]">
+                    <GapWithLabel
+                      verb={phrase.infinitive_2 ?? ''}
+                      value={selected2 === 1 ? phrase.option_a_2 : selected2 === 2 ? phrase.option_b_2 : null}
+                      color={GAP_COLORS[2].border}
+                      result={submitted ? (selected2 === phrase.correct_2 ? 'correct' : 'incorrect') : undefined}
+                    />
+                    {sentenceParts[2]}
+                  </p>
                 </>
               )}
             </div>
@@ -374,6 +373,7 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
                 iconA={swap1 ? icons.b : icons.a}
                 iconB={swap1 ? icons.a : icons.b}
                 bgColor={gapCount === 2 ? GAP_COLORS[1].bg : 'transparent'}
+                showResultBadge={gapCount === 2}
                 onSelect={(displayOpt) => {
                   if (submitted) return
                   const real = swap1 ? (displayOpt === 1 ? 2 : 1) : displayOpt
@@ -391,6 +391,7 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
                   iconA={swap2 ? icons.b : icons.a}
                   iconB={swap2 ? icons.a : icons.b}
                   bgColor={GAP_COLORS[2].bg}
+                  showResultBadge
                   onSelect={(displayOpt) => {
                     if (submitted) return
                     const real = swap2 ? (displayOpt === 1 ? 2 : 1) : displayOpt

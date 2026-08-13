@@ -27,13 +27,14 @@ export default async function ProfilePage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Parallelizar las 3 queries independientes
-  const [{ data: profileRaw }, { data: achievementsRaw }, { data: sessionsRaw }] = await Promise.all([
+  // Parallelizar las 4 queries independientes
+  const [{ data: profileRaw }, { data: achievementsRaw }, { data: sessionsRaw }, { data: playTimeRaw }] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),
     supabase.from('user_achievements').select('achievement_id').eq('user_id', user.id),
     supabase.from('practice_sessions')
       .select('tense, correct, total, skipped, first_try, duration_seconds, completed_at')
       .eq('user_id', user.id),
+    supabase.from('play_time_logs').select('seconds, logged_at').eq('user_id', user.id),
   ])
 
   const profile = profileRaw as Profile | null
@@ -45,6 +46,16 @@ export default async function ProfilePage() {
 
   type SessionRow = { tense: string; correct: number; total: number; skipped: number; first_try: number; duration_seconds: number; completed_at: string }
   const sessions = (sessionsRaw ?? []) as SessionRow[]
+
+  type PlayTimeRow = { seconds: number; logged_at: string }
+  const playTimeLogs = (playTimeRaw ?? []) as PlayTimeRow[]
+
+  // Every timed activity, singleplayer practice sessions and multiplayer games alike —
+  // the source of truth for "how long have I actually spent playing".
+  const timeEntries = [
+    ...sessions.map(s => ({ seconds: s.duration_seconds ?? 0, at: s.completed_at })),
+    ...playTimeLogs.map(p => ({ seconds: p.seconds, at: p.logged_at })),
+  ]
 
   function tenseAccuracy(tense: string) {
     const rows = sessions.filter(s => s.tense === tense)
@@ -58,13 +69,27 @@ export default async function ProfilePage() {
   const accImperfecto  = tenseAccuracy('imperfecto')
   const accPerfecto    = tenseAccuracy('pretérito-perfecto')
 
-  // Overall Escribiendo avg (all sessions regardless of tense)
-  const totalCorrect = sessions.reduce((sum, r) => sum + r.correct, 0)
-  const totalAnswers = sessions.reduce((sum, r) => sum + r.total,   0)
-  const avgEscribiendo = totalAnswers > 0 ? Math.round((totalCorrect / totalAnswers) * 100) : null
+  // Lío de tiempos sessions are saved in the same table, keyed by battle_id instead of tense.
+  const accJaviZas     = tenseAccuracy('javi-zas')
+  const accMimoZas     = tenseAccuracy('mimo-zas')
+  const accJaviMimoZas = tenseAccuracy('javi-mimo-zas')
 
-  // Practice Time
-  const totalSeconds  = sessions.reduce((sum, r) => sum + (r.duration_seconds ?? 0), 0)
+  const ESCRIBIENDO_TENSE_IDS = ['indefinido', 'imperfecto', 'pretérito-perfecto']
+  const LIO_BATTLE_IDS = ['javi-zas', 'mimo-zas', 'javi-mimo-zas']
+
+  // Overall avg per platform (all sessions regardless of specific tense/battle)
+  function platformAccuracy(tenseIds: string[]) {
+    const rows = sessions.filter(s => tenseIds.includes(s.tense))
+    const correct = rows.reduce((sum, r) => sum + r.correct, 0)
+    const total   = rows.reduce((sum, r) => sum + r.total,   0)
+    return total > 0 ? Math.round((correct / total) * 100) : null
+  }
+
+  const avgEscribiendo = platformAccuracy(ESCRIBIENDO_TENSE_IDS)
+  const avgLio         = platformAccuracy(LIO_BATTLE_IDS)
+
+  // Practice Time — all-time, across singleplayer sessions and multiplayer games
+  const totalSeconds  = timeEntries.reduce((sum, e) => sum + e.seconds, 0)
   const totalHours    = totalSeconds > 0 ? (totalSeconds / 3600).toFixed(1) : null
 
   // This week (Mon–Sun)
@@ -76,11 +101,11 @@ export default async function ProfilePage() {
 
   const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   const weekSeconds = Array(7).fill(0) as number[]
-  for (const s of sessions) {
-    const d = new Date(s.completed_at)
+  for (const e of timeEntries) {
+    const d = new Date(e.at)
     if (d >= startOfWeek) {
       const idx = (d.getDay() + 6) % 7 // 0=Mon
-      weekSeconds[idx] += s.duration_seconds ?? 0
+      weekSeconds[idx] += e.seconds
     }
   }
   const weekTotalSeconds = weekSeconds.reduce((a, b) => a + b, 0)
@@ -99,18 +124,12 @@ export default async function ProfilePage() {
 
   // Best day this week
   const bestDayIdx = weekSeconds.indexOf(Math.max(...weekSeconds))
-  const bestDaySessionsCount = sessions.filter(s => {
-    const d = new Date(s.completed_at)
+  const bestDaySessionsCount = timeEntries.filter(e => {
+    const d = new Date(e.at)
     return d >= startOfWeek && (d.getDay() + 6) % 7 === bestDayIdx
   }).length
   const bestDayMinutes = Math.round(weekSeconds[bestDayIdx] / 60)
   const hasPracticeData = weekTotalSeconds > 0
-
-  function avg(...vals: (number | null)[]) {
-    const nums = vals.filter((v): v is number => v !== null)
-    if (nums.length === 0) return null
-    return Math.round(nums.reduce((a, b) => a + b, 0) / nums.length)
-  }
 
   const ESCRIBIENDO_TENSES = [
     { id: 'pp',  name: 'Pretérito Perfecto', accuracy: accPerfecto,   ...TENSE_STYLES.pp,  icon: ZAS  },
@@ -119,9 +138,9 @@ export default async function ProfilePage() {
   ]
 
   const LIO_COMBINATIONS = [
-    { id: 'pp_ind',     name: 'Pretérito Perfecto - Indefinido',        accuracy: avg(accPerfecto, accIndefinido),              ...TENSE_STYLES.pp,  icons: [ZAS, JAVI]       },
-    { id: 'ind_imp',    name: 'Indefinido - Imperfecto',                 accuracy: avg(accIndefinido, accImperfecto),            ...TENSE_STYLES.pp,  icons: [JAVI, MIMO]      },
-    { id: 'pp_ind_imp', name: 'P.Perfecto - Indefinido - Imperfecto',   accuracy: avg(accPerfecto, accIndefinido, accImperfecto),...TENSE_STYLES.ind, icons: [ZAS, JAVI, MIMO] },
+    { id: 'pp_ind',     name: 'Pretérito Perfecto - Indefinido',      accuracy: accJaviZas,     ...TENSE_STYLES.pp,  icons: [ZAS, JAVI]       },
+    { id: 'ind_imp',    name: 'Indefinido - Imperfecto',              accuracy: accMimoZas,     ...TENSE_STYLES.pp,  icons: [JAVI, MIMO]      },
+    { id: 'pp_ind_imp', name: 'P.Perfecto - Indefinido - Imperfecto', accuracy: accJaviMimoZas, ...TENSE_STYLES.ind, icons: [ZAS, JAVI, MIMO] },
   ]
 
   return (
@@ -275,7 +294,7 @@ export default async function ProfilePage() {
                 <Image src="/images/profile/lio.png" alt="Lio de tiempos" width={48} height={48} className="object-contain w-full h-full" />
               </div>
               <div>
-                <p className="text-2xl text-gray-800 leading-none">— </p>
+                <p className="text-2xl text-gray-800 leading-none">{avgLio !== null ? avgLio : '—'} {avgLio !== null && <span className="text-sm font-semibold">%</span>}</p>
                 <p className="text-gray-400 text-xs mt-0.5">Avg Accuracy</p>
               </div>
             </div>

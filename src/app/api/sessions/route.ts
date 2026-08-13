@@ -114,7 +114,66 @@ export async function POST(request: NextRequest) {
     })
     .eq('id', user.id)
 
-  // Increment activities via RPC as well (safe double-increment guard not needed — we update directly above)
+  // Daily challenge completion — mirrors the progress calculation on the home page.
+  const dayIndex = Math.floor(Date.now() / (1000 * 60 * 60 * 24)) % 6
+  const { data: challenge } = await admin
+    .from('daily_challenges')
+    .select('type, target, tense')
+    .eq('day_index', dayIndex)
+    .single()
+
+  if (challenge) {
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+
+    const { data: todaySessions } = await admin
+      .from('practice_sessions')
+      .select('tense, correct')
+      .eq('user_id', user.id)
+      .gte('completed_at', todayStart.toISOString())
+
+    let challengeProgress = 0
+    if (todaySessions) {
+      if (challenge.type === 'activities') {
+        challengeProgress = todaySessions.length
+      } else if (challenge.type === 'tense_correct') {
+        challengeProgress = todaySessions.filter(s => s.tense === challenge.tense).reduce((sum, s) => sum + s.correct, 0)
+      } else if (challenge.type === 'cross_correct') {
+        challengeProgress = todaySessions.reduce((sum, s) => sum + s.correct, 0)
+      }
+    }
+
+    if (challengeProgress >= challenge.target) {
+      // Unique (user_id, completion_date) makes this a no-op if today was already recorded
+      const { error: completionError } = await admin
+        .from('daily_challenge_completions')
+        .insert({ user_id: user.id, completion_date: today })
+
+      if (!completionError) {
+        const { data: challengeProfile } = await admin
+          .from('profiles')
+          .select('daily_challenges_completed, daily_challenge_streak, last_daily_challenge_date')
+          .eq('id', user.id)
+          .single()
+
+        if (challengeProfile) {
+          const newChallengeStreak = challengeProfile.last_daily_challenge_date === yesterday
+            ? challengeProfile.daily_challenge_streak + 1
+            : 1
+
+          await admin
+            .from('profiles')
+            .update({
+              daily_challenges_completed: challengeProfile.daily_challenges_completed + 1,
+              daily_challenge_streak: newChallengeStreak,
+              last_daily_challenge_date: today,
+            })
+            .eq('id', user.id)
+        }
+      }
+    }
+  }
+
   // Award achievements and return newly unlocked ones
   const newAchievements = await checkAndAwardAchievements(user.id).catch(() => [] as string[])
 

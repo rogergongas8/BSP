@@ -541,3 +541,19 @@ export function resolveTenseId(raw: string): string | undefined {
   }
   return TENSE_ID_BY_SLUG[stripDiacritics(decoded)] ?? TENSE_ID_BY_SLUG[stripDiacritics(raw)]
 }
+
+/**
+ * Which theory subcategory a mistake phrase belongs to. Indefinido has a 3-way split
+ * (regular / stem-changing / fully irregular), each backed by its own lesson — a
+ * phrase_type like "Indef_stem_irreg" is NOT the same lesson as "Indef_full_irreg_A",
+ * even though both contain "irreg". Every other tense is a simple regular/irregular split.
+ */
+export function subcategoryFor(tenseId: string, phraseType: string): string {
+  const t = phraseType.toLowerCase()
+  if (tenseId === 'indefinido') {
+    if (t.includes('stem_irreg')) return 'Semi-irregular'
+    if (t.includes('full_irreg')) return 'Fully irregular'
+    return 'Regular'
+  }
+  return t.includes('irreg') ? 'Irregular' : 'Regular'
+}
