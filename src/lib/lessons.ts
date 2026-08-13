@@ -227,6 +227,162 @@ export const LESSONS: Record<string, Lesson> = {
       },
     ],
   },
+  'indefinido-regular': {
+    tenseId: 'indefinido-regular',
+    title: 'Indefinido',
+    subtitle: 'regular',
+    steps: [
+      {
+        number: '1',
+        title: 'Stem: the main bit',
+        subtitle: 'Most of the time, just **remove -ar / -er / -ir** to get the stem, then add the regular indefinido ending.',
+        blocks: [
+          {
+            type: 'stem-cards',
+            items: [['hablar', 'habl-'], ['comer', 'com-'], ['vivir', 'viv-']],
+          },
+        ],
+      },
+      {
+        number: '2',
+        title: 'Stem: vowel change in "él/ella/ellos/ellas"',
+        subtitle: 'Some -ir verbs have a vowel change in the stem, but only in **él/ella** and **ellos/ellas** forms.',
+        blocks: [
+          { type: 'pill-pairs', color: 'lavender', items: [['e', 'i']] },
+          {
+            type: 'trio-table',
+            headers: ['INFINITIVE', 'STEM', 'ÉL/ELLA · ELLOS/ELLAS'],
+            rows: [
+              ['repetir', 'repit-', 'repitió / repitieron'],
+              ['sentir', 'sint-', 'sintió / sintieron'],
+              ['seguir', 'sigu-', 'siguió / siguieron'],
+              ['preferir', 'prefir-', 'prefirió / prefirieron'],
+              ['mentir', 'mint-', 'mintió / mintieron'],
+              ['competir', 'compit-', 'compitió / compitieron'],
+              ['elegir', 'elig-', 'eligió / eligieron'],
+              ['medir', 'mid-', 'midió / midieron'],
+            ],
+          },
+          { type: 'pill-pairs', color: 'lavender', items: [['o', 'u']] },
+          {
+            type: 'trio-table',
+            headers: ['INFINITIVE', 'STEM', 'ÉL/ELLA · ELLOS/ELLAS'],
+            rows: [
+              ['dormir', 'durm-', 'durmió / durmieron'],
+              ['morir', 'mur-', 'murió / murieron'],
+            ],
+          },
+        ],
+      },
+      {
+        number: '3',
+        title: 'Stem: spelling change in "yo"',
+        subtitle: 'Verbs ending in **-car**, **-gar** or **-zar** need a spelling change in the **yo** form to keep the sound.',
+        badgeColor: 'green',
+        blocks: [
+          { type: 'pill-pairs', color: 'green', items: [['c', 'qu']] },
+          {
+            type: 'infinitive-table',
+            headers: ['INFINITIVE', 'YO'],
+            rows: [
+              ['explicar', 'expliqué'],
+              ['buscar', 'busqué'],
+              ['practicar', 'practiqué'],
+              ['publicar', 'publiqué'],
+            ],
+          },
+          { type: 'pill-pairs', color: 'green', items: [['g', 'gu']] },
+          {
+            type: 'infinitive-table',
+            headers: ['INFINITIVE', 'YO'],
+            rows: [
+              ['llegar', 'llegué'],
+              ['pagar', 'pagué'],
+              ['jugar', 'jugué'],
+            ],
+          },
+          { type: 'pill-pairs', color: 'green', items: [['z', 'c']] },
+          {
+            type: 'infinitive-table',
+            headers: ['INFINITIVE', 'YO'],
+            rows: [
+              ['comenzar', 'comencé'],
+              ['organizar', 'organicé'],
+              ['utilizar', 'utilicé'],
+            ],
+          },
+        ],
+      },
+      {
+        number: '4',
+        title: 'The ending',
+        subtitle: 'Once you have the stem, add the regular indefinido ending:',
+        blocks: [
+          {
+            type: 'dual-conjugation',
+            style: 'pastel',
+            groups: [
+              {
+                label: '-AR', color: 'lavender', highlightIndex: 2,
+                rows: [['yo', '-é'], ['tú', '-aste'], ['él/ella', '-ó'], ['nosotros', '-amos'], ['vosotros', '-asteis'], ['ellos/ellas', '-aron']],
+              },
+              {
+                label: '-ER/-IR', color: 'orange', highlightIndex: 2,
+                rows: [['yo', '-í'], ['tú', '-iste'], ['él/ella', '-ió'], ['nosotros', '-imos'], ['vosotros', '-isteis'], ['ellos/ellas', '-ieron']],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    summarySteps: [
+      {
+        number: '1',
+        title: 'The stem',
+        blocks: [
+          {
+            type: 'stem-cards',
+            items: [['hablar', 'habl-'], ['comer', 'com-'], ['vivir', 'viv-']],
+          },
+          { type: 'pill-pairs', color: 'lavender', items: [['e', 'i']] },
+          {
+            type: 'pill-pairs',
+            color: 'lavender',
+            items: [
+              ['sentir', 'sint-'], ['medir', 'mid-'], ['competir', 'compit-'], ['elegir', 'elig-'],
+              ['mentir', 'mint-'], ['preferir', 'prefir-'], ['seguir', 'sigu-'], ['repetir', 'repit-'],
+            ],
+          },
+          { type: 'pill-pairs', color: 'lavender', items: [['o', 'u']] },
+          {
+            type: 'pill-pairs',
+            color: 'lavender',
+            items: [['dormir', 'durm-'], ['morir', 'mur-']],
+          },
+        ],
+      },
+      {
+        number: '2',
+        title: 'The ending',
+        blocks: [
+          {
+            type: 'dual-conjugation',
+            style: 'pastel',
+            groups: [
+              {
+                label: '-AR', color: 'lavender', highlightIndex: 2,
+                rows: [['yo', '-é'], ['tú', '-aste'], ['él/ella', '-ó'], ['nosotros', '-amos'], ['vosotros', '-asteis'], ['ellos/ellas', '-aron']],
+              },
+              {
+                label: '-ER/-IR', color: 'orange', highlightIndex: 2,
+                rows: [['yo', '-í'], ['tú', '-iste'], ['él/ella', '-ió'], ['nosotros', '-imos'], ['vosotros', '-isteis'], ['ellos/ellas', '-ieron']],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
   'indefinido-fully-irregular': {
     tenseId: 'indefinido-fully-irregular',
     title: 'Indefinido',
