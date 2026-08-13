@@ -220,6 +220,24 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   const [sessionTotal, setSessionTotal] = useState(SESSION_TOTAL)
   const fetchSeqRef = useRef(0)
   const hasInitRef = useRef(false)
+  const [keyboardInset, setKeyboardInset] = useState(0)
+
+  // Fixed bottom bars stay pinned to the layout viewport, so the on-screen keyboard
+  // covers them unless we manually offset by the visual viewport's shrink amount.
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+    const handleViewportChange = () => {
+      setKeyboardInset(Math.max(0, window.innerHeight - vv.height - vv.offsetTop))
+    }
+    vv.addEventListener('resize', handleViewportChange)
+    vv.addEventListener('scroll', handleViewportChange)
+    handleViewportChange()
+    return () => {
+      vv.removeEventListener('resize', handleViewportChange)
+      vv.removeEventListener('scroll', handleViewportChange)
+    }
+  }, [])
 
   const prefetchNext = useCallback(async (currentIds: Set<string>) => {
     if (isRedo || isMixed) return
@@ -534,8 +552,11 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
             </div>
           </div>
 
-          {/* Buttons — always fixed at bottom-0; keyboard overlaps skip/submit, that's fine */}
-          <div className="fixed bottom-0 left-0 right-0 flex flex-col px-5 pb-6 pt-3 bg-white gap-2">
+          {/* Buttons — fixed at bottom-0, offset above the on-screen keyboard so Skip/Submit stay visible */}
+          <div
+            className="fixed bottom-0 left-0 right-0 flex flex-col px-5 pb-6 pt-3 bg-white gap-2"
+            style={{ transform: keyboardInset > 0 ? `translateY(-${keyboardInset}px)` : undefined }}
+          >
             {isError && (
               <div className="flex flex-col items-end gap-1 pb-1">
                 {isStemIrreg ? (
@@ -552,10 +573,10 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
                   </>
                 ) : isPP ? (
                   <>
-                    <StatusRow label="Structure"   ok={status !== 'structure_incomplete'} />
-                    <StatusRow label="Auxiliary"   ok={status !== 'structure_incomplete' && status !== 'aux_invalid' && status !== 'aux_wrong_person'} />
-                    <StatusRow label="Participle"  ok={status !== 'structure_incomplete' && status !== 'aux_invalid' && status !== 'aux_wrong_person'
-                      && status !== 'part_irreg_invalid' && status !== 'part_ending_invalid' && status !== 'part_stem_invalid'} />
+                    <StatusRow label="Structure"     ok={status !== 'structure_incomplete'} />
+                    <StatusRow label="Auxiliary"     ok={status !== 'aux_invalid'} />
+                    <StatusRow label="Person/Number" ok={status !== 'aux_wrong_person'} />
+                    <StatusRow label="Participle"    ok={status !== 'part_irreg_invalid' && status !== 'part_ending_invalid' && status !== 'part_stem_invalid'} />
                   </>
                 ) : (
                   <>
