@@ -322,7 +322,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
 
   useEffect(() => {
     if (phrase && !loading) {
-      setTimeout(() => inputRef.current?.focus(), 10)
+      inputRef.current?.focus()
     }
   }, [phrase, loading])
 
@@ -552,11 +552,8 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
             </div>
           </div>
 
-          {/* Buttons — fixed at bottom-0, offset above the on-screen keyboard so Skip/Submit stay visible */}
-          <div
-            className="fixed bottom-0 left-0 right-0 flex flex-col px-5 pb-6 pt-3 bg-white gap-2"
-            style={{ transform: keyboardInset > 0 ? `translateY(-${keyboardInset}px)` : undefined }}
-          >
+          {/* Buttons — always fixed at bottom-0; keyboard overlaps Submit/Hint, that's fine (Skip floats separately below) */}
+          <div className="fixed bottom-0 left-0 right-0 flex flex-col px-5 pb-6 pt-3 bg-white gap-2">
             {isError && (
               <div className="flex flex-col items-end gap-1 pb-1">
                 {isStemIrreg ? (
@@ -607,11 +604,6 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
               </motion.button>
             ) : isError ? (
               <>
-                <motion.button whileTap={{ scale: 0.9 }} onClick={handleSkip}
-                  className="flex items-center gap-1.5 text-sm font-bold text-gray-900 shrink-0"
-                >
-                  <SkipForward className="w-4 h-4" /> Skip
-                </motion.button>
                 <motion.button
                   whileTap={showHint ? {} : { scale: 0.95 }}
                   onClick={() => { if (showHint) return; setShowHint(true); usedHintRef.current = true }}
@@ -623,11 +615,6 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
               </>
             ) : (
               <>
-                <motion.button whileTap={{ scale: 0.9 }} onClick={handleSkip}
-                  className="flex items-center gap-1.5 text-sm font-bold text-gray-900 shrink-0"
-                >
-                  <SkipForward className="w-4 h-4" /> Skip
-                </motion.button>
                 <motion.button
                   whileTap={input.trim() ? { scale: 0.95 } : {}}
                   onClick={handleSubmit}
@@ -641,6 +628,16 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
             )}
             </div>
           </div>
+
+          {/* Skip floats independently just above the keyboard (only Skip — Submit/Hint stay put, reachable via the keyboard's own return key) */}
+          {status !== 'correct' && status !== 'skipped' && (
+            <motion.button whileTap={{ scale: 0.9 }} onClick={handleSkip}
+              className="fixed left-5 flex items-center gap-1.5 text-sm font-bold text-gray-900 bg-white px-3 py-2 rounded-xl shadow-md z-10"
+              style={{ bottom: 24 + keyboardInset, transition: 'bottom 150ms ease-out' }}
+            >
+              <SkipForward className="w-4 h-4" /> Skip
+            </motion.button>
+          )}
 
         </div>
       </div>
