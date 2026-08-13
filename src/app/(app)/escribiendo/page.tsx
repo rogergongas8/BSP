@@ -21,6 +21,7 @@ export default function EscribiendoPage() {
   const [streak, setStreak] = useState(0)
   const [level, setLevel] = useState(1)
   const [avatar, setAvatar] = useState('/images/nav/user-image.svg')
+  const focusPrimeRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const supabase = createClient()
@@ -41,6 +42,10 @@ export default function EscribiendoPage() {
     if (phase !== 'idle') return
     pendingHref.current = href
     setPhase('curtain-down')
+    // Claim the keyboard right on this gesture — it stays open through the curtain
+    // animation and the client-side navigation, so the practice screen's own
+    // autofocus input can take over without ever losing focus in between.
+    focusPrimeRef.current?.focus()
   }, [phase])
 
   useEffect(() => {
@@ -51,6 +56,13 @@ export default function EscribiendoPage() {
 
   return (
     <div className="flex flex-col min-h-dvh">
+      <input
+        ref={focusPrimeRef}
+        aria-hidden="true"
+        tabIndex={-1}
+        inputMode="text"
+        style={{ position: 'fixed', top: 0, left: 0, width: 1, height: 1, opacity: 0, border: 0, padding: 0, pointerEvents: 'none' }}
+      />
       <OverscrollColor top="#2F54BA" bottom="#ffffff" />
 
       {/* ── Blue header ── */}
