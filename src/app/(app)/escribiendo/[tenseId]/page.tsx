@@ -220,6 +220,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   const [sessionTotal, setSessionTotal] = useState(SESSION_TOTAL)
   const fetchSeqRef = useRef(0)
   const hasInitRef = useRef(false)
+  const earlyFocusRef = useRef<HTMLInputElement>(null)
   const [keyboardInset, setKeyboardInset] = useState(0)
 
   // Fixed bottom bars stay pinned to the layout viewport, so the on-screen keyboard
@@ -435,6 +436,17 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
 
   return (
     <>
+      {/* Mounted from first paint (before the phrase fetch resolves) so mobile browsers open the
+          keyboard on navigation instead of requiring a tap once the real input appears. Focus is
+          handed off to the real input once the phrase loads (see the effect above). */}
+      <input
+        ref={earlyFocusRef}
+        autoFocus
+        aria-hidden="true"
+        tabIndex={-1}
+        inputMode="text"
+        style={{ position: 'fixed', top: 0, left: 0, width: 1, height: 1, opacity: 0, border: 0, padding: 0, pointerEvents: 'none' }}
+      />
       <OverscrollColor top="#ffffff" bottom="#ffffff" />
       {/* Curtain up */}
       <motion.div
@@ -632,7 +644,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
           {/* Skip floats independently just above the keyboard (only Skip — Submit/Hint stay put, reachable via the keyboard's own return key) */}
           {status !== 'correct' && status !== 'skipped' && (
             <motion.button whileTap={{ scale: 0.9 }} onClick={handleSkip}
-              className="fixed left-5 flex items-center gap-1.5 text-sm font-bold text-gray-900 bg-white px-3 py-2 rounded-xl shadow-md z-10"
+              className="fixed left-5 flex items-center gap-1.5 text-sm font-bold text-gray-900"
               style={{ bottom: 24 + keyboardInset, transition: 'bottom 150ms ease-out' }}
             >
               <SkipForward className="w-4 h-4" /> Skip
