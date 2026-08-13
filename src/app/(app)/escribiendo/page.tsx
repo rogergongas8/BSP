@@ -56,11 +56,14 @@ export default function EscribiendoPage() {
 
   return (
     <div className="flex flex-col min-h-dvh">
+      {/* inputMode="none" claims focus (and the activation chain) without popping the native
+          keyboard — it only opens once we hand focus to the real, visible input on the practice
+          screen once the phrase is ready to show. */}
       <input
         ref={focusPrimeRef}
         aria-hidden="true"
         tabIndex={-1}
-        inputMode="text"
+        inputMode="none"
         style={{ position: 'fixed', top: 0, left: 0, width: 1, height: 1, opacity: 0, border: 0, padding: 0, pointerEvents: 'none' }}
       />
       <OverscrollColor top="#2F54BA" bottom="#ffffff" />

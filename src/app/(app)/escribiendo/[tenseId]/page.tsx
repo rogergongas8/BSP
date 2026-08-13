@@ -436,15 +436,16 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
 
   return (
     <>
-      {/* Mounted from first paint (before the phrase fetch resolves) so mobile browsers open the
-          keyboard on navigation instead of requiring a tap once the real input appears. Focus is
-          handed off to the real input once the phrase loads (see the effect above). */}
+      {/* Mounted from first paint (before the phrase fetch resolves) to keep the focus/activation
+          chain alive from the previous screen. inputMode="none" keeps the native keyboard hidden
+          until focus is handed off to the real, visible input once the phrase loads (see the
+          effect above) — that's the moment the keyboard should actually pop up. */}
       <input
         ref={earlyFocusRef}
         autoFocus
         aria-hidden="true"
         tabIndex={-1}
-        inputMode="text"
+        inputMode="none"
         style={{ position: 'fixed', top: 0, left: 0, width: 1, height: 1, opacity: 0, border: 0, padding: 0, pointerEvents: 'none' }}
       />
       <OverscrollColor top="#ffffff" bottom="#ffffff" />
