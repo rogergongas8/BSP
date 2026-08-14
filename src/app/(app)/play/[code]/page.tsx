@@ -7,6 +7,8 @@ import { motion, AnimatePresence } from 'motion/react'
 import { X, ChevronRight, Check, Send } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import ContrastGap from '@/components/game/ContrastGap'
+import ContrastResultCard, { ResultBar } from '@/components/game/ContrastResultCard'
+import StreakBadge from '@/components/game/StreakBadge'
 import { CONTRAST_ICON, GAP_COLORS, gapVerbOnly, phraseGapCount, type ContrastPhrase } from '@/lib/contrast-game-logic'
 import { getLevelInfo, catImagePath } from '@/lib/levels'
 import { resolveAvatarPath } from '@/lib/avatars'
@@ -47,7 +49,8 @@ type Standing = {
   rank: number
 }
 
-type RoundResults = {
+// TEMP: exported for the /dev-scoreboard preview route — revert to unexported when that route is deleted.
+export type RoundResults = {
   is_contraste: boolean
   correct_answer?: string
   my_answer?: string | null
@@ -69,13 +72,14 @@ type RoundResults = {
 }
 
 /** The two answer shapes a round can take: free-text (escribiendo) or gap selections (contraste). */
-type MyAnswer =
+export type MyAnswer =
   | { kind: 'text'; value: string }
   | { kind: 'contrast'; selected1: 1 | 2 | null; selected2: 1 | 2 | null }
 
 const EMPTY_TEXT_ANSWER: MyAnswer = { kind: 'text', value: '' }
 
-type Round = {
+// TEMP: exported for the /dev-scoreboard preview route — revert to unexported when that route is deleted.
+export type Round = {
   id: string
   room_id: string
   round_number: number
@@ -207,7 +211,8 @@ function PhraseSentence({
 
 // ─── Unified round view (active → collecting → results, no unmount) ───────────
 
-type RoundPhase =
+// TEMP: exported for the /dev-scoreboard preview route — revert to unexported when that route is deleted.
+export type RoundPhase =
   | { type: 'active'; round: Round }
   | { type: 'collecting'; round: Round; myAnswer: MyAnswer; answeredCount: number; totalCount: number }
   | { type: 'results'; round: Round; myAnswer: MyAnswer; results: RoundResults }
@@ -301,8 +306,8 @@ function RoundActionBar({
   )
 }
 
-/** Position/points footer shared by both results cards. */
-function ResultsFooter({ results }: { results: RoundResults }) {
+/** Position/points/streak footer shared by both results cards. */
+function ResultsFooter({ results, myStreak }: { results: RoundResults; myStreak: number }) {
   return (
     <>
       <div className="text-center text-sm text-gray-600 font-medium px-2">
@@ -317,16 +322,18 @@ function ResultsFooter({ results }: { results: RoundResults }) {
           </div>
         </div>
       )}
+      {myStreak >= 2 && <StreakBadge streak={myStreak} />}
     </>
   )
 }
 
 function TextRoundView({
-  phase, secondsLeft, isHost, onAnswer, onSkip, onNext,
+  phase, secondsLeft, isHost, myStreak, onAnswer, onSkip, onNext,
 }: {
   phase: RoundPhase
   secondsLeft: number
   isHost: boolean
+  myStreak: number
   onAnswer: (ans: MyAnswer) => void
   onSkip: () => void
   onNext: () => void
@@ -371,9 +378,6 @@ function TextRoundView({
   }
 
   const checks = phase.type === 'results' ? validationToChecks(phase.results.my_validation_status) : null
-  const correctRatio = phase.type === 'results' && phase.results.total_count > 0
-    ? phase.results.correct_count / phase.results.total_count
-    : 0
 
   if (!round.phrases) return null
 
@@ -432,14 +436,14 @@ function TextRoundView({
               transition={{ duration: 0.35 }}
             >
               {/* Correct answer card */}
-              <div className="bg-white rounded-2xl p-4 border-2 border-green-200">
-                <p className="text-[10px] font-black tracking-widest uppercase text-green-600 mb-3">
+              <div className="bg-white rounded-2xl p-4 border-2 border-gray-200">
+                <p className="text-[10px] font-black tracking-widest uppercase mb-3" style={{ color: '#1D841D' }}>
                   Correct Answer
                 </p>
                 <div className="flex items-start gap-4">
                   <div
-                    className="flex-1 rounded-xl py-3 px-4 text-center text-lg font-black border-2"
-                    style={{ borderColor: '#22C55E', color: '#16A34A', backgroundColor: '#F0FDF4' }}
+                    className="flex-1 rounded-xl py-3 px-4 text-center text-base font-semibold bg-gray-100 text-gray-900 border-2"
+                    style={{ borderColor: '#1D841D' }}
                   >
                     {phase.results.correct_answer}
                   </div>
@@ -467,25 +471,16 @@ function TextRoundView({
                   )}
                 </div>
 
-                {/* Bar chart */}
-                <div className="mt-4 flex gap-1 h-6 rounded-lg overflow-hidden">
-                  {correctRatio > 0 && (
-                    <div
-                      className="bg-green-400 rounded-l-lg transition-all duration-700"
-                      style={{ width: `${correctRatio * 100}%` }}
-                    />
-                  )}
-                  {correctRatio < 1 && (
-                    <div className="bg-red-300 rounded-r-lg flex-1 transition-all duration-700" />
-                  )}
-                </div>
-                <div className="flex justify-between mt-1 text-[10px] text-gray-400 font-medium">
-                  <span>{phase.results.correct_count} correct</span>
-                  <span>{phase.results.total_count - phase.results.correct_count} incorrect</span>
+                <div className="mt-4">
+                  <ResultBar
+                    correctCount={phase.results.correct_count}
+                    incorrectCount={phase.results.total_count - phase.results.correct_count}
+                    userWasCorrect={phase.results.is_correct}
+                  />
                 </div>
               </div>
 
-              <ResultsFooter results={phase.results} />
+              <ResultsFooter results={phase.results} myStreak={myStreak} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -512,11 +507,12 @@ function splitContrastSentence(sentence: string, gapCount: 1 | 2): string[] {
 }
 
 function ContrastRoundView({
-  phase, secondsLeft, isHost, onAnswer, onSkip, onNext,
+  phase, secondsLeft, isHost, myStreak, onAnswer, onSkip, onNext,
 }: {
   phase: RoundPhase
   secondsLeft: number
   isHost: boolean
+  myStreak: number
   onAnswer: (ans: MyAnswer) => void
   onSkip: () => void
   onNext: () => void
@@ -556,11 +552,6 @@ function ContrastRoundView({
     if (phase.type !== 'active' || !canSubmit) return
     onAnswer({ kind: 'contrast', selected1, selected2: gapCount === 2 ? selected2 : null })
   }
-
-  const submitted = phase.type === 'results'
-  const correctRatio = phase.type === 'results' && phase.results.total_count > 0
-    ? phase.results.correct_count / phase.results.total_count
-    : 0
 
   const sentenceParts = splitContrastSentence(phrase.sentence, gapCount)
 
@@ -662,49 +653,26 @@ function ContrastRoundView({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.35 }}
             >
-              <div className={gapCount === 2 ? 'grid grid-cols-2 gap-4' : ''}>
-                <ContrastGap
-                  optionA={phrase.option_a_1}
-                  optionB={phrase.option_b_1}
-                  correctOption={phrase.correct_1}
-                  selected={displaySelected1}
-                  submitted={submitted}
-                  showHints={false}
-                  iconA={icons.a}
-                  iconB={icons.b}
-                  bgColor={gapCount === 2 ? GAP_COLORS[1].bg : 'transparent'}
-                  onSelect={() => {}}
-                />
-                {gapCount === 2 && phrase.option_a_2 && phrase.option_b_2 && phrase.correct_2 && (
-                  <ContrastGap
-                    optionA={phrase.option_a_2}
-                    optionB={phrase.option_b_2}
-                    correctOption={phrase.correct_2}
-                    selected={displaySelected2}
-                    submitted={submitted}
-                    showHints={false}
-                    iconA={icons.a}
-                    iconB={icons.b}
-                    bgColor={GAP_COLORS[2].bg}
-                    onSelect={() => {}}
-                  />
-                )}
-              </div>
+              <ContrastResultCard
+                gap1={{
+                  answer: phrase.correct_1 === 1 ? phrase.option_a_1 : phrase.option_b_1,
+                  // Per-gap class tallies aren't tracked server-side yet — falls back to the round's
+                  // overall correct/incorrect count until RoundResults exposes a per-gap breakdown.
+                  correctCount: phase.results.correct_count,
+                  incorrectCount: phase.results.total_count - phase.results.correct_count,
+                  icon: icons.a,
+                  userWasCorrect: displaySelected1 === phrase.correct_1,
+                }}
+                gap2={gapCount === 2 && phrase.option_a_2 && phrase.option_b_2 && phrase.correct_2 ? {
+                  answer: phrase.correct_2 === 1 ? phrase.option_a_2 : phrase.option_b_2,
+                  correctCount: phase.results.correct_count,
+                  incorrectCount: phase.results.total_count - phase.results.correct_count,
+                  icon: icons.b,
+                  userWasCorrect: displaySelected2 === phrase.correct_2,
+                } : null}
+              />
 
-              <div className="bg-white rounded-2xl p-4 border-2 border-green-200">
-                <div className="flex gap-1 h-6 rounded-lg overflow-hidden">
-                  {correctRatio > 0 && (
-                    <div className="bg-green-400 rounded-l-lg transition-all duration-700" style={{ width: `${correctRatio * 100}%` }} />
-                  )}
-                  {correctRatio < 1 && <div className="bg-red-300 rounded-r-lg flex-1 transition-all duration-700" />}
-                </div>
-                <div className="flex justify-between mt-1 text-[10px] text-gray-400 font-medium">
-                  <span>{phase.results.correct_count} correct</span>
-                  <span>{phase.results.total_count - phase.results.correct_count} incorrect</span>
-                </div>
-              </div>
-
-              <ResultsFooter results={phase.results} />
+              <ResultsFooter results={phase.results} myStreak={myStreak} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -723,10 +691,12 @@ function ContrastRoundView({
   )
 }
 
-function RoundView(props: {
+// TEMP: exported for the /dev-scoreboard preview route — revert to unexported when that route is deleted.
+export function RoundView(props: {
   phase: RoundPhase
   secondsLeft: number
   isHost: boolean
+  myStreak: number
   onAnswer: (ans: MyAnswer) => void
   onSkip: () => void
   onNext: () => void
@@ -966,7 +936,8 @@ function ScoreboardView({
 
 // ─── Final scoreboard ─────────────────────────────────────────────────────────
 
-function FinishedView({
+// TEMP: exported for the /dev-scoreboard preview route — revert to unexported when that route is deleted.
+export function FinishedView({
   standings, isHost, onFinish,
 }: {
   standings: Standing[]
@@ -984,41 +955,51 @@ function FinishedView({
   const top3 = standings.slice(0, 3)
   const podium = [top3[1], top3[0], top3[2]].filter(Boolean)
 
-  const BAR_HEIGHTS = [150, 200, 110]
+  const BAR_HEIGHTS = [210, 280, 150]
   const BAR_GRADIENTS = [
     'linear-gradient(180deg, #818CF8 0%, #4F46E5 100%)',
     'linear-gradient(180deg, #FFA94D 0%, #E8720C 100%)',
     'linear-gradient(180deg, #F472B6 0%, #DB2777 100%)',
   ]
 
+  // Thin, evenly-spaced sunburst rays — a fixed angular width reads as a wide
+  // wedge near the horizontal axis, so each ray is only ~1.2deg with 24 rays
+  // spread evenly around the circle instead of hand-picked 10deg blocks.
+  const SUNBURST_RAY_COUNT = 16
+  const SUNBURST_RAY_WIDTH_DEG = 5
+  const sunburstGradient = `conic-gradient(from 0deg, ${Array.from({ length: SUNBURST_RAY_COUNT }, (_, i) => {
+    const start = (360 / SUNBURST_RAY_COUNT) * i
+    const end = start + SUNBURST_RAY_WIDTH_DEG
+    return `#FFC08A ${start}deg ${end}deg, transparent ${end}deg ${start + 360 / SUNBURST_RAY_COUNT}deg`
+  }).join(', ')})`
+
   return (
-    <div className="flex-1 flex flex-col relative overflow-hidden" style={{ backgroundColor: '#FF8716' }}>
-      {/* Sunburst — bursts out from behind the podium on reveal, spilling past the screen edges (including up behind the header) */}
+    <div className="h-dvh flex flex-col relative overflow-hidden" style={{ backgroundColor: '#FDF0E2' }}>
+      {/* Sunburst — bursts out from behind the podium on reveal, spilling past the screen edges.
+          Sits at z-0, below the header (z-10, solid orange) — the header's own wave/star art
+          covers it up top, the rays only show in the cream body beneath the wave curve. */}
       <AnimatePresence>
         {revealed && (
           <motion.div
             initial={{ opacity: 0, scale: 0.3, rotate: -20 }}
             animate={{ opacity: 1, scale: 1, rotate: 0 }}
             transition={{ duration: 0.7, ease: 'backOut' }}
-            className="absolute left-1/2 top-[38%] -translate-x-1/2 -translate-y-1/2 pointer-events-none z-0"
+            className="absolute left-1/2 top-[38dvh] -translate-x-1/2 -translate-y-1/2 pointer-events-none z-0"
             style={{ width: '220vw', height: '220vw' }}
           >
             <div
-              className="w-full h-full opacity-10"
-              style={{
-                background: 'conic-gradient(from 0deg, #FF8716 0deg 10deg, transparent 10deg 30deg, #FF8716 30deg 40deg, transparent 40deg 60deg, #FF8716 60deg 70deg, transparent 70deg 90deg, #FF8716 90deg 100deg, transparent 100deg 120deg, #FF8716 120deg 130deg, transparent 130deg 150deg, #FF8716 150deg 160deg, transparent 160deg 180deg, #FF8716 180deg 190deg, transparent 190deg 210deg, #FF8716 210deg 220deg, transparent 220deg 240deg, #FF8716 240deg 250deg, transparent 250deg 270deg, #FF8716 270deg 280deg, transparent 280deg 300deg, #FF8716 300deg 310deg, transparent 310deg 330deg, #FF8716 330deg 340deg, transparent 340deg 360deg)',
-                borderRadius: '50%',
-              }}
+              className="w-full h-full opacity-60"
+              style={{ background: sunburstGradient, borderRadius: '50%' }}
             />
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="relative z-10 px-5 pt-8 pb-12 overflow-hidden shrink-0">
+      <div className="relative z-10 isolate px-5 pt-8 pb-40 overflow-hidden shrink-0" style={{ backgroundColor: '#FF8716' }}>
         <Image
           src="/images/multiplayer/bg-star.png"
           alt="" width={220} height={220}
-          className="absolute -top-6 -right-6 opacity-25 pointer-events-none select-none"
+          className="absolute top-6 right-2 opacity-25 pointer-events-none select-none"
           draggable={false}
         />
         {/* Non-hosts have no "Finish battle" CTA (that also finalizes XP/stats, host-only) — give them a way out. */}
@@ -1035,7 +1016,14 @@ function FinishedView({
         <p className="relative text-white text-2xl font-black tracking-tight">SCOREBOARD</p>
       </div>
 
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-end px-5 pb-4 min-h-0">
+      {/* ── Wave — the curve itself is header-orange (continues the header's fill), the area below it is transparent so the cream sunburst shows through ── */}
+      <div className="relative z-10 -mt-px shrink-0">
+        <svg viewBox="0 0 402 36" preserveAspectRatio="none" className="w-full block h-9">
+          <path d="M0,0 C67,36 134,0 201,18 C268,36 335,0 402,18 L402,0 Z" fill="#FF8716" />
+        </svg>
+      </div>
+
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-end px-5 pb-2 min-h-0">
         {!revealed && (
           <div className="flex-1 flex items-center justify-center gap-4">
             {[1, 2].map(n => (
@@ -1063,24 +1051,27 @@ function FinishedView({
                 const avatarSize = isFirst ? 56 : 44
                 return (
                   <div key={s.user_id} className="flex flex-col items-center gap-1 flex-1 max-w-[120px]">
-                    <div className="relative shrink-0" style={{ width: avatarSize, height: avatarSize }}>
+                    <div
+                      className="relative shrink-0 rounded-full bg-white shadow-md overflow-hidden"
+                      style={{ width: avatarSize, height: avatarSize }}
+                    >
                       <Image
                         src={s.avatar}
                         alt={s.username}
                         fill
                         sizes={`${avatarSize}px`}
-                        className="object-contain drop-shadow-md"
+                        className="object-contain p-1"
                       />
                     </div>
-                    <span className="text-xs font-black text-white text-center max-w-full truncate drop-shadow-sm">
+                    <span className="text-xs font-black text-black text-center max-w-full truncate">
                       {s.username}
                     </span>
-                    <span className="text-[10px] text-white/80 font-medium">{s.total_points}pt</span>
+                    <span className="text-[10px] text-black/70 font-medium">{s.total_points}pt</span>
                     <div
                       className="w-full rounded-t-2xl flex items-end justify-center pb-3 shadow-md"
                       style={{ height: BAR_HEIGHTS[i], background: BAR_GRADIENTS[i] }}
                     >
-                      <span className="text-white font-black text-2xl">{s.rank}</span>
+                      <span className="text-white/40 font-black text-3xl">{s.rank}</span>
                     </div>
                   </div>
                 )
@@ -1091,7 +1082,7 @@ function FinishedView({
       </div>
 
       {isHost && revealed && (
-        <div className="relative z-10 shrink-0 px-5 pb-6 pt-3 bg-white border-t border-gray-100">
+        <div className="relative z-10 shrink-0 px-5 pb-6 pt-3">
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={onFinish}
@@ -1126,6 +1117,8 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
   const [totalRounds, setTotalRounds] = useState(8)
   const [secondsLeft, setSecondsLeft] = useState(30)
   const [leftPlayerToast, setLeftPlayerToast] = useState<{ username: string; avatar: string } | null>(null)
+  const [myStreak, setMyStreak] = useState(0)
+  const streakRoundIdRef = useRef<string | null>(null)
   const playerCountRef = useRef(0)
   const myAnswerRef = useRef<MyAnswer>(EMPTY_TEXT_ANSWER)
 
@@ -1150,6 +1143,14 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
       timerRef.current = null
     }
   }, [])
+
+  // In-memory streak of consecutive correct rounds — resets on page reload, no server tracking yet.
+  useEffect(() => {
+    if (phase.type !== 'results') return
+    if (streakRoundIdRef.current === phase.round.id) return
+    streakRoundIdRef.current = phase.round.id
+    setMyStreak(prev => (phase.results.is_correct ? prev + 1 : 0))
+  }, [phase])
 
   const startTimer = useCallback((round: Round) => {
     stopTimer()
@@ -1592,6 +1593,7 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
               phase={phase}
               secondsLeft={secondsLeft}
               isHost={isHost}
+              myStreak={myStreak}
               onAnswer={handleAnswer}
               onSkip={handleSkip}
               onNext={handleNextFromResults}
