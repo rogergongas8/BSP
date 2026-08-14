@@ -173,7 +173,9 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
       <div className="relative px-5 pt-8 pb-12 overflow-hidden" style={{ backgroundColor: ORANGE }}>
         <Image src="/images/multiplayer/bg-star.png" alt="" width={220} height={220} className="absolute -top-6 -right-6 opacity-25 pointer-events-none select-none" draggable={false} />
         <div className="relative flex items-center justify-between mb-3">
-          <Image src={avatar} alt="Avatar" width={36} height={36} className="rounded-full object-contain" />
+          <div className="relative w-9 h-9 shrink-0">
+            <Image src={avatar} alt="Avatar" fill sizes="36px" className="object-contain" />
+          </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 bg-white/15 rounded-full px-2.5 py-1">
               <Image src="/images/home/fxemoji_fire.svg" alt="Racha" width={16} height={16} />
@@ -229,7 +231,9 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
           {players.map((player, index) => (
             <div key={player.user_id}>
               <div className="flex items-center gap-3 py-2.5">
-                <Image src={player.avatar} alt={player.username} width={40} height={40} className="rounded-full shrink-0 object-contain" />
+                <div className="relative w-10 h-10 shrink-0">
+                  <Image src={player.avatar} alt={player.username} fill sizes="40px" className="object-contain" />
+                </div>
                 <span className="font-bold text-gray-800 text-sm">{player.username}</span>
                 <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ backgroundColor: '#D4DAEF', color: '#4A5BB5' }}>
                   lvl. {player.level}

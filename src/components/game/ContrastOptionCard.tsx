@@ -8,7 +8,7 @@ export type ContrastCardState =
 
 const STATE_CLASSES: Record<ContrastCardState, string> = {
   'default':            'bg-white text-gray-800 border border-bsp-blue',
-  'selected':           'bg-bsp-blue text-white border border-bsp-blue',
+  'selected':           'text-white',
   'correct-selected':   'bg-[#DCFCE7] text-[#15803D] border border-[#22C55E]',
   'correct-unselected': 'bg-white text-gray-800 border border-[#1D841D]',
   'incorrect-selected': 'bg-[#FFD4D4] text-[#962F45] border border-[#962F45]',
@@ -16,12 +16,14 @@ const STATE_CLASSES: Record<ContrastCardState, string> = {
 }
 
 export default function ContrastOptionCard({
-  label, state, iconSrc, onClick,
+  label, state, iconSrc, onClick, accentColor = 'var(--bsp-blue)',
 }: {
   label: string
   state: ContrastCardState
   iconSrc: string | null
   onClick: () => void
+  /** Background/border color used when state is 'selected' — differs per gap/column. */
+  accentColor?: string
 }) {
   const clickable = state === 'default' || state === 'selected'
 
@@ -38,7 +40,8 @@ export default function ContrastOptionCard({
         whileTap={clickable ? { scale: 0.96 } : undefined}
         animate={state === 'correct-unselected' ? { x: [0, -4, 4, -4, 0] } : { x: 0 }}
         transition={state === 'correct-unselected' ? { duration: 0.4 } : undefined}
-        className={`w-full min-h-[88px] rounded-2xl px-3 py-6 text-center text-sm font-bold leading-tight break-words shadow-sm transition-colors ${STATE_CLASSES[state]} ${clickable ? 'cursor-pointer' : 'cursor-default'}`}
+        style={state === 'selected' ? { backgroundColor: accentColor, borderColor: accentColor, borderWidth: 1, borderStyle: 'solid' } : undefined}
+        className={`w-full aspect-square max-h-[110px] rounded-2xl px-3 py-3 text-center text-sm font-bold leading-tight break-words shadow-sm transition-colors flex items-center justify-center ${STATE_CLASSES[state]} ${clickable ? 'cursor-pointer' : 'cursor-default'}`}
       >
         {label}
       </motion.button>

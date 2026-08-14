@@ -72,7 +72,9 @@ export default function EscribiendoPage() {
       <div className="relative bg-bsp-blue px-5 pt-8 pb-12 overflow-hidden">
         <Image src="/images/escribiendo/background.png" alt="" fill className="object-cover opacity-20 pointer-events-none select-none scale-[1.3] translate-x-[15%]" />
         <div className="relative flex items-center justify-between mb-3">
-          <Image src={avatar} alt="Avatar" width={36} height={36} className="rounded-full object-contain" />
+          <div className="relative w-9 h-9 shrink-0">
+            <Image src={avatar} alt="Avatar" fill sizes="36px" className="object-contain" />
+          </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 bg-white/15 rounded-full px-2.5 py-1">
               <Image src="/images/home/fxemoji_fire.svg" alt="Racha" width={16} height={16} />

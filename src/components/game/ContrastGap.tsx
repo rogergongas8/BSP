@@ -10,7 +10,7 @@ function cardState(opt: 1 | 2, selected: 1 | 2 | null, correct: 1 | 2, submitted
 }
 
 export default function ContrastGap({
-  optionA, optionB, correctOption, selected, submitted, showHints, iconA, iconB, bgColor, showResultBadge, onSelect,
+  optionA, optionB, correctOption, selected, submitted, showHints, iconA, iconB, bgColor, accentColor, showResultBadge, onSelect,
 }: {
   optionA: string
   optionB: string
@@ -21,6 +21,8 @@ export default function ContrastGap({
   iconA: string
   iconB: string
   bgColor: string
+  /** Border/background color for a selected (not-yet-submitted) card — differs per gap/column. */
+  accentColor?: string
   showResultBadge?: boolean
   onSelect: (opt: 1 | 2) => void
 }) {
@@ -30,7 +32,7 @@ export default function ContrastGap({
   const showIcon = showHints || submitted
 
   return (
-    <div className="relative flex flex-col gap-4 rounded-3xl p-4 pb-6" style={{ backgroundColor: bgColor }}>
+    <div className="relative flex flex-col gap-4 rounded-3xl px-4 py-6" style={{ backgroundColor: bgColor }}>
       {/* Correct/incorrect badge — only shown for phrases with 4 options (2 gaps) */}
       {showResultBadge && submitted && (
         <div
@@ -48,12 +50,14 @@ export default function ContrastGap({
         state={cardState(1, selected, correctOption, submitted)}
         iconSrc={showIcon ? iconA : null}
         onClick={() => onSelect(1)}
+        accentColor={accentColor}
       />
       <ContrastOptionCard
         label={optionB}
         state={cardState(2, selected, correctOption, submitted)}
         iconSrc={showIcon ? iconB : null}
         onClick={() => onSelect(2)}
+        accentColor={accentColor}
       />
     </div>
   )

@@ -900,13 +900,15 @@ function ScoreboardView({
                 </div>
 
                 {/* Avatar */}
-                <Image
-                  src={s.avatar}
-                  alt={s.username}
-                  width={42}
-                  height={42}
-                  className="rounded-full object-contain shrink-0"
-                />
+                <div className="relative w-[42px] h-[42px] shrink-0">
+                  <Image
+                    src={s.avatar}
+                    alt={s.username}
+                    fill
+                    sizes="42px"
+                    className="object-contain"
+                  />
+                </div>
 
                 {/* Username */}
                 <span className="flex-1 font-bold text-[15px] text-gray-900 truncate">
@@ -982,21 +984,19 @@ function FinishedView({
   const top3 = standings.slice(0, 3)
   const podium = [top3[1], top3[0], top3[2]].filter(Boolean)
 
-  const BAR_HEIGHTS = [160, 210, 120]
+  const BAR_HEIGHTS = [260, 340, 190]
   const BAR_COLORS = ['#6366F1', '#FF8716', '#EC4899']
 
   return (
-    <div className="flex-1 flex flex-col">
-      <div
-        className="relative px-5 pt-5 pb-8 overflow-hidden"
-        style={{ backgroundColor: '#FF8716' }}
-      >
-        <Image
-          src="/images/multiplayer/bg-star.png"
-          alt="" width={180} height={180}
-          className="absolute -top-4 -right-4 opacity-20 pointer-events-none select-none"
-          draggable={false}
-        />
+    <div className="flex-1 flex flex-col relative overflow-hidden" style={{ backgroundColor: '#FF8716' }}>
+      <Image
+        src="/images/multiplayer/bg-star.png"
+        alt="" width={402} height={900}
+        className="absolute inset-0 w-full h-full object-cover opacity-20 pointer-events-none select-none"
+        draggable={false}
+      />
+
+      <div className="relative px-5 pt-5 pb-8">
         {/* Non-hosts have no "Finish battle" CTA (that also finalizes XP/stats, host-only) — give them a way out. */}
         {!isHost && (
           <motion.button
@@ -1011,31 +1011,19 @@ function FinishedView({
         <p className="relative text-white text-2xl font-black tracking-tight">SCOREBOARD</p>
       </div>
 
-      <div style={{ backgroundColor: '#FF8716' }} className="-mb-px">
-        <svg viewBox="0 0 402 36" preserveAspectRatio="none" className="w-full block h-9">
-          <path d="M0,0 C67,36 134,0 201,18 C268,36 335,0 402,18 L402,36 L0,36 Z" fill="white" />
-        </svg>
-      </div>
-
-      <div className="flex-1 bg-white flex flex-col items-center justify-center px-5 pb-6 overflow-hidden relative">
-        <AnimatePresence>
-          {revealed && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.5 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6, ease: 'backOut' }}
-              className="absolute inset-0 flex items-center justify-center pointer-events-none"
-            >
-              <div
-                className="w-80 h-80 opacity-10"
-                style={{
-                  background: 'conic-gradient(from 0deg, #FF8716 0deg 10deg, transparent 10deg 30deg, #FF8716 30deg 40deg, transparent 40deg 60deg, #FF8716 60deg 70deg, transparent 70deg 90deg, #FF8716 90deg 100deg, transparent 100deg 120deg, #FF8716 120deg 130deg, transparent 130deg 150deg, #FF8716 150deg 160deg, transparent 160deg 180deg, #FF8716 180deg 190deg, transparent 190deg 210deg, #FF8716 210deg 220deg, transparent 220deg 240deg, #FF8716 240deg 250deg, transparent 250deg 270deg, #FF8716 270deg 280deg, transparent 280deg 300deg, #FF8716 300deg 310deg, transparent 310deg 330deg, #FF8716 330deg 340deg, transparent 340deg 360deg)',
-                  borderRadius: '50%',
-                }}
+      <div className="relative flex-1 flex flex-col items-center justify-end px-5 pb-6">
+        {!revealed && (
+          <div className="flex-1 flex items-center justify-center gap-4">
+            {[1, 2].map(n => (
+              <motion.div
+                key={n}
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ duration: 1.2, repeat: Infinity, delay: n * 0.3 }}
+                className="w-32 h-32 rounded-full bg-white/20"
               />
-            </motion.div>
-          )}
-        </AnimatePresence>
+            ))}
+          </div>
+        )}
 
         <AnimatePresence>
           {revealed && (
@@ -1043,29 +1031,35 @@ function FinishedView({
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="relative flex items-end justify-center gap-3 mb-6 z-10"
+              className="relative flex items-end justify-center gap-3 w-full"
             >
               {podium.map((s, i) => {
-                if (!s) return <div key={i} className="w-20" />
+                if (!s) return <div key={i} className="w-24" />
                 const isFirst = s.rank === 1
+                const avatarSize = isFirst ? 64 : 48
                 return (
-                  <div key={s.user_id} className="flex flex-col items-center gap-1">
-                    <Image
-                      src={s.avatar}
-                      alt={s.username}
-                      width={isFirst ? 52 : 40}
-                      height={isFirst ? 52 : 40}
-                      className="rounded-full object-contain"
-                    />
-                    <span className="text-[10px] font-black text-gray-700 text-center max-w-[70px] truncate">
+                  <div key={s.user_id} className="flex flex-col items-center gap-1 flex-1 max-w-[120px]">
+                    <span className="text-xs font-black text-white text-center max-w-full truncate drop-shadow-sm">
                       {s.username}
                     </span>
-                    <span className="text-[9px] text-gray-400 font-medium">{s.total_points}pt</span>
+                    <span className="text-[10px] text-white/80 font-medium">{s.total_points}pt</span>
                     <div
-                      className="w-20 rounded-t-xl flex items-end justify-center pb-2"
+                      className="relative w-full rounded-t-[28px] flex flex-col items-center pt-2"
                       style={{ height: BAR_HEIGHTS[i], backgroundColor: BAR_COLORS[i] }}
                     >
-                      <span className="text-white font-black text-xl">{s.rank}</span>
+                      <div
+                        className="relative shrink-0 rounded-full ring-4 ring-white overflow-hidden bg-white -mt-2"
+                        style={{ width: avatarSize, height: avatarSize }}
+                      >
+                        <Image
+                          src={s.avatar}
+                          alt={s.username}
+                          fill
+                          sizes={`${avatarSize}px`}
+                          className="object-contain"
+                        />
+                      </div>
+                      <span className="mt-auto mb-3 text-white font-black text-2xl">{s.rank}</span>
                     </div>
                   </div>
                 )
@@ -1073,23 +1067,10 @@ function FinishedView({
             </motion.div>
           )}
         </AnimatePresence>
-
-        {!revealed && (
-          <div className="flex gap-4">
-            {[1, 2].map(n => (
-              <motion.div
-                key={n}
-                animate={{ scale: [1, 1.05, 1] }}
-                transition={{ duration: 1.2, repeat: Infinity, delay: n * 0.3 }}
-                className="w-32 h-32 rounded-full bg-gray-100"
-              />
-            ))}
-          </div>
-        )}
       </div>
 
       {isHost && revealed && (
-        <div className="px-5 pb-6 pt-3 bg-white border-t border-gray-100">
+        <div className="relative px-5 pb-6 pt-3 bg-white border-t border-gray-100">
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={onFinish}
@@ -1510,13 +1491,15 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
               className="flex items-center gap-2 pl-2 pr-3 py-2 rounded-full shadow-lg"
               style={{ backgroundColor: '#D9DFFA' }}
             >
-              <Image
-                src={leftPlayerToast.avatar}
-                alt={leftPlayerToast.username}
-                width={28}
-                height={28}
-                className="rounded-full object-contain shrink-0"
-              />
+              <div className="relative w-7 h-7 shrink-0">
+                <Image
+                  src={leftPlayerToast.avatar}
+                  alt={leftPlayerToast.username}
+                  fill
+                  sizes="28px"
+                  className="object-contain"
+                />
+              </div>
               <p className="text-[13px] text-gray-800 leading-tight">
                 <span className="font-black">{leftPlayerToast.username}</span> has left the game
               </p>

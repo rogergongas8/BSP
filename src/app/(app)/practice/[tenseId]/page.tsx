@@ -301,22 +301,26 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
       <OverscrollColor top="#ffffff" bottom="#ffffff" />
 
       {/* Header */}
-      <div className="flex items-center gap-3 px-5 pt-10 pb-4">
-        <motion.div whileTap={{ scale: 0.88 }} className="p-2 -m-2">
-          <Link href="/practice">
-            <ChevronRight className="w-5 h-5 text-gray-400 rotate-180" />
-          </Link>
-        </motion.div>
-        <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
-          <motion.div
-            className="h-full rounded-full"
-            style={{ backgroundColor: meta.color }}
-            animate={{ width: `${((progress + 1) / SESSION_TOTAL) * 100}%` }}
-            transition={{ type: 'spring', stiffness: 200, damping: 30 }}
-          />
+      <div className="flex flex-col gap-5 px-5 pt-10 pb-4">
+        <div className="flex items-center gap-3">
+          <motion.div whileTap={{ scale: 0.88 }} className="p-2 -m-2">
+            <Link href="/practice">
+              <ChevronRight className="w-5 h-5 text-gray-400 rotate-180" />
+            </Link>
+          </motion.div>
+          <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
+            <motion.div
+              className="h-full rounded-full"
+              style={{ backgroundColor: meta.color }}
+              animate={{ width: `${((progress + 1) / SESSION_TOTAL) * 100}%` }}
+              transition={{ type: 'spring', stiffness: 200, damping: 30 }}
+            />
+          </div>
+          <span className="text-xs font-bold text-gray-400">{progress + 1}/{SESSION_TOTAL}</span>
         </div>
-        <span className="text-xs font-bold text-gray-400">{progress + 1}/{SESSION_TOTAL}</span>
-        <HintToggle checked={showHints} onChange={setShowHints} />
+        <div className="flex justify-end">
+          <HintToggle checked={showHints} onChange={setShowHints} />
+        </div>
       </div>
 
       {/* Game */}
@@ -324,7 +328,7 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
         {!loading && phrase ? (
           <>
             {/* Sentence with blank(s) as real input-style boxes */}
-            <div className="flex flex-col gap-3 text-center text-base text-gray-800 leading-relaxed">
+            <div className="flex flex-col gap-6 text-center text-base text-gray-800 leading-relaxed">
               {gapCount === 1 ? (
                 <p className="[text-wrap:balance]">
                   {sentenceParts[0]}
@@ -373,6 +377,7 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
                 iconA={swap1 ? icons.b : icons.a}
                 iconB={swap1 ? icons.a : icons.b}
                 bgColor={gapCount === 2 ? GAP_COLORS[1].bg : 'transparent'}
+                accentColor={GAP_COLORS[1].border}
                 showResultBadge={gapCount === 2}
                 onSelect={(displayOpt) => {
                   if (submitted) return
@@ -391,6 +396,7 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
                   iconA={swap2 ? icons.b : icons.a}
                   iconB={swap2 ? icons.a : icons.b}
                   bgColor={GAP_COLORS[2].bg}
+                  accentColor={GAP_COLORS[2].border}
                   showResultBadge
                   onSelect={(displayOpt) => {
                     if (submitted) return

@@ -24,8 +24,8 @@ export default function ProfileAvatar({
         onClick={() => setOpen(true)}
         className="relative shrink-0"
       >
-        <div className="w-20 h-20 rounded-full overflow-hidden bg-white/20 p-2.5">
-          <Image src={imageSrc} alt="Avatar" width={80} height={80} className="w-full h-full object-contain" />
+        <div className="relative w-16 h-16">
+          <Image src={imageSrc} alt="Avatar" fill sizes="64px" className="object-contain" />
         </div>
         <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-sm">
           <svg width="11" height="11" viewBox="0 0 10 10" fill="none">

@@ -36,20 +36,24 @@ function DottedWord({ word }: { word: string }) {
   )
 }
 
+// Typed text stays gray (not the theme color) until the answer is submitted and
+// confirmed correct — keeps it from competing visually with the red hint overlay.
+const TYPED_TEXT_COLOR = '#9CA3AF'
+
 const INPUT_STYLES: Record<ValidationStatus, { bg: string; border: string; color: string }> = {
-  idle:                 { bg: '#FFFFFF',  border: '',        color: '' },
-  correct:              { bg: '#DCFCE7',  border: '#22C55E', color: '#16A34A' },
+  idle:                 { bg: '#FFFFFF',  border: '',        color: TYPED_TEXT_COLOR },
+  correct:              { bg: '#DCFCE7',  border: '#22C55E', color: '#000000' },
   skipped:              { bg: '#FFFFFF',  border: '#22C55E', color: '#16A34A' },
-  invalid_form:         { bg: '#FEE2E2',  border: '#EF4444', color: '#DC2626' },
-  wrong_stem:           { bg: '#FEE2E2',  border: '#EF4444', color: '#DC2626' },
-  wrong_ending:         { bg: '#FFF1F2',  border: '#FECDD3', color: '#E11D48' },
-  wrong_person:         { bg: '#FFF1F2',  border: '#FECDD3', color: '#E11D48' },
-  structure_incomplete: { bg: '#FEE2E2',  border: '#EF4444', color: '#DC2626' },
-  aux_invalid:          { bg: '#FEE2E2',  border: '#EF4444', color: '#DC2626' },
-  aux_wrong_person:     { bg: '#FFF1F2',  border: '#FECDD3', color: '#E11D48' },
-  part_irreg_invalid:   { bg: '#FEE2E2',  border: '#EF4444', color: '#DC2626' },
-  part_ending_invalid:  { bg: '#FEE2E2',  border: '#EF4444', color: '#DC2626' },
-  part_stem_invalid:    { bg: '#FFF1F2',  border: '#FECDD3', color: '#E11D48' },
+  invalid_form:         { bg: '#FEE2E2',  border: '#EF4444', color: TYPED_TEXT_COLOR },
+  wrong_stem:           { bg: '#FEE2E2',  border: '#EF4444', color: TYPED_TEXT_COLOR },
+  wrong_ending:         { bg: '#FFF1F2',  border: '#FECDD3', color: TYPED_TEXT_COLOR },
+  wrong_person:         { bg: '#FFF1F2',  border: '#FECDD3', color: TYPED_TEXT_COLOR },
+  structure_incomplete: { bg: '#FEE2E2',  border: '#EF4444', color: TYPED_TEXT_COLOR },
+  aux_invalid:          { bg: '#FEE2E2',  border: '#EF4444', color: TYPED_TEXT_COLOR },
+  aux_wrong_person:     { bg: '#FFF1F2',  border: '#FECDD3', color: TYPED_TEXT_COLOR },
+  part_irreg_invalid:   { bg: '#FEE2E2',  border: '#EF4444', color: TYPED_TEXT_COLOR },
+  part_ending_invalid:  { bg: '#FEE2E2',  border: '#EF4444', color: TYPED_TEXT_COLOR },
+  part_stem_invalid:    { bg: '#FFF1F2',  border: '#FECDD3', color: TYPED_TEXT_COLOR },
 }
 
 /** Resolves a PPHighlightRange (relative to the aux or part token, or the whole input) to an absolute [start, end) range over the full input string. */
@@ -138,8 +142,7 @@ function InlineSentence({
               width: boxW,
               borderColor,
               backgroundColor: (correctPrefix !== null || ppRange !== null) ? '#FFFFFF' : styles.bg,
-              color: (correctPrefix !== null || ppRange !== null) ? 'transparent'
-                : status === 'idle' ? color : styles.color,
+              color: (correctPrefix !== null || ppRange !== null) ? 'transparent' : styles.color,
               fontSize: '16px',
             }}
           />
@@ -148,8 +151,8 @@ function InlineSentence({
               className="absolute inset-0 flex items-center justify-center pointer-events-none font-medium"
               style={{ fontSize: '16px' }}
             >
-              <span style={{ color: stemIsWrong ? 'rgb(239,68,68)' : color }}>{correctPrefix}</span>
-              <span style={{ color: stemIsWrong ? color : 'rgb(239,68,68)' }}>{wrongSuffix}</span>
+              <span style={{ color: stemIsWrong ? 'rgb(239,68,68)' : TYPED_TEXT_COLOR }}>{correctPrefix}</span>
+              <span style={{ color: stemIsWrong ? TYPED_TEXT_COLOR : 'rgb(239,68,68)' }}>{wrongSuffix}</span>
             </div>
           )}
           {ppRange !== null && (
@@ -157,9 +160,9 @@ function InlineSentence({
               className="absolute inset-0 flex items-center justify-center pointer-events-none font-medium"
               style={{ fontSize: '16px', whiteSpace: 'pre' }}
             >
-              <span style={{ color }}>{ppBefore}</span>
+              <span style={{ color: TYPED_TEXT_COLOR }}>{ppBefore}</span>
               <span style={{ color: 'rgb(239,68,68)' }}>{ppMid}</span>
-              <span style={{ color }}>{ppAfter}</span>
+              <span style={{ color: TYPED_TEXT_COLOR }}>{ppAfter}</span>
             </div>
           )}
         </div>
@@ -214,6 +217,14 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   const meta = isMixed && phrase?.tense ? (TENSE_META[phrase.tense] ?? staticMeta) : staticMeta
   const charName = meta.characterName
 
+  // The imperfecto ("Mimo") success artwork has ~2x more transparent padding
+  // baked into its canvas than the other tenses', so it needs a larger box to
+  // read at the same visual size as the others. Its skipped artwork doesn't
+  // have that padding, so it gets its own (smaller) size instead.
+  const isImperfectoSuccess = meta.imageDir === 'imperfecto' && status === 'correct'
+  const isImperfectoSkipped = meta.imageDir === 'imperfecto' && status === 'skipped'
+  const successImageSize = isImperfectoSuccess ? 440 : isImperfectoSkipped ? 200 : 240
+
   const prefetchRef = useRef<Phrase | null>(null)
   const redoQueueRef = useRef<Phrase[] | null>(null)
   const [sessionTotal, setSessionTotal] = useState(SESSION_TOTAL)
@@ -250,17 +261,16 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
     } catch { /* silent */ }
   }, [staticMeta.tense, isRedo, isMixed])
 
-  const fetchPhrase = useCallback(async () => {
-    const seq = ++fetchSeqRef.current
+  // The success character animates out (AnimatePresence exit, ~250-300ms spring)
+  // when status leaves 'correct'/'skipped'. If the sentence swapped in the same
+  // tick, its layout reflows instantly underneath the still-exiting character,
+  // making it visually "jump". So the actual phrase swap (below) is deferred
+  // until that exit animation finishes — see onExitComplete on the character's
+  // AnimatePresence — while this ref holds the swap to run once it does.
+  const pendingPhraseSwapRef = useRef<(() => void) | null>(null)
 
-    setInput('')
-    setStatus('idle')
-    setHint(null)
-    setHighlight(null)
-    setPpHighlight(null)
-    setShowHint(false)
-    hadErrorRef.current = false
-    usedHintRef.current = false
+  const loadNextPhrase = useCallback(async () => {
+    const seq = ++fetchSeqRef.current
 
     if (isRedo) {
       if (redoQueueRef.current === null) {
@@ -311,6 +321,18 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
       }
     }
   }, [staticMeta.tense, prefetchNext, isRedo, isMixed, redoSubcategory])
+
+  const fetchPhrase = useCallback(() => {
+    setInput('')
+    setStatus('idle')
+    setHint(null)
+    setHighlight(null)
+    setPpHighlight(null)
+    setShowHint(false)
+    hadErrorRef.current = false
+    usedHintRef.current = false
+    loadNextPhrase()
+  }, [loadNextPhrase])
 
   useEffect(() => {
     if (!hasInitRef.current) {
@@ -381,7 +403,10 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
       return
     }
     setProgress(next)
-    fetchPhrase()
+    // Let the success character finish its exit animation before the sentence
+    // swaps underneath it — see onExitComplete below.
+    pendingPhraseSwapRef.current = fetchPhrase
+    setStatus('idle')
   }
 
   const handleSkip = () => {
@@ -408,7 +433,8 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
       return
     }
     setProgress(next)
-    fetchPhrase()
+    pendingPhraseSwapRef.current = fetchPhrase
+    setStatus('idle')
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -488,11 +514,19 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
           <div className="flex-1 flex flex-col gap-4">
             {/* Sentence */}
             <motion.div
-              className="flex flex-col items-center justify-start gap-5 pt-8"
+              className="relative flex flex-col items-center justify-start gap-5 pt-8"
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.15, ease: 'easeOut' }}
             >
+              {isMixed && phrase?.tense && (
+                <span
+                  className="absolute top-0 left-0 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide"
+                  style={{ backgroundColor: `${meta.color}1A`, color: meta.color }}
+                >
+                  {(TENSE_META[phrase.tense] ?? meta).label}
+                </span>
+              )}
               {!loading && phrase ? (
                 <InlineSentence
                   sentence={phrase.sentence}
@@ -541,8 +575,16 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
             </AnimatePresence>
 
             {/* Spacer — always in DOM so layout is stable; image animates inside */}
-            <div className="flex-1 flex items-center justify-center min-h-0">
-              <AnimatePresence>
+            <div className="flex-1 flex items-start justify-center min-h-0">
+              <AnimatePresence
+                onExitComplete={() => {
+                  const swap = pendingPhraseSwapRef.current
+                  if (swap) {
+                    pendingPhraseSwapRef.current = null
+                    swap()
+                  }
+                }}
+              >
                 {(status === 'correct' || status === 'skipped') && (
                   <motion.div key={status}
                     initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
@@ -552,7 +594,10 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
                       src={status === 'skipped'
                         ? `/images/${meta.imageDir}/${meta.character}.png`
                         : `/images/${meta.imageDir}/Success - ${charName}.png`}
-                      width={180} height={180} alt="" className="drop-shadow-lg"
+                      width={successImageSize}
+                      height={successImageSize}
+                      alt=""
+                      className={`drop-shadow-lg ${isImperfectoSuccess ? '-mt-8' : 'mt-8'}`}
                       priority
                     />
                   </motion.div>

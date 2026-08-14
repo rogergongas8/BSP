@@ -170,7 +170,7 @@ export default function ContrastResultsPage({ params }: { params: Promise<{ tens
 
         <div className="flex justify-center pt-1 pb-3 relative">
           <CircleProgress pct={scorePct} color={meta.color} xp={xp} />
-          <div className="absolute -right-2 bottom-0 pointer-events-none w-24 h-24">
+          <div className="absolute right-8 bottom-0 pointer-events-none w-24 h-24">
             <Image src={battle.image} alt="" fill className="object-contain drop-shadow-lg" />
           </div>
         </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, type RefObject } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'motion/react'
@@ -99,8 +99,7 @@ function groupContrastMistakes(rows: ContrastMistakeRow[]): ComboReview[] {
   }))
 }
 
-function TenseReviewCard({ tense }: { tense: TenseReview }) {
-  const [open, setOpen] = useState(false)
+function TenseReviewCard({ tense, open, onToggle }: { tense: TenseReview; open: boolean; onToggle: () => void }) {
   const meta = TENSE_META[tense.tenseId]
   const name = tense.tenseId === 'pretérito-perfecto' ? 'Pretérito Perfecto'
     : tense.tenseId.charAt(0).toUpperCase() + tense.tenseId.slice(1)
@@ -108,7 +107,7 @@ function TenseReviewCard({ tense }: { tense: TenseReview }) {
   return (
     <div className="rounded-2xl bg-white overflow-hidden">
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={onToggle}
         className="w-full flex items-center gap-3 px-3.5 py-3"
       >
         <Image src={HEAD_ICON_BY_CHARACTER[meta.character]} alt="" width={28} height={28} className="object-contain shrink-0" />
@@ -189,12 +188,11 @@ function TenseReviewCard({ tense }: { tense: TenseReview }) {
   )
 }
 
-function ComboReviewCard({ combo }: { combo: ComboReview }) {
-  const [open, setOpen] = useState(false)
+function ComboReviewCard({ combo, open, onToggle }: { combo: ComboReview; open: boolean; onToggle: () => void }) {
   return (
     <div className="rounded-2xl bg-white overflow-hidden">
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={onToggle}
         className="w-full flex items-center gap-3 px-3.5 py-3"
       >
         <div className="flex -space-x-1.5 shrink-0">
@@ -245,10 +243,48 @@ function ComboReviewCard({ combo }: { combo: ComboReview }) {
   )
 }
 
+const OPEN_REVIEW_CARD_KEY = 'bsp:review:openCard'
+
 export default function LearnLandingPage() {
   const [streak, setStreak] = useState(0)
   const [level, setLevel] = useState(1)
   const [avatar, setAvatar] = useState('/images/nav/user-image.svg')
+
+  // Which single Review card (Escribiendo tense or Lío combo) is expanded.
+  // Persisted so it survives navigating away to redo mistakes / a lesson and back.
+  const [openCard, setOpenCard] = useState<string | null>(null)
+  useEffect(() => {
+    setOpenCard(sessionStorage.getItem(OPEN_REVIEW_CARD_KEY))
+  }, [])
+  const toggleCard = (id: string) => {
+    setOpenCard(prev => {
+      const next = prev === id ? null : id
+      if (next) sessionStorage.setItem(OPEN_REVIEW_CARD_KEY, next)
+      else sessionStorage.removeItem(OPEN_REVIEW_CARD_KEY)
+      return next
+    })
+  }
+  const escribiendoSectionRef = useRef<HTMLDivElement>(null)
+  const lioSectionRef = useRef<HTMLDivElement>(null)
+  const pendingScrollRef = useRef<RefObject<HTMLDivElement | null> | null>(null)
+
+  const openCardAndScrollTo = (id: string, sectionRef: RefObject<HTMLDivElement | null>) => {
+    setOpenCard(id)
+    sessionStorage.setItem(OPEN_REVIEW_CARD_KEY, id)
+    // If another card is currently open, it needs to finish collapsing (motion
+    // exit animation, ~200ms) before the target section's position settles —
+    // scrolling immediately would aim at a spot that's still shifting.
+    pendingScrollRef.current = sectionRef
+  }
+  useEffect(() => {
+    const sectionRef = pendingScrollRef.current
+    if (!sectionRef) return
+    pendingScrollRef.current = null
+    const timer = setTimeout(() => {
+      sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 220)
+    return () => clearTimeout(timer)
+  }, [openCard])
 
   const [escribiendoReview, setEscribiendoReview] = useState<TenseReview[]>([])
   const [lioReview, setLioReview] = useState<ComboReview[]>(
@@ -289,6 +325,17 @@ export default function LearnLandingPage() {
   const escribiendoTotal = escribiendoReview.reduce((s, t) => s + t.count, 0)
   const lioTotal = lioReview.reduce((s, c) => s + c.count, 0)
 
+  const goToTopEscribiendoMistake = () => {
+    if (escribiendoTotal === 0) return
+    const top = escribiendoReview.reduce((a, b) => (b.count > a.count ? b : a))
+    openCardAndScrollTo(`escribiendo:${top.tenseId}`, escribiendoSectionRef)
+  }
+  const goToTopLioMistake = () => {
+    if (lioTotal === 0) return
+    const top = lioReview.reduce((a, b) => (b.count > a.count ? b : a))
+    openCardAndScrollTo(`lio:${top.comboId}`, lioSectionRef)
+  }
+
   return (
     <div className="flex flex-col min-h-dvh">
       <OverscrollColor top="#2F54BA" bottom="#ffffff" />
@@ -296,7 +343,9 @@ export default function LearnLandingPage() {
       {/* Header */}
       <div className="bg-bsp-blue px-5 pt-8 pb-12">
         <div className="flex items-center justify-between mb-3">
-          <Image src={avatar} alt="Avatar" width={36} height={36} className="rounded-full object-contain" />
+          <div className="relative w-9 h-9 shrink-0">
+            <Image src={avatar} alt="Avatar" fill sizes="36px" className="object-contain" />
+          </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 bg-white/15 rounded-full px-2.5 py-1">
               <Image src="/images/home/fxemoji_fire.svg" alt="Racha" width={16} height={16} />
@@ -330,31 +379,48 @@ export default function LearnLandingPage() {
 
         {/* Stat pills */}
         <div className="flex gap-3 -mt-14">
-          <div className="flex-1 flex items-center gap-2.5 rounded-2xl bg-blue-50 border border-blue-100 px-4 py-3.5">
+          <motion.button
+            whileTap={{ scale: escribiendoTotal > 0 ? 0.97 : 1 }}
+            onClick={goToTopEscribiendoMistake}
+            disabled={escribiendoTotal === 0}
+            className="flex-1 flex items-center gap-2.5 rounded-2xl bg-blue-50 border border-blue-100 px-4 py-3.5 text-left disabled:cursor-default"
+          >
             <Image src="/images/profile/escribiendo.png" alt="" width={32} height={32} className="object-contain" />
             <div>
               <p className="text-xl font-black text-bsp-blue leading-none">{escribiendoTotal}</p>
               <p className="text-[11px] text-gray-400 mt-0.5">review items</p>
             </div>
-          </div>
-          <div className="flex-1 flex items-center gap-2.5 rounded-2xl bg-rose-50 border border-rose-100 px-4 py-3.5">
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: lioTotal > 0 ? 0.97 : 1 }}
+            onClick={goToTopLioMistake}
+            disabled={lioTotal === 0}
+            className="flex-1 flex items-center gap-2.5 rounded-2xl bg-rose-50 border border-rose-100 px-4 py-3.5 text-left disabled:cursor-default"
+          >
             <Image src="/images/profile/lio.png" alt="" width={32} height={32} className="object-contain" />
             <div>
               <p className="text-xl font-black text-rose-500 leading-none">{lioTotal}</p>
               <p className="text-[11px] text-gray-400 mt-0.5">review items</p>
             </div>
-          </div>
+          </motion.button>
         </div>
 
         {/* Escribiendo section */}
-        <div className="flex flex-col gap-4">
+        <div ref={escribiendoSectionRef} className="flex flex-col gap-4 scroll-mt-6">
           <div className="flex items-center justify-center gap-2">
             <Image src="/images/profile/escribiendo.png" alt="" width={22} height={22} className="object-contain" />
             <h2 className="text-base font-black text-gray-900">Escribiendo...</h2>
           </div>
           <div className="rounded-3xl p-4 flex flex-col gap-6" style={{ backgroundColor: '#E4E9FA' }}>
             <div className="flex flex-col gap-6">
-              {escribiendoReview.map(t => <TenseReviewCard key={t.tenseId} tense={t} />)}
+              {escribiendoReview.map(t => (
+                <TenseReviewCard
+                  key={t.tenseId}
+                  tense={t}
+                  open={openCard === `escribiendo:${t.tenseId}`}
+                  onToggle={() => toggleCard(`escribiendo:${t.tenseId}`)}
+                />
+              ))}
             </div>
             {escribiendoTotal > 0 ? (
               <Link
@@ -390,14 +456,21 @@ export default function LearnLandingPage() {
         </div>
 
         {/* Lío de tiempos section */}
-        <div className="flex flex-col gap-4">
+        <div ref={lioSectionRef} className="flex flex-col gap-4 scroll-mt-6">
           <div className="flex items-center justify-center gap-2">
             <Image src="/images/profile/lio.png" alt="" width={22} height={22} className="object-contain" />
             <h2 className="text-base font-black text-gray-900">Lío de tiempos</h2>
           </div>
           <div className="rounded-3xl p-4 flex flex-col gap-6" style={{ backgroundColor: '#F4DCE1' }}>
             <div className="flex flex-col gap-6">
-              {lioReview.map(c => <ComboReviewCard key={c.comboId} combo={c} />)}
+              {lioReview.map(c => (
+                <ComboReviewCard
+                  key={c.comboId}
+                  combo={c}
+                  open={openCard === `lio:${c.comboId}`}
+                  onToggle={() => toggleCard(`lio:${c.comboId}`)}
+                />
+              ))}
             </div>
             {lioTotal > 0 ? (
               <Link href="/practice/mixed?mode=redo" className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-white bg-rose-600">

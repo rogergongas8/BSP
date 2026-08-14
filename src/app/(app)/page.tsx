@@ -8,9 +8,9 @@ import NotificationQueue from './NotificationQueue'
 import OverscrollColor from '@/components/overscroll-color'
 
 const CAT_POSITIONS = [
-  { cat: 'absolute -top-5 right-6 w-[60px] h-[60px] z-20', xp: 'absolute top-7 right-4 z-10' },
+  { cat: 'absolute -top-5 right-4 w-[60px] h-[60px] z-20', xp: 'absolute top-7 right-4 z-10' },
   { cat: 'absolute -top-5 -right-1 w-[38px] h-[38px] z-20 rotate-[20deg]', xp: 'absolute top-2 -right-3 z-10 rotate-[20deg]' },
-  { cat: 'absolute -bottom-3 right-4 w-[52px] h-[52px] z-20', xp: 'absolute -top-2 right-2 z-10 rotate-[20deg]' },
+  { cat: 'absolute -bottom-3 right-1 w-[52px] h-[52px] z-20', xp: 'absolute -top-2 -right-1 z-10 rotate-[20deg]' },
 ] as const
 
 export default async function HomePage() {
@@ -74,7 +74,7 @@ export default async function HomePage() {
   const dashOffset = CIRCUMFERENCE * (1 - progressPct)
 
   // eslint-disable-next-line react-hooks/purity
-  const dayIndex = Math.floor(Date.now() / (1000 * 60 * 60 * 24)) % 3
+  const dayIndex = 0 // TODO: revert to Math.floor(Date.now() / (1000 * 60 * 60 * 24)) % 3 — hardcoded for testing
   const pos = CAT_POSITIONS[dayIndex]
 
   return (
@@ -88,13 +88,13 @@ export default async function HomePage() {
         <div className="flex items-center justify-between mb-5">
           <Link
             href="/profile"
-            className="w-9 h-9 shrink-0 rounded-full flex items-center justify-center overflow-hidden"
+            className="relative w-9 h-9 shrink-0"
           >
             <Image
               src={avatarSrc}
               alt="Avatar"
-              width={30}
-              height={30}
+              fill
+              sizes="36px"
               className="object-contain"
             />
           </Link>
@@ -140,7 +140,7 @@ export default async function HomePage() {
                 />
               </svg>
             </div>
-            <div>
+            <div className="flex-1 min-w-0 pr-14">
               <p className="text-white/70 text-xs mb-0.5">Today&apos;s challenge</p>
               <p className="text-white font-bold text-sm">{challenge?.text ?? 'Complete 3 activities'}</p>
             </div>

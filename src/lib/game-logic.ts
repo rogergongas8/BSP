@@ -513,10 +513,10 @@ export function validate(input: string, phrase: Phrase): ValidationResult {
 
 // ─── Tense metadata ───────────────────────────────────────────────────────────
 
-export const TENSE_META: Record<string, { tense: string; character: string; characterName: string; imageDir: string; color: string }> = {
-  'indefinido':         { tense: 'indefinido',         character: 'zas',          characterName: 'Zas',          imageDir: 'indefinido',  color: '#4A5BB5' },
-  'imperfecto':         { tense: 'imperfecto',         character: 'mimo',         characterName: 'Mimo',         imageDir: 'imperfecto',  color: '#E8922A' },
-  'pretérito-perfecto': { tense: 'pretérito-perfecto', character: 'javi-tostado', characterName: 'Javi Tostado', imageDir: 'pretperfect', color: '#C85C6E' },
+export const TENSE_META: Record<string, { tense: string; label: string; character: string; characterName: string; imageDir: string; color: string }> = {
+  'indefinido':         { tense: 'indefinido',         label: 'Indefinido',  character: 'zas',          characterName: 'Zas',          imageDir: 'indefinido',  color: '#4A5BB5' },
+  'imperfecto':         { tense: 'imperfecto',         label: 'Imperfecto',  character: 'mimo',         characterName: 'Mimo',         imageDir: 'imperfecto',  color: '#E8922A' },
+  'pretérito-perfecto': { tense: 'pretérito-perfecto', label: 'P. Perfecto', character: 'javi-tostado', characterName: 'Javi Tostado', imageDir: 'pretperfect', color: '#C85C6E' },
 }
 
 // Strips diacritics so URL slugs match regardless of how the browser/OS

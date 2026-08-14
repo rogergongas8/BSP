@@ -3,7 +3,7 @@
 import { use, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { motion, AnimatePresence } from 'motion/react'
+import { motion, AnimatePresence, type PanInfo } from 'motion/react'
 import { X, BookOpen, ArrowLeft, ArrowRight, MessageSquareText, Repeat, FileText, CloudRain, Check, XCircle, ArrowDown } from 'lucide-react'
 import { resolveTenseId } from '@/lib/game-logic'
 import { LESSONS, type LessonBlock, type LessonStep, type PillColor } from '@/lib/lessons'
@@ -929,6 +929,24 @@ export default function LessonPage({ params }: { params: Promise<{ tenseId: stri
   const isFirst = page === 0
   const isSummary = page === totalPages - 1
 
+  const SWIPE_OFFSET_THRESHOLD = 50
+  const SWIPE_VELOCITY_THRESHOLD = 500
+
+  const handleDragEnd = (_: unknown, info: PanInfo) => {
+    // Ignore mostly-vertical drags so the page can still scroll internally.
+    if (Math.abs(info.offset.x) < Math.abs(info.offset.y)) return
+
+    const isSwipe = Math.abs(info.offset.x) > SWIPE_OFFSET_THRESHOLD || Math.abs(info.velocity.x) > SWIPE_VELOCITY_THRESHOLD
+    if (!isSwipe) return
+
+    if (info.offset.x < 0) {
+      if (isSummary) router.back()
+      else setPage(p => Math.min(totalPages - 1, p + 1))
+    } else {
+      if (!isFirst) setPage(p => Math.max(0, p - 1))
+    }
+  }
+
   return (
     <>
       <OverscrollColor top="#2F54BA" bottom="#ffffff" />
@@ -958,6 +976,11 @@ export default function LessonPage({ params }: { params: Promise<{ tenseId: stri
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -12 }}
               transition={{ duration: 0.18, ease: 'easeOut' }}
+              drag="x"
+              dragDirectionLock
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.6}
+              onDragEnd={handleDragEnd}
             >
               {isSummary
                 ? <SummaryView steps={lesson.summarySteps ?? lesson.steps} />
