@@ -984,11 +984,15 @@ function FinishedView({
   const top3 = standings.slice(0, 3)
   const podium = [top3[1], top3[0], top3[2]].filter(Boolean)
 
-  const BAR_HEIGHTS = [260, 340, 190]
-  const BAR_COLORS = ['#6366F1', '#FF8716', '#EC4899']
+  const BAR_HEIGHTS = [150, 200, 110]
+  const BAR_GRADIENTS = [
+    'linear-gradient(180deg, #818CF8 0%, #4F46E5 100%)',
+    'linear-gradient(180deg, #FFA94D 0%, #E8720C 100%)',
+    'linear-gradient(180deg, #F472B6 0%, #DB2777 100%)',
+  ]
 
   return (
-    <div className="flex-1 flex flex-col relative overflow-hidden">
+    <div className="flex-1 flex flex-col relative overflow-hidden" style={{ backgroundColor: '#FF8716' }}>
       {/* Sunburst — bursts out from behind the podium on reveal, spilling past the screen edges (including up behind the header) */}
       <AnimatePresence>
         {revealed && (
@@ -996,7 +1000,7 @@ function FinishedView({
             initial={{ opacity: 0, scale: 0.3, rotate: -20 }}
             animate={{ opacity: 1, scale: 1, rotate: 0 }}
             transition={{ duration: 0.7, ease: 'backOut' }}
-            className="absolute left-1/2 top-[60%] -translate-x-1/2 -translate-y-1/2 pointer-events-none z-0"
+            className="absolute left-1/2 top-[38%] -translate-x-1/2 -translate-y-1/2 pointer-events-none z-0"
             style={{ width: '220vw', height: '220vw' }}
           >
             <div
@@ -1010,14 +1014,11 @@ function FinishedView({
         )}
       </AnimatePresence>
 
-      <div
-        className="relative z-10 px-5 pt-5 pb-14 overflow-hidden shrink-0"
-        style={{ backgroundColor: '#FF8716' }}
-      >
+      <div className="relative z-10 px-5 pt-8 pb-12 overflow-hidden shrink-0">
         <Image
           src="/images/multiplayer/bg-star.png"
           alt="" width={220} height={220}
-          className="absolute -top-6 -right-6 opacity-20 pointer-events-none select-none"
+          className="absolute -top-6 -right-6 opacity-25 pointer-events-none select-none"
           draggable={false}
         />
         {/* Non-hosts have no "Finish battle" CTA (that also finalizes XP/stats, host-only) — give them a way out. */}
@@ -1034,13 +1035,7 @@ function FinishedView({
         <p className="relative text-white text-2xl font-black tracking-tight">SCOREBOARD</p>
       </div>
 
-      <div style={{ backgroundColor: '#FF8716' }} className="relative z-10 -mb-px shrink-0">
-        <svg viewBox="0 0 402 36" preserveAspectRatio="none" className="w-full block h-9">
-          <path d="M0,0 C67,36 134,0 201,18 C268,36 335,0 402,18 L402,36 L0,36 Z" fill="white" />
-        </svg>
-      </div>
-
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-end px-5 pb-6">
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-end px-5 pb-4 min-h-0">
         {!revealed && (
           <div className="flex-1 flex items-center justify-center gap-4">
             {[1, 2].map(n => (
@@ -1048,7 +1043,7 @@ function FinishedView({
                 key={n}
                 animate={{ scale: [1, 1.05, 1] }}
                 transition={{ duration: 1.2, repeat: Infinity, delay: n * 0.3 }}
-                className="w-32 h-32 rounded-full bg-gray-100"
+                className="w-32 h-32 rounded-full bg-white/20"
               />
             ))}
           </div>
@@ -1065,36 +1060,27 @@ function FinishedView({
               {podium.map((s, i) => {
                 if (!s) return <div key={i} className="w-24" />
                 const isFirst = s.rank === 1
-                const avatarSize = isFirst ? 64 : 48
+                const avatarSize = isFirst ? 56 : 44
                 return (
                   <div key={s.user_id} className="flex flex-col items-center gap-1 flex-1 max-w-[120px]">
-                    <span className="text-xs font-black text-gray-800 text-center max-w-full truncate">
+                    <div className="relative shrink-0" style={{ width: avatarSize, height: avatarSize }}>
+                      <Image
+                        src={s.avatar}
+                        alt={s.username}
+                        fill
+                        sizes={`${avatarSize}px`}
+                        className="object-contain drop-shadow-md"
+                      />
+                    </div>
+                    <span className="text-xs font-black text-white text-center max-w-full truncate drop-shadow-sm">
                       {s.username}
                     </span>
-                    <span className="text-[10px] text-gray-400 font-medium">{s.total_points}pt</span>
-                    <div className="relative w-full flex flex-col items-center" style={{ height: BAR_HEIGHTS[i] }}>
-                      {/* Arched top — a shallow curve spanning the bar's full width, like a brow */}
-                      <svg viewBox="0 0 100 16" preserveAspectRatio="none" className="absolute -top-3 left-0 w-full h-4">
-                        <path d="M0,16 Q50,-8 100,16 Z" fill={BAR_COLORS[i]} />
-                      </svg>
-                      <div
-                        className="relative shrink-0 -mt-4 z-10"
-                        style={{ width: avatarSize, height: avatarSize }}
-                      >
-                        <Image
-                          src={s.avatar}
-                          alt={s.username}
-                          fill
-                          sizes={`${avatarSize}px`}
-                          className="object-contain drop-shadow-md"
-                        />
-                      </div>
-                      <div
-                        className="w-full flex-1 flex items-end justify-center pb-3"
-                        style={{ backgroundColor: BAR_COLORS[i] }}
-                      >
-                        <span className="text-white font-black text-2xl">{s.rank}</span>
-                      </div>
+                    <span className="text-[10px] text-white/80 font-medium">{s.total_points}pt</span>
+                    <div
+                      className="w-full rounded-t-2xl flex items-end justify-center pb-3 shadow-md"
+                      style={{ height: BAR_HEIGHTS[i], background: BAR_GRADIENTS[i] }}
+                    >
+                      <span className="text-white font-black text-2xl">{s.rank}</span>
                     </div>
                   </div>
                 )
