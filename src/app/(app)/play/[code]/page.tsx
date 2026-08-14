@@ -988,15 +988,17 @@ function FinishedView({
   const BAR_COLORS = ['#6366F1', '#FF8716', '#EC4899']
 
   return (
-    <div className="flex-1 flex flex-col relative overflow-hidden" style={{ backgroundColor: '#FF8716' }}>
-      <Image
-        src="/images/multiplayer/bg-star.png"
-        alt="" width={402} height={900}
-        className="absolute inset-0 w-full h-full object-cover opacity-20 pointer-events-none select-none"
-        draggable={false}
-      />
-
-      <div className="relative px-5 pt-5 pb-8">
+    <div className="flex-1 flex flex-col">
+      <div
+        className="relative px-5 pt-5 pb-8 overflow-hidden"
+        style={{ backgroundColor: '#FF8716' }}
+      >
+        <Image
+          src="/images/multiplayer/bg-star.png"
+          alt="" width={180} height={180}
+          className="absolute -top-4 -right-4 opacity-20 pointer-events-none select-none"
+          draggable={false}
+        />
         {/* Non-hosts have no "Finish battle" CTA (that also finalizes XP/stats, host-only) — give them a way out. */}
         {!isHost && (
           <motion.button
@@ -1011,7 +1013,34 @@ function FinishedView({
         <p className="relative text-white text-2xl font-black tracking-tight">SCOREBOARD</p>
       </div>
 
-      <div className="relative flex-1 flex flex-col items-center justify-end px-5 pb-6">
+      <div style={{ backgroundColor: '#FF8716' }} className="-mb-px">
+        <svg viewBox="0 0 402 36" preserveAspectRatio="none" className="w-full block h-9">
+          <path d="M0,0 C67,36 134,0 201,18 C268,36 335,0 402,18 L402,36 L0,36 Z" fill="white" />
+        </svg>
+      </div>
+
+      <div className="flex-1 bg-white flex flex-col items-center justify-end px-5 pb-6 overflow-hidden relative">
+        {/* Sunburst — bursts out from behind the podium on reveal, spilling past the screen edges */}
+        <AnimatePresence>
+          {revealed && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.3, rotate: -20 }}
+              animate={{ opacity: 1, scale: 1, rotate: 0 }}
+              transition={{ duration: 0.7, ease: 'backOut' }}
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ width: '220vw', height: '220vw' }}
+            >
+              <div
+                className="w-full h-full opacity-10"
+                style={{
+                  background: 'conic-gradient(from 0deg, #FF8716 0deg 10deg, transparent 10deg 30deg, #FF8716 30deg 40deg, transparent 40deg 60deg, #FF8716 60deg 70deg, transparent 70deg 90deg, #FF8716 90deg 100deg, transparent 100deg 120deg, #FF8716 120deg 130deg, transparent 130deg 150deg, #FF8716 150deg 160deg, transparent 160deg 180deg, #FF8716 180deg 190deg, transparent 190deg 210deg, #FF8716 210deg 220deg, transparent 220deg 240deg, #FF8716 240deg 250deg, transparent 250deg 270deg, #FF8716 270deg 280deg, transparent 280deg 300deg, #FF8716 300deg 310deg, transparent 310deg 330deg, #FF8716 330deg 340deg, transparent 340deg 360deg)',
+                  borderRadius: '50%',
+                }}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {!revealed && (
           <div className="flex-1 flex items-center justify-center gap-4">
             {[1, 2].map(n => (
@@ -1019,7 +1048,7 @@ function FinishedView({
                 key={n}
                 animate={{ scale: [1, 1.05, 1] }}
                 transition={{ duration: 1.2, repeat: Infinity, delay: n * 0.3 }}
-                className="w-32 h-32 rounded-full bg-white/20"
+                className="w-32 h-32 rounded-full bg-gray-100"
               />
             ))}
           </div>
@@ -1031,7 +1060,7 @@ function FinishedView({
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="relative flex items-end justify-center gap-3 w-full"
+              className="relative z-10 flex items-end justify-center gap-3 w-full"
             >
               {podium.map((s, i) => {
                 if (!s) return <div key={i} className="w-24" />
