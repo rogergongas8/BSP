@@ -460,6 +460,33 @@ function validatePreteritoPerfecto(input: string, phrase: Phrase): ValidationRes
   return { status: 'correct' }
 }
 
+/**
+ * Which Pretérito Perfecto checks the answer actually got through. The validation
+ * above is a cascade — it returns at the first failing step — so every check at or
+ * after the failure was never evaluated and must not be reported as passed.
+ */
+export function ppStatusRows(status: ValidationStatus): {
+  structure: boolean
+  auxiliary: boolean
+  personNumber: boolean
+  participle: boolean
+} {
+  switch (status) {
+    case 'structure_incomplete':
+      return { structure: false, auxiliary: false, personNumber: false, participle: false }
+    case 'aux_invalid':
+      return { structure: true, auxiliary: false, personNumber: false, participle: false }
+    case 'aux_wrong_person':
+      return { structure: true, auxiliary: true, personNumber: false, participle: false }
+    case 'part_irreg_invalid':
+    case 'part_ending_invalid':
+    case 'part_stem_invalid':
+      return { structure: true, auxiliary: true, personNumber: true, participle: false }
+    default:
+      return { structure: true, auxiliary: true, personNumber: true, participle: true }
+  }
+}
+
 // ─── Strip accents ────────────────────────────────────────────────────────────
 
 function deaccent(s: string): string {

@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'motion/react'
 import { X, Check, SkipForward, Lightbulb, Send } from 'lucide-react'
-import { validate, TENSE_META, resolveTenseId, type Phrase, type ValidationStatus, type PPHighlightRange } from '@/lib/game-logic'
+import { validate, ppStatusRows, TENSE_META, resolveTenseId, type Phrase, type ValidationStatus, type PPHighlightRange } from '@/lib/game-logic'
 import OverscrollColor from '@/components/overscroll-color'
 
 const SESSION_TOTAL = 10
@@ -38,7 +38,7 @@ function DottedWord({ word }: { word: string }) {
 
 // Typed text stays gray (not the theme color) until the answer is submitted and
 // confirmed correct — keeps it from competing visually with the red hint overlay.
-const TYPED_TEXT_COLOR = '#9CA3AF'
+const TYPED_TEXT_COLOR = '#4B5563'
 
 const INPUT_STYLES: Record<ValidationStatus, { bg: string; border: string; color: string }> = {
   idle:                 { bg: '#FFFFFF',  border: '',        color: TYPED_TEXT_COLOR },
@@ -458,6 +458,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   const isIndefReg  = phrase?.type === 'Indef_reg' || phrase?.type === 'Indef_reg_gustar'
     || phrase?.type === 'Imp_reg' || phrase?.type === 'Imp_reg_gustar'
   const isPP        = phrase?.type === 'PP_irreg' || phrase?.type === 'PP_reg' || phrase?.type === 'PP_reg_gustar'
+  const ppRows      = ppStatusRows(status)
 
   return (
     <>
@@ -624,10 +625,10 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
                   </>
                 ) : isPP ? (
                   <>
-                    <StatusRow label="Structure"     ok={status !== 'structure_incomplete'} />
-                    <StatusRow label="Auxiliary"     ok={status !== 'aux_invalid'} />
-                    <StatusRow label="Person/Number" ok={status !== 'aux_wrong_person'} />
-                    <StatusRow label="Participle"    ok={status !== 'part_irreg_invalid' && status !== 'part_ending_invalid' && status !== 'part_stem_invalid'} />
+                    <StatusRow label="Structure"     ok={ppRows.structure} />
+                    <StatusRow label="Auxiliary"     ok={ppRows.auxiliary} />
+                    <StatusRow label="Person/Number" ok={ppRows.personNumber} />
+                    <StatusRow label="Participle"    ok={ppRows.participle} />
                   </>
                 ) : (
                   <>
