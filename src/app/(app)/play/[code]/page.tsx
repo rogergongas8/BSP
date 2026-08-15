@@ -1229,6 +1229,23 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
     return res.json()
   }, [])
 
+  /**
+   * How many players have answered, straight from the server.
+   *
+   * `round_answers` is no longer readable row-by-row from the browser while a round is live
+   * (migration 0026) — another player's submitted answer is itself a hint — so the counter
+   * comes from an endpoint that returns totals only.
+   */
+  const fetchAnswerCount = useCallback(
+    async (roundId: string): Promise<{ answered: number; total: number } | null> => {
+      const res = await fetch(`/api/rounds/${roundId}/answer-count`)
+      if (!res.ok) return null
+      const json = await res.json()
+      return { answered: json.answered_count ?? 0, total: json.total_count ?? 0 }
+    },
+    [],
+  )
+
   const applyRound = useCallback(async (round: Round) => {
     currentRoundIdRef.current = round.id
     currentRoundNumberRef.current = round.round_number
@@ -1239,20 +1256,18 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
       setPhase({ type: 'active', round })
     } else if (round.status === 'collecting') {
       // Timer keeps running so it stays visible during collecting phase
-      const supabase = createClient()
-      const { count: answered } = await supabase
-        .from('round_answers')
-        .select('*', { count: 'exact', head: true })
-        .eq('round_id', round.id)
+      const counts = await fetchAnswerCount(round.id)
 
       setPhase(prev => {
-        if (prev.type === 'collecting') return { ...prev, answeredCount: answered ?? prev.answeredCount }
+        if (prev.type === 'collecting') {
+          return counts ? { ...prev, answeredCount: counts.answered, totalCount: counts.total } : prev
+        }
         return {
           type: 'collecting',
           round,
           myAnswer: myAnswerRef.current,
-          answeredCount: answered ?? 0,
-          totalCount: playerCountRef.current,
+          answeredCount: counts?.answered ?? 0,
+          totalCount: counts?.total ?? playerCountRef.current,
         }
       })
     } else if (round.status === 'results') {
@@ -1367,23 +1382,10 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
             setPhase({ type: 'finished', standings: results?.standings ?? [] })
           }
         })
-        .on('postgres_changes', {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'round_answers',
-        }, async () => {
-          const roundId = currentRoundIdRef.current
-          if (!roundId) return
-          // Re-fetch ground truth count to avoid double-counting the local optimistic update
-          const { count } = await supabase
-            .from('round_answers')
-            .select('*', { count: 'exact', head: true })
-            .eq('round_id', roundId)
-          setPhase(prev => {
-            if (prev.type !== 'collecting') return prev
-            return { ...prev, answeredCount: count ?? prev.answeredCount }
-          })
-        })
+        // No round_answers subscription: Realtime applies RLS to postgres_changes, and after
+        // migration 0026 a player only sees their own answer row while the round is live, so
+        // INSERTs from other players would never arrive. The collecting-phase counter is
+        // polled from /answer-count instead (see the effect below).
         .on('postgres_changes', {
           event: 'DELETE',
           schema: 'public',
@@ -1475,6 +1477,32 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
     timedOutRoundIdRef.current = phase.round.id
     handleTimerEnd()
   }, [isHost, phase, secondsLeft, handleTimerEnd])
+
+  // "3/5 answered" while waiting on the rest of the room. Polled rather than pushed: the
+  // round_answers Realtime feed only carries this player's own rows now (see 0026). Purely
+  // cosmetic — the round still advances via the rounds subscription, either when the server
+  // sees the last answer land or when the host's timer runs out.
+  const collectingRoundId = phase.type === 'collecting' ? phase.round.id : null
+  useEffect(() => {
+    if (!collectingRoundId) return
+
+    let cancelled = false
+    const poll = async () => {
+      const counts = await fetchAnswerCount(collectingRoundId)
+      if (cancelled || !counts) return
+      setPhase(prev =>
+        prev.type === 'collecting'
+          ? { ...prev, answeredCount: counts.answered, totalCount: counts.total }
+          : prev,
+      )
+    }
+
+    const interval = setInterval(poll, 2000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [collectingRoundId, fetchAnswerCount])
 
   const handleSkip = useCallback(async () => {
     const roundId = currentRoundIdRef.current
