@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useRef, useState } from 'react'
+import { use, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence, type PanInfo } from 'motion/react'
@@ -915,8 +915,6 @@ export default function LessonPage({ params }: { params: Promise<{ tenseId: stri
   const router = useRouter()
   const lesson = LESSONS[tenseId]
   const [page, setPage] = useState(0)
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const touchStartRef = useRef<{ x: number; y: number } | null>(null)
 
   if (!lesson) {
     return (
@@ -954,33 +952,10 @@ export default function LessonPage({ params }: { params: Promise<{ tenseId: stri
     else goPrev()
   }
 
-  // Vertical swipe — plain touch tracking (not Motion drag) so it never intercepts native
-  // scrolling. Only turns the page once the content itself has nothing left to scroll: swipe up
-  // while already at the bottom advances, swipe down while already at the top goes back.
-  const handleTouchStart = (e: React.TouchEvent) => {
-    const t = e.touches[0]
-    touchStartRef.current = { x: t.clientX, y: t.clientY }
-  }
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    const start = touchStartRef.current
-    touchStartRef.current = null
-    if (!start) return
-
-    const t = e.changedTouches[0]
-    const dx = t.clientX - start.x
-    const dy = t.clientY - start.y
-    if (Math.abs(dy) < Math.abs(dx)) return
-    if (Math.abs(dy) < SWIPE_OFFSET_THRESHOLD) return
-
-    const el = scrollRef.current
-    if (!el) return
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 4
-    const atTop = el.scrollTop < 4
-
-    if (dy < 0 && atBottom) goNext()
-    else if (dy > 0 && atTop) goPrev()
-  }
+  // Vertical swipe used to turn the page too (swipe up at the bottom advanced, swipe down at the
+  // top went back). In practice it fired on ordinary reading: scroll to the end of a lesson and
+  // the momentum of that same gesture carried you onto the next page unasked. Page turns are
+  // horizontal-only now — that is the gesture people mean when they want to move on.
 
   return (
     <>
@@ -1005,19 +980,15 @@ export default function LessonPage({ params }: { params: Promise<{ tenseId: stri
         {/* Content — scrolls internally only when it doesn't fit; page itself never scrolls.
             Swipe lives on this outer scroll container (not the inner content div) so a touch
             anywhere in the viewport — including blank space below short content — can trigger
-            the page-turn, not just a touch directly on text/cards. Horizontal swipe uses Motion's
-            own drag="x"; vertical swipe uses plain touch tracking (see handleTouchStart/End)
-            so it never fights the native scroll the way a Motion drag="y" would. */}
+            the page-turn, not just a touch directly on text/cards. Horizontal only: dragDirectionLock
+            keeps a vertical gesture as a plain scroll, so reading never turns the page. */}
         <motion.div
-          ref={scrollRef}
           className="thin-scroll flex-1 min-h-0 overflow-y-auto px-6 pt-6 pb-6"
           drag="x"
           dragDirectionLock
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.6}
           onDragEnd={handleDragEnd}
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
         >
           <AnimatePresence mode="wait">
             <motion.div

@@ -576,6 +576,18 @@ function ContrastRoundView({
 
   const sentenceParts = splitContrastSentence(phrase.sentence, gapCount)
 
+  // Once the round is revealed the blanks show the correct word on a white box with a green
+  // outline, whatever the player picked — the sentence they are left reading should be the right
+  // one. Which option they chose is still marked on the cards below.
+  const revealed = phase.type === 'results' && correct1 !== null
+  const revealStyle = { borderColor: '#22C55E', backgroundColor: '#FFFFFF', color: '#15803D' }
+  const gapWord1 = revealed
+    ? (correct1 === 1 ? phrase.option_a_1 : phrase.option_b_1)
+    : displaySelected1 === 1 ? phrase.option_a_1 : displaySelected1 === 2 ? phrase.option_b_1 : null
+  const gapWord2 = revealed && correct2 !== null
+    ? (correct2 === 1 ? phrase.option_a_2 : phrase.option_b_2)
+    : displaySelected2 === 1 ? phrase.option_a_2 : displaySelected2 === 2 ? phrase.option_b_2 : null
+
   return (
     <div className="flex-1 flex flex-col">
       <div className="flex flex-col items-center pt-10 pb-6 px-5 gap-2">
@@ -587,10 +599,10 @@ function ContrastRoundView({
                 {gapVerbOnly(phrase.infinitive_1)}
               </span>
               <span
-                className="inline-flex min-w-[70px] min-h-[36px] px-3 items-center justify-center rounded-lg border-2 text-center font-bold text-gray-900 whitespace-nowrap"
-                style={{ borderColor: GAP_COLORS[1].border }}
+                className="inline-flex min-w-[70px] min-h-[36px] px-3 items-center justify-center rounded-lg border-2 text-center font-bold whitespace-nowrap"
+                style={revealed ? revealStyle : { borderColor: GAP_COLORS[1].border, color: '#111827' }}
               >
-                {displaySelected1 === 1 ? phrase.option_a_1 : displaySelected1 === 2 ? phrase.option_b_1 : null}
+                {gapWord1}
               </span>
             </span>
             {sentenceParts[1]}
@@ -602,10 +614,10 @@ function ContrastRoundView({
                   {gapVerbOnly(phrase.infinitive_2 ?? '')}
                 </span>
                 <span
-                  className="inline-flex min-w-[70px] min-h-[36px] px-3 items-center justify-center rounded-lg border-2 text-center font-bold text-gray-900 whitespace-nowrap"
-                  style={{ borderColor: GAP_COLORS[2].border }}
+                  className="inline-flex min-w-[70px] min-h-[36px] px-3 items-center justify-center rounded-lg border-2 text-center font-bold whitespace-nowrap"
+                  style={revealed && correct2 !== null ? revealStyle : { borderColor: GAP_COLORS[2].border, color: '#111827' }}
                 >
-                  {displaySelected2 === 1 ? phrase.option_a_2 : displaySelected2 === 2 ? phrase.option_b_2 : null}
+                  {gapWord2}
                 </span>
               </span>
               {sentenceParts[2]}
@@ -849,10 +861,11 @@ function StandingRow({ standing: s, isMe }: { standing: Standing; isMe: boolean 
       </div>
 
       {/* Movement indicator + total points. Keyed on places gained, not points scored — every
-          correct answer used to show an up arrow, even when the player was falling down the table. */}
+          correct answer used to show an up arrow, even when the player was falling down the table.
+          Only climbs are marked: dropping is visible from the position itself, and calling it out
+          in front of the class is discouraging without adding information. */}
       <div className="flex items-center gap-2 shrink-0">
         {s.rank_change > 0 && <span className="text-blue-600 text-xs font-black">▲</span>}
-        {s.rank_change < 0 && <span className="text-red-500 text-xs font-black">▼</span>}
         <span className="font-black text-base" style={{ color: isFirst ? '#FF8716' : '#1F2937' }}>
           {s.total_points}
         </span>

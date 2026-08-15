@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import { motion } from 'motion/react'
+import { Check, X } from 'lucide-react'
 
 export type ContrastCardState =
   | 'default' | 'selected' | 'correct-selected' | 'correct-unselected' | 'incorrect-selected' | 'disabled'
@@ -27,11 +28,30 @@ export default function ContrastOptionCard({
 }) {
   const clickable = state === 'default' || state === 'selected'
 
+  // Verdict badge, top-right of the card itself. Marks the right answer (whether or not it was
+  // picked) and the wrong one only when the player actually chose it — putting a cross on an
+  // option nobody selected would read as a second wrong answer rather than feedback.
+  const verdict =
+    state === 'correct-selected' || state === 'correct-unselected' ? 'correct'
+    : state === 'incorrect-selected' ? 'incorrect'
+    : null
+
   return (
     <div className="relative pt-4">
       {iconSrc && (
         <div className="absolute -top-1 left-1/2 -translate-x-1/2 z-10 w-8 h-8">
           <Image src={iconSrc} alt="" width={32} height={32} className="w-full h-full object-contain" />
+        </div>
+      )}
+      {verdict && (
+        <div
+          className="absolute top-2 right-1.5 z-20 w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-sm"
+          style={{ backgroundColor: verdict === 'correct' ? '#22C55E' : '#962F45' }}
+        >
+          {verdict === 'correct'
+            ? <Check className="w-3 h-3 text-white stroke-[3.5]" />
+            : <X className="w-3 h-3 text-white stroke-[3.5]" />
+          }
         </div>
       )}
       <motion.button

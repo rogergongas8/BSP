@@ -1,6 +1,5 @@
 'use client'
 
-import { Check, X } from 'lucide-react'
 import ContrastOptionCard, { type ContrastCardState } from './ContrastOptionCard'
 
 function cardState(opt: 1 | 2, selected: 1 | 2 | null, correct: 1 | 2 | null, submitted: boolean): ContrastCardState {
@@ -28,28 +27,20 @@ export default function ContrastGap({
   bgColor: string
   /** Border/background color for a selected (not-yet-submitted) card — differs per gap/column. */
   accentColor?: string
+  /** @deprecated No longer read — each option card shows its own verdict badge. Kept so existing
+   *  call sites stay valid; drop it once they have all been updated. */
   showResultBadge?: boolean
   onSelect: (opt: 1 | 2) => void
 }) {
-  const isCorrect = submitted && selected === correctOption
   // Icons reveal the tense on demand via the hint toggle, but always reveal once the
   // answer is checked — that's when the user needs to see which tense they landed on.
   const showIcon = showHints || submitted
 
   return (
     <div className="relative flex flex-col gap-4 rounded-3xl px-4 py-6" style={{ backgroundColor: bgColor }}>
-      {/* Correct/incorrect badge — only shown for phrases with 4 options (2 gaps) */}
-      {showResultBadge && submitted && (
-        <div
-          className="absolute -top-3 -right-2 z-10 w-7 h-7 rounded-full flex items-center justify-center border-2 border-white shadow-sm"
-          style={{ backgroundColor: isCorrect ? '#22C55E' : '#962F45' }}
-        >
-          {isCorrect
-            ? <Check className="w-4 h-4 text-white stroke-[3]" />
-            : <X className="w-4 h-4 text-white stroke-[3]" />
-          }
-        </div>
-      )}
+      {/* The per-gap badge that used to sit here is gone: each ContrastOptionCard now carries its
+          own verdict badge, which says the same thing more precisely (which option was right,
+          not just whether the gap was). */}
       <ContrastOptionCard
         label={optionA}
         state={cardState(1, selected, correctOption, submitted)}
