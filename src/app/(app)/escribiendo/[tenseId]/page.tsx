@@ -221,9 +221,18 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   // baked into its canvas than the other tenses', so it needs a larger box to
   // read at the same visual size as the others. Its skipped artwork doesn't
   // have that padding, so it gets its own (smaller) size instead.
+  // The pretérito perfecto ("Javi Tostado") success artwork is tighter-cropped, so
+  // at the shared 240 box it reads noticeably bigger than the rest — trim it down.
   const isImperfectoSuccess = meta.imageDir === 'imperfecto' && status === 'correct'
   const isImperfectoSkipped = meta.imageDir === 'imperfecto' && status === 'skipped'
-  const successImageSize = isImperfectoSuccess ? 440 : isImperfectoSkipped ? 200 : 240
+  const isPretPerfectSuccess = meta.imageDir === 'pretperfect' && status === 'correct'
+  const successImageSize = isImperfectoSuccess
+    ? 440
+    : isImperfectoSkipped
+      ? 200
+      : isPretPerfectSuccess
+        ? 190
+        : 240
 
   const prefetchRef = useRef<Phrase | null>(null)
   const redoQueueRef = useRef<Phrase[] | null>(null)
