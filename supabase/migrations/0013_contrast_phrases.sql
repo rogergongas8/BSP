@@ -22,6 +22,7 @@ create index if not exists contrast_phrases_battle_idx on public.contrast_phrase
 
 alter table public.contrast_phrases enable row level security;
 
+drop policy if exists "Contrast phrases are readable by authenticated users" on public.contrast_phrases;
 create policy "Contrast phrases are readable by authenticated users"
   on public.contrast_phrases for select
   to authenticated

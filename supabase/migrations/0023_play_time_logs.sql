@@ -14,6 +14,7 @@ create index if not exists play_time_logs_user_idx on public.play_time_logs (use
 
 alter table public.play_time_logs enable row level security;
 
+drop policy if exists "Users can read own play time logs" on public.play_time_logs;
 create policy "Users can read own play time logs"
   on public.play_time_logs for select
   to authenticated

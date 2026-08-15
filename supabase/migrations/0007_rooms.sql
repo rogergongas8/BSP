@@ -12,17 +12,20 @@ create index if not exists rooms_status_idx on public.rooms (status);
 
 alter table public.rooms enable row level security;
 
+drop policy if exists "Anyone authenticated can read rooms" on public.rooms;
 create policy "Anyone authenticated can read rooms"
   on public.rooms for select
   to authenticated
   using (true);
 
+drop policy if exists "Host can update own room" on public.rooms;
 create policy "Host can update own room"
   on public.rooms for update
   to authenticated
   using (auth.uid() = host_id)
   with check (auth.uid() = host_id);
 
+drop policy if exists "Authenticated users can create rooms" on public.rooms;
 create policy "Authenticated users can create rooms"
   on public.rooms for insert
   to authenticated
@@ -41,16 +44,19 @@ create index if not exists room_players_room_idx on public.room_players (room_id
 
 alter table public.room_players enable row level security;
 
+drop policy if exists "Anyone authenticated can read room players" on public.room_players;
 create policy "Anyone authenticated can read room players"
   on public.room_players for select
   to authenticated
   using (true);
 
+drop policy if exists "Users can join rooms" on public.room_players;
 create policy "Users can join rooms"
   on public.room_players for insert
   to authenticated
   with check (auth.uid() = user_id);
 
+drop policy if exists "Users can leave rooms" on public.room_players;
 create policy "Users can leave rooms"
   on public.room_players for delete
   to authenticated

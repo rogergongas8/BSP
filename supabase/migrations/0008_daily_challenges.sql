@@ -10,6 +10,7 @@ create table if not exists public.daily_challenges (
 
 alter table public.daily_challenges enable row level security;
 
+drop policy if exists "Anyone authenticated can read daily challenges" on public.daily_challenges;
 create policy "Anyone authenticated can read daily challenges"
   on public.daily_challenges for select
   to authenticated

@@ -15,12 +15,14 @@ create index if not exists profiles_username_idx on public.profiles (username);
 alter table public.profiles enable row level security;
 
 -- Anyone authenticated can read profiles (leaderboard, multiplayer)
+drop policy if exists "Profiles are readable by authenticated users" on public.profiles;
 create policy "Profiles are readable by authenticated users"
   on public.profiles for select
   to authenticated
   using (true);
 
 -- Users can only update their own profile
+drop policy if exists "Users can update own profile" on public.profiles;
 create policy "Users can update own profile"
   on public.profiles for update
   to authenticated
@@ -41,6 +43,7 @@ create index if not exists user_achievements_user_idx on public.user_achievement
 alter table public.user_achievements enable row level security;
 
 -- Anyone authenticated can read achievements (profile display)
+drop policy if exists "Achievements are readable by authenticated users" on public.user_achievements;
 create policy "Achievements are readable by authenticated users"
   on public.user_achievements for select
   to authenticated

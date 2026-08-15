@@ -19,6 +19,11 @@ create index if not exists daily_challenge_completions_user_idx on public.daily_
 
 alter table public.daily_challenge_completions enable row level security;
 
+-- Postgres has no "create policy if not exists", so drop first to keep this
+-- migration re-runnable (supabase db reset / re-applying against a live DB).
+drop policy if exists "Users can read own daily challenge completions" on public.daily_challenge_completions;
+drop policy if exists "Users can insert own daily challenge completions" on public.daily_challenge_completions;
+
 create policy "Users can read own daily challenge completions"
   on public.daily_challenge_completions for select
   to authenticated

@@ -13,16 +13,19 @@ create index if not exists phrase_mistakes_user_open_idx on public.phrase_mistak
 
 alter table public.phrase_mistakes enable row level security;
 
+drop policy if exists "Users can read own mistakes" on public.phrase_mistakes;
 create policy "Users can read own mistakes"
   on public.phrase_mistakes for select
   to authenticated
   using (auth.uid() = user_id);
 
+drop policy if exists "Users can insert own mistakes" on public.phrase_mistakes;
 create policy "Users can insert own mistakes"
   on public.phrase_mistakes for insert
   to authenticated
   with check (auth.uid() = user_id);
 
+drop policy if exists "Users can update own mistakes" on public.phrase_mistakes;
 create policy "Users can update own mistakes"
   on public.phrase_mistakes for update
   to authenticated

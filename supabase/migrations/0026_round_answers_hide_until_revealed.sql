@@ -25,6 +25,7 @@
 
 drop policy if exists "Users can read own answers" on public.round_answers;
 drop policy if exists "Users can read aggregate answers after results" on public.round_answers;
+drop policy if exists "Read own answers, or any answer once the round is revealed" on public.round_answers;
 
 create policy "Read own answers, or any answer once the round is revealed"
   on public.round_answers for select

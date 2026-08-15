@@ -20,6 +20,7 @@ CREATE INDEX IF NOT EXISTS rounds_status_idx ON public.rounds (status);
 
 ALTER TABLE public.rounds ENABLE ROW LEVEL SECURITY;
 
+drop policy if exists "Authenticated users can read rounds" on public.rounds;
 CREATE POLICY "Authenticated users can read rounds"
   ON public.rounds FOR SELECT TO authenticated USING (true);
 
@@ -42,12 +43,14 @@ CREATE INDEX IF NOT EXISTS round_answers_round_idx ON public.round_answers (roun
 
 ALTER TABLE public.round_answers ENABLE ROW LEVEL SECURITY;
 
+drop policy if exists "Users can read own answers" on public.round_answers;
 CREATE POLICY "Users can read own answers"
   ON public.round_answers FOR SELECT TO authenticated
   USING (auth.uid() = user_id);
 
 -- Aggregate view safe to expose: per-round correct/total counts
 -- (used by results screen bar chart)
+drop policy if exists "Users can read aggregate answers after results" on public.round_answers;
 CREATE POLICY "Users can read aggregate answers after results"
   ON public.round_answers FOR SELECT TO authenticated
   USING (

@@ -12,16 +12,19 @@ create index if not exists contrast_mistakes_user_open_idx on public.contrast_mi
 
 alter table public.contrast_mistakes enable row level security;
 
+drop policy if exists "Users can read own contrast mistakes" on public.contrast_mistakes;
 create policy "Users can read own contrast mistakes"
   on public.contrast_mistakes for select
   to authenticated
   using (auth.uid() = user_id);
 
+drop policy if exists "Users can insert own contrast mistakes" on public.contrast_mistakes;
 create policy "Users can insert own contrast mistakes"
   on public.contrast_mistakes for insert
   to authenticated
   with check (auth.uid() = user_id);
 
+drop policy if exists "Users can update own contrast mistakes" on public.contrast_mistakes;
 create policy "Users can update own contrast mistakes"
   on public.contrast_mistakes for update
   to authenticated

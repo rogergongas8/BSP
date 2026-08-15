@@ -16,12 +16,14 @@ create index if not exists practice_sessions_tense_idx on public.practice_sessio
 alter table public.practice_sessions enable row level security;
 
 -- Users can read only their own sessions
+drop policy if exists "Users can read own sessions" on public.practice_sessions;
 create policy "Users can read own sessions"
   on public.practice_sessions for select
   to authenticated
   using (auth.uid() = user_id);
 
 -- Users can insert their own sessions
+drop policy if exists "Users can insert own sessions" on public.practice_sessions;
 create policy "Users can insert own sessions"
   on public.practice_sessions for insert
   to authenticated
