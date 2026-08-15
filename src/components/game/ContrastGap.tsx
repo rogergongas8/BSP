@@ -9,7 +9,7 @@ function cardState(opt: 1 | 2, selected: 1 | 2 | null, correct: 1 | 2 | null, su
 }
 
 export default function ContrastGap({
-  optionA, optionB, correctOption, selected, submitted, showHints, iconA, iconB, bgColor, accentColor, showResultBadge, onSelect,
+  optionA, optionB, correctOption, selected, submitted, showHints, iconA, iconB, bgColor, accentColor, onSelect,
 }: {
   optionA: string
   optionB: string
@@ -27,9 +27,6 @@ export default function ContrastGap({
   bgColor: string
   /** Border/background color for a selected (not-yet-submitted) card — differs per gap/column. */
   accentColor?: string
-  /** @deprecated No longer read — each option card shows its own verdict badge. Kept so existing
-   *  call sites stay valid; drop it once they have all been updated. */
-  showResultBadge?: boolean
   onSelect: (opt: 1 | 2) => void
 }) {
   // Icons reveal the tense on demand via the hint toggle, but always reveal once the

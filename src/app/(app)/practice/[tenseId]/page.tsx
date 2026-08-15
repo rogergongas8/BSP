@@ -83,18 +83,18 @@ function splitSentence(sentence: string, gapCount: 1 | 2): string[] {
   return parts
 }
 
-/** Verb label stacked directly above its answer box, inline within the sentence flow. */
 /**
- * One blank inside the sentence.
+ * One blank inside the sentence, with its verb label stacked directly above it.
  *
- * Once the answer is in, the blank always shows the *correct* word on a white box with a green
- * outline — including when the player got it wrong. Showing their wrong pick back to them in red
- * left the sentence reading incorrectly, which is the opposite of what a learner should be left
- * looking at; which option they chose is still marked on the cards below.
+ * Once the answer is in, the blank always shows the *correct* word on white with a neutral dark
+ * outline — including when the player got it wrong. Echoing their wrong pick back in red left the
+ * sentence reading incorrectly, which is the opposite of what a learner should be left looking at.
+ * The outline stays neutral rather than green so it reads as "this is the answer", not as a verdict;
+ * which option they chose is marked on the cards below.
  */
 function GapWithLabel({ verb, value, color, result }: { verb: string; value: string | null; color: string; result?: 'correct' | 'incorrect' }) {
   const resultStyle = result
-    ? { borderColor: '#22C55E', backgroundColor: '#FFFFFF', color: '#15803D' }
+    ? { borderColor: '#111827', backgroundColor: '#FFFFFF', color: '#111827' }
     : { borderColor: color, color: '#111827' }
 
   return (
@@ -341,7 +341,10 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
         {!loading && phrase ? (
           <>
             {/* Sentence with blank(s) as real input-style boxes */}
-            <div className="flex flex-col gap-6 text-center text-base text-gray-800 leading-relaxed">
+            {/* leading-[2.6] rather than leading-relaxed: the verb label above each blank is
+                absolutely positioned, so it takes up no line height of its own and would print
+                over the line above whenever a blank lands on a wrapped second line. */}
+            <div className="flex flex-col gap-6 text-center text-base text-gray-800 leading-[2.6]">
               {gapCount === 1 ? (
                 <p className="[text-wrap:balance]">
                   {sentenceParts[0]}
@@ -391,7 +394,6 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
                 iconB={swap1 ? icons.a : icons.b}
                 bgColor={gapCount === 2 ? GAP_COLORS[1].bg : 'transparent'}
                 accentColor={GAP_COLORS[1].border}
-                showResultBadge
                 onSelect={(displayOpt) => {
                   if (submitted) return
                   const real = swap1 ? (displayOpt === 1 ? 2 : 1) : displayOpt
@@ -410,7 +412,6 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
                   iconB={swap2 ? icons.a : icons.b}
                   bgColor={GAP_COLORS[2].bg}
                   accentColor={GAP_COLORS[2].border}
-                  showResultBadge
                   onSelect={(displayOpt) => {
                     if (submitted) return
                     const real = swap2 ? (displayOpt === 1 ? 2 : 1) : displayOpt

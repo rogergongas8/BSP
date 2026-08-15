@@ -580,7 +580,9 @@ function ContrastRoundView({
   // outline, whatever the player picked — the sentence they are left reading should be the right
   // one. Which option they chose is still marked on the cards below.
   const revealed = phase.type === 'results' && correct1 !== null
-  const revealStyle = { borderColor: '#22C55E', backgroundColor: '#FFFFFF', color: '#15803D' }
+  // Neutral outline, not green: the sentence is showing the right answer either way, so colouring
+  // it as a verdict would read as "you got this right" to someone who did not.
+  const revealStyle = { borderColor: '#111827', backgroundColor: '#FFFFFF', color: '#111827' }
   const gapWord1 = revealed
     ? (correct1 === 1 ? phrase.option_a_1 : phrase.option_b_1)
     : displaySelected1 === 1 ? phrase.option_a_1 : displaySelected1 === 2 ? phrase.option_b_1 : null
@@ -591,7 +593,10 @@ function ContrastRoundView({
   return (
     <div className="flex-1 flex flex-col">
       <div className="flex flex-col items-center pt-10 pb-6 px-5 gap-2">
-        <div className="flex flex-col gap-3 text-center text-base text-gray-800 leading-relaxed">
+        {/* leading-[2.6]: the verb label above each blank is absolutely positioned and takes up no
+            line height, so a tighter leading lets it print over the line above when the sentence
+            wraps. */}
+        <div className="flex flex-col gap-3 text-center text-base text-gray-800 leading-[2.6]">
           <p className="[text-wrap:balance]">
             {sentenceParts[0]}
             <span className="relative inline-block align-middle mx-1">
@@ -977,7 +982,8 @@ function ScoreboardView({
             style={{ backgroundColor: '#FF8716' }}
           >
             {nexting ? 'Loading...' : (
-              <>Next question <ChevronRight className="w-4 h-4 stroke-[3]" /></>
+              // After the last round the next screen is the podium, not another question.
+              <>{roundsLeft <= 0 ? 'Show final board' : 'Next question'} <ChevronRight className="w-4 h-4 stroke-[3]" /></>
             )}
           </motion.button>
         </div>
@@ -1056,11 +1062,13 @@ export function FinishedView({
         )}
       </AnimatePresence>
 
-      <div className="relative z-10 isolate px-5 pt-8 pb-40 overflow-hidden shrink-0" style={{ backgroundColor: '#FF8716' }}>
+      {/* pb-24 rather than pb-40: the orange band was eating enough height to push the podium and
+          the CTA down the screen, leaving the bars cramped against the bottom edge. */}
+      <div className="relative z-10 isolate px-5 pt-8 pb-24 overflow-hidden shrink-0" style={{ backgroundColor: '#FF8716' }}>
         <Image
           src="/images/multiplayer/bg-star.png"
-          alt="" width={220} height={220}
-          className="absolute top-6 right-2 opacity-25 pointer-events-none select-none"
+          alt="" width={180} height={180}
+          className="absolute -top-2 right-2 opacity-25 pointer-events-none select-none"
           draggable={false}
         />
         {/* Non-hosts can't trigger finish (that also finalizes XP/stats, host-only) — this X is a quicker way out than the CTA below. */}
@@ -1339,7 +1347,7 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
         })
       }
     }
-  }, [startTimer, stopTimer, fetchResults, totalRounds])
+  }, [startTimer, stopTimer, fetchResults, fetchAnswerCount, totalRounds])
 
   useEffect(() => {
     const supabase = createClient()
