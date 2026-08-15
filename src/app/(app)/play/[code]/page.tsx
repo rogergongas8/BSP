@@ -48,6 +48,8 @@ type Standing = {
   delta: number
   streak: number
   rank: number
+  /** Places gained since the previous round: positive climbed, negative dropped, 0 held. */
+  rank_change: number
 }
 
 // TEMP: exported for the /dev-scoreboard preview route — revert to unexported when that route is deleted.
@@ -793,29 +795,84 @@ function LeaveConfirmModal({
   )
 }
 
+/** How many players the scoreboard lists before cutting off. */
+const SCOREBOARD_VISIBLE_COUNT = 5
+
+/** One row of the scoreboard. Shared so the pinned "your position" row below the top-5 cut is
+ *  rendered by the same code as the rows above it, rather than a copy that can drift. */
+function StandingRow({ standing: s, isMe }: { standing: Standing; isMe: boolean }) {
+  const isFirst = s.rank === 1
+
+  return (
+    <div
+      className="flex items-center gap-3 px-3 py-3 rounded-2xl"
+      style={{
+        backgroundColor: isFirst ? '#FFF0DC' : 'transparent',
+        border: isFirst ? '1.5px solid #FFD599' : '1.5px solid transparent',
+      }}
+    >
+      {/* Rank pill */}
+      <div
+        className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+        style={{ backgroundColor: isFirst ? '#FF8716' : '#E5E7EB' }}
+      >
+        <span className="text-xs font-black" style={{ color: isFirst ? 'white' : '#9CA3AF' }}>
+          {s.rank}
+        </span>
+      </div>
+
+      {/* Avatar */}
+      <div className="relative w-[42px] h-[42px] shrink-0">
+        <Image src={s.avatar} alt={s.username} fill sizes="42px" className="object-contain p-0.5" />
+      </div>
+
+      {/* Username + streak */}
+      <div className="flex-1 min-w-0 flex items-center gap-1.5">
+        <span className="font-bold text-[15px] text-gray-900 truncate">
+          {s.username}
+          {isMe && <span className="text-gray-400 font-normal text-xs ml-1">(tú)</span>}
+        </span>
+        {s.streak >= 2 && (
+          <span className="flex items-center gap-0.5 bg-orange-50 rounded-full px-1.5 py-0.5 shrink-0">
+            <Image src="/images/home/fxemoji_fire.svg" alt="Racha" width={12} height={12} />
+            <span className="text-[11px] font-black text-orange-500">{s.streak}</span>
+          </span>
+        )}
+      </div>
+
+      {/* Movement indicator + total points. Keyed on places gained, not points scored — every
+          correct answer used to show an up arrow, even when the player was falling down the table. */}
+      <div className="flex items-center gap-2 shrink-0">
+        {s.rank_change > 0 && <span className="text-blue-600 text-xs font-black">▲</span>}
+        {s.rank_change < 0 && <span className="text-red-500 text-xs font-black">▼</span>}
+        <span className="font-black text-base" style={{ color: isFirst ? '#FF8716' : '#1F2937' }}>
+          {s.total_points}
+        </span>
+      </div>
+    </div>
+  )
+}
+
 function ScoreboardView({
-  code, roundNumber, totalRounds, standings, isHost, currentUserId, onNext,
+  roundNumber, totalRounds, standings, isHost, currentUserId, leaving, onNext, onLeave,
 }: {
-  code: string
   roundNumber: number
   totalRounds: number
   standings: Standing[]
   isHost: boolean
   currentUserId: string
+  leaving: boolean
   onNext: () => void
+  /** Shared with the rest of the game so leaving always goes through one code path. */
+  onLeave: () => void
 }) {
   const roundsLeft = totalRounds - roundNumber
   const [nexting, setNexting] = useState(false)
   const [confirmingLeave, setConfirmingLeave] = useState(false)
-  const [leaving, setLeaving] = useState(false)
-  const router = useRouter()
 
-  const leaveRoom = async () => {
-    if (leaving) return
-    setLeaving(true)
-    await fetch(`/api/rooms/${code}/leave`, { method: 'POST' })
-    router.push('/')
-  }
+  const visibleStandings = standings.slice(0, SCOREBOARD_VISIBLE_COUNT)
+  const ownStandingBelowCut =
+    standings.find(s => s.user_id === currentUserId && s.rank > SCOREBOARD_VISIBLE_COUNT) ?? null
 
   return (
     <div className="flex-1 flex flex-col" style={{ backgroundColor: '#F5F3EF' }}>
@@ -848,7 +905,7 @@ function ScoreboardView({
         isHost={isHost}
         leaving={leaving}
         onStay={() => setConfirmingLeave(false)}
-        onLeave={leaveRoom}
+        onLeave={onLeave}
       />
 
       {/* Wave */}
@@ -860,78 +917,29 @@ function ScoreboardView({
 
       {/* Standings list */}
       <div className="flex-1 px-4 pt-3 flex flex-col overflow-y-auto" style={{ paddingBottom: isHost ? 96 : 24 }}>
-        {standings.map((s, index) => {
-          const isFirst = s.rank === 1
-          const isMe = s.user_id === currentUserId
+        {visibleStandings.map((s, index) => (
+          <div key={s.user_id}>
+            <StandingRow standing={s} isMe={s.user_id === currentUserId} />
 
-          return (
-            <div key={s.user_id}>
-              <div
-                className="flex items-center gap-3 px-3 py-3 rounded-2xl"
-                style={{
-                  backgroundColor: isFirst ? '#FFF0DC' : 'transparent',
-                  border: isFirst ? '1.5px solid #FFD599' : '1.5px solid transparent',
-                }}
-              >
-                {/* Rank pill */}
-                <div
-                  className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: isFirst ? '#FF8716' : '#E5E7EB' }}
-                >
-                  <span
-                    className="text-xs font-black"
-                    style={{ color: isFirst ? 'white' : '#9CA3AF' }}
-                  >
-                    {s.rank}
-                  </span>
-                </div>
+            {/* Divider — between non-first rows */}
+            {s.rank !== 1 && index < visibleStandings.length - 1 && visibleStandings[index + 1]?.rank !== 1 && (
+              <div className="h-px bg-gray-100 mx-3" />
+            )}
+          </div>
+        ))}
 
-                {/* Avatar */}
-                <div className="relative w-[42px] h-[42px] shrink-0">
-                  <Image
-                    src={s.avatar}
-                    alt={s.username}
-                    fill
-                    sizes="42px"
-                    className="object-contain p-0.5"
-                  />
-                </div>
-
-                {/* Username + streak */}
-                <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                  <span className="font-bold text-[15px] text-gray-900 truncate">
-                    {s.username}
-                    {isMe && <span className="text-gray-400 font-normal text-xs ml-1">(tú)</span>}
-                  </span>
-                  {s.streak >= 2 && (
-                    <span className="flex items-center gap-0.5 bg-orange-50 rounded-full px-1.5 py-0.5 shrink-0">
-                      <Image src="/images/home/fxemoji_fire.svg" alt="Racha" width={12} height={12} />
-                      <span className="text-[11px] font-black text-orange-500">{s.streak}</span>
-                    </span>
-                  )}
-                </div>
-
-                {/* Delta indicator + total points */}
-                <div className="flex items-center gap-2 shrink-0">
-                  {s.delta > 0 && (
-                    <span className="text-blue-600 text-xs font-black">▲</span>
-                  )}
-                  <span
-                    className="font-black text-base"
-                    style={{ color: isFirst ? '#FF8716' : '#1F2937' }}
-                  >
-                    {s.total_points}
-                  </span>
-                </div>
-              </div>
-
-              {/* Divider — between non-first rows */}
-              {!isFirst && index < standings.length - 1 && standings[index + 1]?.rank !== 1 && (
-                <div className="h-px bg-gray-100 mx-3" />
-              )}
+        {/* Players outside the top 5 still need to see where they stand, so their own row is
+            pinned below the cut with its real rank. */}
+        {ownStandingBelowCut && (
+          <>
+            <div className="flex items-center gap-2 px-3 py-2">
+              <div className="flex-1 h-px bg-gray-200" />
+              <span className="text-[10px] font-bold text-gray-400 tracking-widest">···</span>
+              <div className="flex-1 h-px bg-gray-200" />
             </div>
-          )
-        })}
+            <StandingRow standing={ownStandingBelowCut} isMe />
+          </>
+        )}
       </div>
 
       {isHost && (
@@ -961,12 +969,15 @@ function ScoreboardView({
 
 // TEMP: exported for the /dev-scoreboard preview route — revert to unexported when that route is deleted.
 export function FinishedView({
-  standings, isHost, currentUserId, onFinish,
+  standings, isHost, currentUserId, onFinish, onLeave,
 }: {
   standings: Standing[]
   isHost: boolean
   currentUserId: string
   onFinish: () => void
+  /** Non-hosts bailing out from the final scoreboard. Removes the room_players row rather than
+   *  just navigating away, so the room does not keep counting players who already left. */
+  onLeave: () => void
 }) {
   const [revealed, setRevealed] = useState(false)
   const [finishing, setFinishing] = useState(false)
@@ -1035,7 +1046,7 @@ export function FinishedView({
         {!isHost && (
           <motion.button
             whileTap={{ scale: 0.9 }}
-            onClick={() => router.push('/')}
+            onClick={onLeave}
             className="absolute top-5 right-5 z-10 w-8 h-8 rounded-full bg-white/20 flex items-center justify-center"
           >
             <X className="w-4 h-4 text-white stroke-[3]" />
@@ -1156,6 +1167,8 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
   const [secondsLeft, setSecondsLeft] = useState(30)
   const [leftPlayerToast, setLeftPlayerToast] = useState<{ username: string; avatar: string } | null>(null)
   const [myStreak, setMyStreak] = useState(0)
+  const [confirmingLeave, setConfirmingLeave] = useState(false)
+  const [leaving, setLeaving] = useState(false)
   const streakRoundIdRef = useRef<string | null>(null)
   const playerCountRef = useRef(0)
   const myAnswerRef = useRef<MyAnswer>(EMPTY_TEXT_ANSWER)
@@ -1168,6 +1181,21 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
   const currentRoundNumberRef = useRef(0)
   const hostIdRef = useRef<string | null>(null)
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  /**
+   * Leave the room for real.
+   *
+   * The header X used to call router.back() and the final scoreboard's X router.push('/'),
+   * so a player vanished from the screen while their room_players row stayed behind. No DELETE
+   * meant no Realtime event, which is why nobody ever saw the "X has left" toast or the
+   * host-ended modal: the trigger simply never fired.
+   */
+  const leaveRoom = useCallback(async () => {
+    if (leaving) return
+    setLeaving(true)
+    await fetch(`/api/rooms/${code}/leave`, { method: 'POST' }).catch(() => {})
+    router.push('/')
+  }, [code, leaving, router])
 
   const showPlayerLeftToast = useCallback((username: string, avatar: string) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
@@ -1363,7 +1391,11 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
             stopTimer()
             // A finish reached before the last round means the host bailed out mid-game, not a natural finish —
             // kick the remaining players straight to home with a modal explaining why, instead of the final scoreboard.
-            const endedEarly = currentRoundNumberRef.current > 0 && currentRoundNumberRef.current < room.total_rounds
+            // Read the count off the event: `room` was captured when this player loaded the page,
+            // which for anyone who waited in the lobby predates the host pressing start (that is
+            // where total_rounds is actually written).
+            const roundCount = updatedRoom.total_rounds ?? room.total_rounds
+            const endedEarly = currentRoundNumberRef.current > 0 && currentRoundNumberRef.current < roundCount
             if (endedEarly && !amHost) {
               sessionStorage.setItem('bsp_host_ended_game', '1')
               router.push('/')
@@ -1599,10 +1631,19 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
         )}
       </AnimatePresence>
 
+      {/* Outside the phase AnimatePresence so it survives a round change mid-confirmation. */}
+      <LeaveConfirmModal
+        open={confirmingLeave}
+        isHost={isHost}
+        leaving={leaving}
+        onStay={() => setConfirmingLeave(false)}
+        onLeave={leaveRoom}
+      />
+
       {/* Header */}
       {showGameHeader && (
         <div className="flex items-center gap-3 px-4 pt-4 pb-3">
-          <motion.button whileTap={{ scale: 0.9 }} onClick={() => router.back()}>
+          <motion.button whileTap={{ scale: 0.9 }} onClick={() => setConfirmingLeave(true)}>
             <X className="w-5 h-5 text-gray-400 stroke-[2.5]" />
           </motion.button>
 
@@ -1676,13 +1717,14 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
             exit={{ opacity: 0 }}
           >
             <ScoreboardView
-              code={code}
               roundNumber={phase.roundNumber}
               totalRounds={phase.totalRounds}
               standings={phase.standings}
               isHost={isHost}
               currentUserId={currentUserId ?? ''}
+              leaving={leaving}
               onNext={handleNextRound}
+              onLeave={leaveRoom}
             />
           </motion.div>
         )}
@@ -1699,6 +1741,7 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
               isHost={isHost}
               currentUserId={currentUserId ?? ''}
               onFinish={handleFinish}
+              onLeave={leaveRoom}
             />
           </motion.div>
         )}

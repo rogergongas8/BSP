@@ -7,10 +7,16 @@
 import { useState } from 'react'
 import { FinishedView, RoundView, type Round, type RoundPhase } from '../play/[code]/page'
 
+// Covers all three movement states (climbed / dropped / held) and overflows the top-5 cut, so
+// the preview exercises both the arrows and the pinned "your position" row.
 const FAKE_STANDINGS = [
-  { user_id: '1', username: 'roger', avatar: '/images/levelup/javi-tostado.png', total_points: 887, delta: 0, streak: 3, rank: 1 },
-  { user_id: '2', username: 'akane', avatar: '/images/levelup/mimo.png', total_points: 879, delta: 0, streak: 0, rank: 2 },
-  { user_id: '3', username: 'carlos', avatar: '/images/levelup/zas.png', total_points: 640, delta: 0, streak: 0, rank: 3 },
+  { user_id: '1', username: 'roger',  avatar: '/images/levelup/javi-tostado.png', total_points: 887, delta: 112, streak: 3, rank: 1, rank_change: 2 },
+  { user_id: '2', username: 'akane',  avatar: '/images/levelup/mimo.png',         total_points: 879, delta: 0,   streak: 0, rank: 2, rank_change: -1 },
+  { user_id: '3', username: 'carlos', avatar: '/images/levelup/zas.png',          total_points: 640, delta: 105, streak: 0, rank: 3, rank_change: 0 },
+  { user_id: '4', username: 'jana',   avatar: '/images/levelup/mimo.png',         total_points: 590, delta: 98,  streak: 2, rank: 4, rank_change: 1 },
+  { user_id: '5', username: 'marta',  avatar: '/images/levelup/zas.png',          total_points: 512, delta: 0,   streak: 0, rank: 5, rank_change: -2 },
+  { user_id: '6', username: 'pablo',  avatar: '/images/levelup/javi-tostado.png', total_points: 430, delta: 100, streak: 0, rank: 6, rank_change: 1 },
+  { user_id: '7', username: 'lucia',  avatar: '/images/levelup/mimo.png',         total_points: 380, delta: 0,   streak: 0, rank: 7, rank_change: -1 },
 ]
 
 const FAKE_ROUND: Round = {
@@ -125,7 +131,13 @@ export default function DevScoreboardPage() {
       </div>
 
       {view === 'finished' && (
-        <FinishedView standings={FAKE_STANDINGS} isHost={true} currentUserId="1" onFinish={() => alert('Finish battle clicked')} />
+        <FinishedView
+          standings={FAKE_STANDINGS}
+          isHost={true}
+          currentUserId="1"
+          onFinish={() => alert('Finish battle clicked')}
+          onLeave={() => alert('Leave clicked')}
+        />
       )}
       {view === 'contrast-results' && (
         <RoundView

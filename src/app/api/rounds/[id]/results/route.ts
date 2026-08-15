@@ -114,6 +114,18 @@ export async function GET(
     .select('user_id, profiles(username, total_xp, avatar_id)')
     .eq('room_id', round.room_id)
 
+  // Where everyone stood *before* this round, so the scoreboard can show who moved up or down.
+  // Totals minus this round's points give the previous standings, ranked by the same rule as the
+  // current ones (total alone), so players who simply hold their position register no movement.
+  const previousRankByUser = new Map<string, number>()
+  ;(players ?? [])
+    .map(p => ({
+      user_id: p.user_id,
+      total: (pointsByUser.get(p.user_id) ?? 0) - (deltaByUser.get(p.user_id) ?? 0),
+    }))
+    .sort((a, b) => b.total - a.total)
+    .forEach((entry, i) => previousRankByUser.set(entry.user_id, i + 1))
+
   const standings = (players ?? [])
     .map(p => {
       const profile = p.profiles as unknown as { username: string; total_xp: number; avatar_id: string | null }
@@ -128,7 +140,13 @@ export async function GET(
       }
     })
     .sort((a, b) => b.total_points - a.total_points)
-    .map((s, i) => ({ ...s, rank: i + 1 }))
+    .map((s, i) => {
+      const rank = i + 1
+      // Positive = climbed (rank 4 -> 2 is +2), negative = dropped, 0 = held position.
+      // Rank 1 is the best rank, so the previous rank minus the current one gives the direction.
+      const previousRank = previousRankByUser.get(s.user_id) ?? rank
+      return { ...s, rank, rank_change: previousRank - rank }
+    })
 
   // Determine current user position info
   const myStanding = standings.find(s => s.user_id === user.id)

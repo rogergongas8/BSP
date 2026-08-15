@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import { Check, X } from 'lucide-react'
 
 /** One gap's worth of result data — the correct answer, the class-wide correct/incorrect tally
  * for that gap, and whether the current user got this specific gap right. */
@@ -63,11 +64,22 @@ export default function ContrastResultCard({
       </p>
       <div className={gaps.length === 2 ? 'grid grid-cols-2 gap-4' : ''}>
         {gaps.map((gap, i) => (
-          <div key={i} className="flex flex-col items-center gap-2 rounded-2xl pt-5 pb-3 px-3">
+          <div key={i} className="flex flex-col items-center gap-5 rounded-2xl pt-5 pb-3 px-3">
             {/* Icon floats directly over the answer box's top border — no backing circle. */}
             <div className="relative w-full max-w-[140px] flex flex-col items-center">
               <div className="absolute -top-4 z-10 w-8 h-8">
                 <Image src={gap.icon} alt="" width={32} height={32} className="w-full h-full object-contain" />
+              </div>
+              {/* Same corner badge ContrastGap uses when an answer is checked, so getting it
+                  right or wrong reads identically across the game. */}
+              <div
+                className="absolute -top-2.5 -right-2.5 z-10 w-7 h-7 rounded-full flex items-center justify-center border-2 border-white shadow-sm"
+                style={{ backgroundColor: gap.userWasCorrect ? '#22C55E' : '#962F45' }}
+              >
+                {gap.userWasCorrect
+                  ? <Check className="w-4 h-4 text-white stroke-[3]" />
+                  : <X className="w-4 h-4 text-white stroke-[3]" />
+                }
               </div>
               <div
                 className="w-full aspect-[4/3] rounded-xl px-3 flex items-center justify-center text-center text-base font-semibold bg-gray-100 text-gray-900 border-2"
