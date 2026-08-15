@@ -98,6 +98,14 @@ export type Round = {
   contrast_phrases: ContrastPhrasePublic | null
 }
 
+/** What each player broadcasts about themselves on the game's Presence channel. Presence is the
+ *  only way the others learn who left: DELETE events arrive stripped to the primary key. */
+type PlayPresence = {
+  user_id: string
+  username: string
+  avatar: string
+}
+
 type GamePhase =
   | { type: 'loading' }
   | { type: 'active'; round: Round }
@@ -1175,6 +1183,8 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const channelRef = useRef<any>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const presenceChannelRef = useRef<any>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const currentRoundIdRef = useRef<string | null>(null)
   const timedOutRoundIdRef = useRef<string | null>(null)
@@ -1344,6 +1354,13 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
         .eq('room_id', room.id)
       playerCountRef.current = pCount ?? 0
 
+      // Own profile, published to Presence below so the other players know who left.
+      const { data: myProfile } = await supabase
+        .from('profiles')
+        .select('username, total_xp, avatar_id')
+        .eq('id', user.id)
+        .single()
+
       if (room.status === 'finished') {
         const results = await fetchResults(currentRoundIdRef.current ?? '')
         setPhase({ type: 'finished', standings: results?.standings ?? [] })
@@ -1418,35 +1435,46 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
         // migration 0026 a player only sees their own answer row while the round is live, so
         // INSERTs from other players would never arrive. The collecting-phase counter is
         // polled from /answer-count instead (see the effect below).
-        .on('postgres_changes', {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'room_players',
-          filter: `room_id=eq.${room.id}`,
-        }, async (payload) => {
-          const oldRow = payload.old as { user_id?: string }
-          // Skip our own leave and the host's — the host leaving already kicks everyone out with its own modal.
-          if (!oldRow.user_id || oldRow.user_id === user.id || oldRow.user_id === hostIdRef.current) return
-
-          // The round shouldn't keep waiting on an answer that's never coming.
-          playerCountRef.current = Math.max(0, playerCountRef.current - 1)
-          setPhase(prev => (prev.type === 'collecting' ? { ...prev, totalCount: playerCountRef.current } : prev))
-
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('username, total_xp, avatar_id')
-            .eq('id', oldRow.user_id)
-            .single()
-
-          if (profile) {
-            const info = getLevelInfo(profile.total_xp)
-            const avatar = resolveAvatarPath(profile.avatar_id, catImagePath(info.cat))
-            showPlayerLeftToast(profile.username, avatar)
-          }
-        })
         .subscribe()
 
       channelRef.current = channel
+
+      // ── Who left, via Presence ──
+      // Not postgres_changes: Realtime cannot evaluate RLS against a row that no longer exists,
+      // so it trims DELETE payloads down to the primary key. Verified against this project —
+      // `old` arrives as { id } only, with no user_id, even though room_players is REPLICA
+      // IDENTITY FULL. Presence carries whatever the client published, so the leave event still
+      // knows who it was. Same approach the lobby already uses for its player list.
+      const myInfo = getLevelInfo(myProfile?.total_xp ?? 0)
+      const presence = supabase.channel(`play-presence:${room.id}`, {
+        config: { presence: { key: user.id } },
+      })
+
+      presence
+        .on('presence', { event: 'leave' }, ({ leftPresences }) => {
+          for (const left of leftPresences as unknown as PlayPresence[]) {
+            // Our own exit, and the host's — the host leaving already routes everyone home with
+            // its own modal, so a toast on the way out would just flash past.
+            if (!left.user_id || left.user_id === user.id || left.user_id === hostIdRef.current) continue
+
+            // The round shouldn't keep waiting on an answer that's never coming.
+            playerCountRef.current = Math.max(0, playerCountRef.current - 1)
+            setPhase(prev => (prev.type === 'collecting' ? { ...prev, totalCount: playerCountRef.current } : prev))
+
+            showPlayerLeftToast(left.username, left.avatar)
+          }
+        })
+        .subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await presence.track({
+              user_id: user.id,
+              username: myProfile?.username ?? 'Alguien',
+              avatar: resolveAvatarPath(myProfile?.avatar_id ?? null, catImagePath(myInfo.cat)),
+            } satisfies PlayPresence)
+          }
+        })
+
+      presenceChannelRef.current = presence
     }
 
     init()
@@ -1455,6 +1483,12 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
       stopTimer()
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current)
+      }
+      // Removing the channel untracks this player, which is what fires the 'leave' event on
+      // everyone else's client — so closing the tab or navigating away notifies the room too,
+      // not just pressing the X.
+      if (presenceChannelRef.current) {
+        supabase.removeChannel(presenceChannelRef.current)
       }
     }
   }, [code]) // eslint-disable-line react-hooks/exhaustive-deps

@@ -14,11 +14,18 @@ type GapResult = {
 }
 
 /** Background fill for the non-selected side, and the highlighted (bordered, rounded) pill
- * for whichever side this user actually landed on. */
-export function ResultBar({ correctCount, incorrectCount, userWasCorrect }: {
+ * for whichever side this user actually landed on.
+ *
+ * A verdict icon sits outside the bar, on the same side as the user's own result: a tick to the
+ * left when they got it right, a cross to the right when they did not. The bar itself shrinks to
+ * make room, so the icon never covers the counts. */
+export function ResultBar({ correctCount, incorrectCount, userWasCorrect, showVerdict = false }: {
   correctCount: number
   incorrectCount: number
   userWasCorrect: boolean
+  /** Off by default: the Escribiendo results panel already spells the verdict out above the bar
+   *  with its stem/ending/person checks, so a second icon there would just repeat it. */
+  showVerdict?: boolean
 }) {
   const total = correctCount + incorrectCount
   const correctPct = total > 0 ? (correctCount / total) * 100 : 0
@@ -30,17 +37,35 @@ export function ResultBar({ correctCount, incorrectCount, userWasCorrect }: {
     ? { bg: 'bg-red-100', text: 'text-green-900', count: incorrectCount }
     : { bg: 'bg-green-200', text: 'text-red-900', count: correctCount }
 
+  const verdict = (
+    <div
+      className="w-5 h-5 shrink-0 rounded-full flex items-center justify-center"
+      style={{ backgroundColor: userWasCorrect ? '#22C55E' : '#962F45' }}
+    >
+      {userWasCorrect
+        ? <Check className="w-3 h-3 text-white stroke-[3.5]" />
+        : <X className="w-3 h-3 text-white stroke-[3.5]" />
+      }
+    </div>
+  )
+
   return (
-    <div className="relative w-full h-6 rounded-full overflow-hidden">
-      <div className={`absolute inset-0 flex items-center text-xs font-bold ${flat.bg} ${flat.text} ${highlight.side === 'left' ? 'justify-end pr-2.5' : 'justify-start pl-2.5'}`}>
-        {flat.count}
+    <div className="w-full flex items-center gap-1.5">
+      {showVerdict && userWasCorrect && verdict}
+
+      <div className="relative flex-1 h-6 rounded-full overflow-hidden">
+        <div className={`absolute inset-0 flex items-center text-xs font-bold ${flat.bg} ${flat.text} ${highlight.side === 'left' ? 'justify-end pr-2.5' : 'justify-start pl-2.5'}`}>
+          {flat.count}
+        </div>
+        <div
+          className={`absolute inset-y-0 rounded-full border-2 flex items-center text-xs font-bold transition-all duration-700 box-border ${highlight.bg} ${highlight.text} ${highlight.side === 'left' ? 'left-0 justify-start pl-2.5' : 'right-0 justify-end pr-2.5'}`}
+          style={{ width: `${highlight.width}%`, borderColor: highlight.color }}
+        >
+          {highlight.count}
+        </div>
       </div>
-      <div
-        className={`absolute inset-y-0 rounded-full border-2 flex items-center text-xs font-bold transition-all duration-700 box-border ${highlight.bg} ${highlight.text} ${highlight.side === 'left' ? 'left-0 justify-start pl-2.5' : 'right-0 justify-end pr-2.5'}`}
-        style={{ width: `${highlight.width}%`, borderColor: highlight.color }}
-      >
-        {highlight.count}
-      </div>
+
+      {showVerdict && !userWasCorrect && verdict}
     </div>
   )
 }
@@ -70,17 +95,6 @@ export default function ContrastResultCard({
               <div className="absolute -top-4 z-10 w-8 h-8">
                 <Image src={gap.icon} alt="" width={32} height={32} className="w-full h-full object-contain" />
               </div>
-              {/* Same corner badge ContrastGap uses when an answer is checked, so getting it
-                  right or wrong reads identically across the game. */}
-              <div
-                className="absolute -top-2.5 -right-2.5 z-10 w-7 h-7 rounded-full flex items-center justify-center border-2 border-white shadow-sm"
-                style={{ backgroundColor: gap.userWasCorrect ? '#22C55E' : '#962F45' }}
-              >
-                {gap.userWasCorrect
-                  ? <Check className="w-4 h-4 text-white stroke-[3]" />
-                  : <X className="w-4 h-4 text-white stroke-[3]" />
-                }
-              </div>
               <div
                 className="w-full aspect-[4/3] rounded-xl px-3 flex items-center justify-center text-center text-base font-semibold bg-gray-100 text-gray-900 border-2"
                 style={{ borderColor: '#1D841D' }}
@@ -89,7 +103,12 @@ export default function ContrastResultCard({
               </div>
             </div>
 
-            <ResultBar correctCount={gap.correctCount} incorrectCount={gap.incorrectCount} userWasCorrect={gap.userWasCorrect} />
+            <ResultBar
+              correctCount={gap.correctCount}
+              incorrectCount={gap.incorrectCount}
+              userWasCorrect={gap.userWasCorrect}
+              showVerdict
+            />
           </div>
         ))}
       </div>
