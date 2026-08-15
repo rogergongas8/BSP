@@ -378,7 +378,9 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phrase_id: phrase.id, tense: phrase.tense ?? staticMeta.tense, phrase_type: phrase.type }),
       }).catch(() => {})
-    } else {
+    } else if (!hadErrorRef.current) {
+      // Only a clean first-try answer resolves the mistake. Getting it right
+      // after a failed attempt still leaves the phrase in review.
       fetch('/api/mistakes', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -422,6 +424,13 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
     const newStats = { ...stats, skipped: stats.skipped + 1 }
     setStats(newStats)
     setStatus('skipped')
+    if (!phrase) return
+    hadErrorRef.current = true
+    fetch('/api/mistakes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phrase_id: phrase.id, tense: phrase.tense ?? staticMeta.tense, phrase_type: phrase.type }),
+    }).catch(() => {})
   }
 
   const handleSkipNext = () => {
@@ -467,7 +476,9 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   const isIndefReg  = phrase?.type === 'Indef_reg' || phrase?.type === 'Indef_reg_gustar'
     || phrase?.type === 'Imp_reg' || phrase?.type === 'Imp_reg_gustar'
   const isPP        = phrase?.type === 'PP_irreg' || phrase?.type === 'PP_reg' || phrase?.type === 'PP_reg_gustar'
-  const ppRows      = ppStatusRows(status)
+  const ppRows      = isPP && phrase
+    ? ppStatusRows(input, phrase)
+    : { structure: false, auxiliary: false, personNumber: false, participle: false }
 
   return (
     <>

@@ -422,8 +422,7 @@ function validatePreteritoPerfecto(input: string, phrase: Phrase): ValidationRes
 
   // ── Participle ──
   if (phrase.type === 'PP_irreg') {
-    const expectedPart = deaccentToken(phrase.expected_stem ?? '')
-    if (partToken !== expectedPart) {
+    if (!isParticipleCorrect(partToken, phrase)) {
       return {
         status: 'part_irreg_invalid',
         hint: PP_PART_IRREG_INVALID_HINT,
@@ -460,30 +459,46 @@ function validatePreteritoPerfecto(input: string, phrase: Phrase): ValidationRes
   return { status: 'correct' }
 }
 
+/** Is this token a correct participle for the phrase's verb? Shared by the cascade and the row check. */
+function isParticipleCorrect(partToken: string, phrase: Phrase): boolean {
+  if (phrase.type === 'PP_irreg') {
+    return partToken === deaccentToken(phrase.expected_stem ?? '')
+  }
+  const isAR = phrase.verb.toLowerCase().endsWith('ar')
+  const expectedEnding = isAR ? 'ado' : 'ido'
+  if (!partToken.endsWith(expectedEnding)) return false
+  const expectedStem = phrase.expected_stem ?? deaccent(phrase.verb.toLowerCase()).slice(0, -2)
+  return partToken.slice(0, partToken.length - expectedEnding.length) === expectedStem
+}
+
 /**
- * Which Pretérito Perfecto checks the answer actually got through. The validation
- * above is a cascade — it returns at the first failing step — so every check at or
- * after the failure was never evaluated and must not be reported as passed.
+ * Which Pretérito Perfecto checks the answer passes. The `validate` cascade above
+ * stops at the first failing step (so it can pick one hint), but the status rows
+ * must judge every dimension independently — a wrong auxiliary must not make a
+ * correct participle read as wrong.
+ *
+ * Structure is the exception: with anything other than two tokens there is no
+ * auxiliary/participle to judge, so the remaining rows stay unchecked.
  */
-export function ppStatusRows(status: ValidationStatus): {
+export function ppStatusRows(input: string, phrase: Phrase): {
   structure: boolean
   auxiliary: boolean
   personNumber: boolean
   participle: boolean
 } {
-  switch (status) {
-    case 'structure_incomplete':
-      return { structure: false, auxiliary: false, personNumber: false, participle: false }
-    case 'aux_invalid':
-      return { structure: true, auxiliary: false, personNumber: false, participle: false }
-    case 'aux_wrong_person':
-      return { structure: true, auxiliary: true, personNumber: false, participle: false }
-    case 'part_irreg_invalid':
-    case 'part_ending_invalid':
-    case 'part_stem_invalid':
-      return { structure: true, auxiliary: true, personNumber: true, participle: false }
-    default:
-      return { structure: true, auxiliary: true, personNumber: true, participle: true }
+  const rawTokens = input.trim().split(/\s+/).filter(Boolean)
+  if (rawTokens.length !== 2) {
+    return { structure: false, auxiliary: false, personNumber: false, participle: false }
+  }
+
+  const auxToken = deaccentToken(rawTokens[0])
+  const partToken = deaccentToken(rawTokens[1])
+
+  return {
+    structure: true,
+    auxiliary: HABER_FORMS.includes(auxToken),
+    personNumber: auxToken === deaccentToken(HABER_PERSON_MAP[phrase.person] ?? ''),
+    participle: isParticipleCorrect(partToken, phrase),
   }
 }
 
