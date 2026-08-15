@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 import ContrastGap from '@/components/game/ContrastGap'
 import ContrastResultCard, { ResultBar } from '@/components/game/ContrastResultCard'
 import StreakBadge from '@/components/game/StreakBadge'
-import { CONTRAST_ICON, GAP_COLORS, gapVerbOnly, phraseGapCount, type ContrastPhrase } from '@/lib/contrast-game-logic'
+import { CONTRAST_ICON, GAP_COLORS, gapVerbOnly, phraseGapCount, type ContrastPhrasePublic } from '@/lib/contrast-game-logic'
 import { getLevelInfo, catImagePath } from '@/lib/levels'
 import { resolveAvatarPath } from '@/lib/avatars'
 
@@ -90,7 +90,10 @@ export type Round = {
   phrase_id: string | null
   contrast_phrase_id: string | null
   phrases: { id: string; verb: string; sentence: string } | null
-  contrast_phrases: ContrastPhrase | null
+  // Public shape on purpose: this row is fetched straight from Postgres by the browser, so it
+  // must never carry the answer key while the round is live. The correct options arrive with
+  // the round results instead (see RoundResults.correct_1 / correct_2).
+  contrast_phrases: ContrastPhrasePublic | null
 }
 
 type GamePhase =
@@ -534,7 +537,7 @@ function ContrastRoundView({
   // Time's up: lock in whichever gaps were already picked — a half-finished answer isn't lost.
   useEffect(() => {
     if (phase.type === 'active' && secondsLeft <= 0 && !autoSubmittedRef.current && phrase) {
-      const needsGap2 = !!(phrase.option_a_2 && phrase.option_b_2 && phrase.correct_2)
+      const needsGap2 = phraseGapCount(phrase) === 2
       if (selected1 !== null && (!needsGap2 || selected2 !== null)) {
         autoSubmittedRef.current = true
         onAnswer({ kind: 'contrast', selected1, selected2: needsGap2 ? selected2 : null })
@@ -548,6 +551,13 @@ function ContrastRoundView({
   const icons = CONTRAST_ICON[phrase.battle_id]
   const timedOut = secondsLeft <= 0
   const canSubmit = selected1 !== null && (gapCount === 1 || selected2 !== null) && !timedOut
+
+  // The answer key only exists client-side once the round is over, and it arrives with the
+  // results payload rather than with the phrase itself. GET /api/rounds/[id]/results always
+  // includes correct_1 for a contrast round, so a missing value means the results fetch
+  // failed — in that case the result card is skipped rather than guessing an answer.
+  const correct1 = phase.type === 'results' ? phase.results.correct_1 ?? null : null
+  const correct2 = phase.type === 'results' ? phase.results.correct_2 ?? null : null
 
   const handleSubmit = () => {
     if (phase.type !== 'active' || !canSubmit) return
@@ -600,7 +610,8 @@ function ContrastRoundView({
             <ContrastGap
               optionA={phrase.option_a_1}
               optionB={phrase.option_b_1}
-              correctOption={phrase.correct_1}
+              // Round is live: the answer key is not on the client at all.
+              correctOption={null}
               selected={selected1}
               submitted={false}
               showHints={false}
@@ -609,11 +620,11 @@ function ContrastRoundView({
               bgColor={gapCount === 2 ? GAP_COLORS[1].bg : 'transparent'}
               onSelect={timedOut ? () => {} : setSelected1}
             />
-            {gapCount === 2 && phrase.option_a_2 && phrase.option_b_2 && phrase.correct_2 && (
+            {gapCount === 2 && phrase.option_a_2 && phrase.option_b_2 && (
               <ContrastGap
                 optionA={phrase.option_a_2}
                 optionB={phrase.option_b_2}
-                correctOption={phrase.correct_2}
+                correctOption={null}
                 selected={selected2}
                 submitted={false}
                 showHints={false}
@@ -660,21 +671,21 @@ function ContrastRoundView({
               transition={{ duration: 0.35 }}
             >
               <ContrastResultCard
-                gap1={{
-                  answer: phrase.correct_1 === 1 ? phrase.option_a_1 : phrase.option_b_1,
+                gap1={correct1 ? {
+                  answer: correct1 === 1 ? phrase.option_a_1 : phrase.option_b_1,
                   // Per-gap class tallies aren't tracked server-side yet — falls back to the round's
                   // overall correct/incorrect count until RoundResults exposes a per-gap breakdown.
                   correctCount: phase.results.correct_count,
                   incorrectCount: phase.results.total_count - phase.results.correct_count,
                   icon: icons.a,
-                  userWasCorrect: displaySelected1 === phrase.correct_1,
-                }}
-                gap2={gapCount === 2 && phrase.option_a_2 && phrase.option_b_2 && phrase.correct_2 ? {
-                  answer: phrase.correct_2 === 1 ? phrase.option_a_2 : phrase.option_b_2,
+                  userWasCorrect: displaySelected1 === correct1,
+                } : null}
+                gap2={gapCount === 2 && correct2 && phrase.option_a_2 && phrase.option_b_2 ? {
+                  answer: correct2 === 1 ? phrase.option_a_2 : phrase.option_b_2,
                   correctCount: phase.results.correct_count,
                   incorrectCount: phase.results.total_count - phase.results.correct_count,
                   icon: icons.b,
-                  userWasCorrect: displaySelected2 === phrase.correct_2,
+                  userWasCorrect: displaySelected2 === correct2,
                 } : null}
               />
 
@@ -1201,7 +1212,7 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
       .select(`
         id, room_id, round_number, status, started_at, duration_seconds, phrase_id, contrast_phrase_id,
         phrases(id, verb, sentence),
-        contrast_phrases(id, battle_id, sentence, infinitive_1, option_a_1, option_b_1, correct_1, infinitive_2, option_a_2, option_b_2, correct_2)
+        contrast_phrases(id, battle_id, sentence, infinitive_1, option_a_1, option_b_1, infinitive_2, option_a_2, option_b_2)
       `)
       .eq('room_id', rId)
       .not('status', 'in', '(pending,done)')
@@ -1316,7 +1327,7 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
               .select(`
                 id, room_id, round_number, status, started_at, duration_seconds, phrase_id, contrast_phrase_id,
                 phrases(id, verb, sentence),
-                contrast_phrases(id, battle_id, sentence, infinitive_1, option_a_1, option_b_1, correct_1, infinitive_2, option_a_2, option_b_2, correct_2)
+                contrast_phrases(id, battle_id, sentence, infinitive_1, option_a_1, option_b_1, infinitive_2, option_a_2, option_b_2)
               `)
               .eq('id', updated.id)
               .single()

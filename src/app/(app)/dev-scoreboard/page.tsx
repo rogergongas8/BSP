@@ -23,6 +23,8 @@ const FAKE_ROUND: Round = {
   phrase_id: null,
   contrast_phrase_id: 'phrase-1',
   phrases: null,
+  // Mirrors what the browser really receives mid-round: no answer key. The correct options
+  // live in the results payload below, exactly as they do in a real battle.
   contrast_phrases: {
     id: 'phrase-1',
     battle_id: 'mimo-zas',
@@ -30,23 +32,27 @@ const FAKE_ROUND: Round = {
     infinitive_1: 'recoger, ella',
     option_a_1: 'recogió',
     option_b_1: 'recogía',
-    correct_1: 1,
     infinitive_2: 'tener, yo',
     option_a_2: 'tuve',
     option_b_2: 'tenía',
-    correct_2: 2,
   },
 }
 
+const FAKE_CORRECT_1 = 1 as const
+const FAKE_CORRECT_2 = 2 as const
+
 function fakeResults(selected1: 1 | 2, selected2: 1 | 2): RoundPhase & { type: 'results' } {
-  const isCorrect = selected1 === FAKE_ROUND.contrast_phrases!.correct_1
-    && selected2 === FAKE_ROUND.contrast_phrases!.correct_2
+  const isCorrect = selected1 === FAKE_CORRECT_1 && selected2 === FAKE_CORRECT_2
   return {
     type: 'results',
     round: FAKE_ROUND,
     myAnswer: { kind: 'contrast', selected1, selected2 },
     results: {
       is_contraste: true,
+      correct_1: FAKE_CORRECT_1,
+      correct_2: FAKE_CORRECT_2,
+      my_selected_1: selected1,
+      my_selected_2: selected2,
       my_validation_status: isCorrect ? 'correct' : 'incorrect',
       my_points: isCorrect ? 850 : 0,
       is_correct: isCorrect,

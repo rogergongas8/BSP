@@ -1,17 +1,35 @@
 export type ContrastSourceBattleId = 'javi-zas' | 'mimo-zas'
 export type ContrastBattleId = ContrastSourceBattleId | 'javi-mimo-zas'
 
-export type ContrastPhrase = {
+/**
+ * A contrast phrase as the browser is allowed to see it: everything needed to render the
+ * question, and nothing that reveals the answer.
+ *
+ * In multiplayer the client subscribes to `rounds` directly, so anything selectable here is
+ * visible to a player with devtools open mid-round. `correct_1`/`correct_2` are therefore
+ * withheld at the database level (see migration 0025) and only reach the client once the
+ * round is over, via GET /api/rounds/[id]/results.
+ */
+export type ContrastPhrasePublic = {
   id: string
   battle_id: ContrastSourceBattleId
   sentence: string
   infinitive_1: string
   option_a_1: string
   option_b_1: string
-  correct_1: 1 | 2
   infinitive_2: string | null
   option_a_2: string | null
   option_b_2: string | null
+}
+
+/**
+ * A contrast phrase including its answer key. Only ever constructed server-side (the admin
+ * client bypasses the column grants), so it is safe in singleplayer — where validation is
+ * local to give instant feedback and there is no one to cheat against — and inside route
+ * handlers. Never fetch this shape from a Client Component in multiplayer.
+ */
+export type ContrastPhrase = ContrastPhrasePublic & {
+  correct_1: 1 | 2
   correct_2: 1 | 2 | null
 }
 
@@ -40,9 +58,17 @@ export function isContrastBattle(id: string): id is ContrastBattleId {
   return id === 'javi-zas' || id === 'mimo-zas' || id === 'javi-mimo-zas'
 }
 
-/** A phrase's gap count is intrinsic to the row (does it have a second gap?), not the battle being played. */
-export function phraseGapCount(phrase: ContrastPhrase): 1 | 2 {
-  return phrase.option_a_2 && phrase.option_b_2 && phrase.correct_2 ? 2 : 1
+/**
+ * A phrase's gap count is intrinsic to the row (does it have a second gap?), not the battle
+ * being played.
+ *
+ * Deliberately keyed off the options rather than `correct_2`, so it works on the public shape
+ * too. The `contrast_phrases_hueco2_consistent` check constraint (migration 0013) guarantees
+ * the gap-2 columns are all-null or all-set together, so the options are an exact proxy for
+ * "has a second gap".
+ */
+export function phraseGapCount(phrase: ContrastPhrasePublic): 1 | 2 {
+  return phrase.option_a_2 && phrase.option_b_2 ? 2 : 1
 }
 
 /** Source data stores "infinitivo, persona" (e.g. "estar, nosotros") — the UI only shows the verb. */

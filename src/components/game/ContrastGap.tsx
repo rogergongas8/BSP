@@ -3,8 +3,8 @@
 import { Check, X } from 'lucide-react'
 import ContrastOptionCard, { type ContrastCardState } from './ContrastOptionCard'
 
-function cardState(opt: 1 | 2, selected: 1 | 2 | null, correct: 1 | 2, submitted: boolean): ContrastCardState {
-  if (!submitted) return selected === opt ? 'selected' : 'default'
+function cardState(opt: 1 | 2, selected: 1 | 2 | null, correct: 1 | 2 | null, submitted: boolean): ContrastCardState {
+  if (!submitted || correct === null) return selected === opt ? 'selected' : 'default'
   if (opt === correct) return selected === opt ? 'correct-selected' : 'correct-unselected'
   return selected === opt ? 'incorrect-selected' : 'disabled'
 }
@@ -14,7 +14,12 @@ export default function ContrastGap({
 }: {
   optionA: string
   optionB: string
-  correctOption: 1 | 2
+  /**
+   * Which option is right. Only read once `submitted` is true, so callers that are still
+   * taking the answer may pass null — in multiplayer the answer key genuinely isn't on the
+   * client during a live round, and inventing a placeholder here would misrepresent that.
+   */
+  correctOption: 1 | 2 | null
   selected: 1 | 2 | null
   submitted: boolean
   showHints: boolean

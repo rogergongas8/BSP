@@ -47,9 +47,13 @@ export function ResultBar({ correctCount, incorrectCount, userWasCorrect }: {
 export default function ContrastResultCard({
   gap1, gap2,
 }: {
-  gap1: GapResult
+  /** Null when the round's answer key isn't available (a failed results fetch) — the card is
+   * then skipped entirely rather than rendered with a guessed answer. */
+  gap1: GapResult | null
   gap2: GapResult | null
 }) {
+  if (!gap1) return null
+
   const gaps = gap2 ? [gap1, gap2] : [gap1]
 
   return (
