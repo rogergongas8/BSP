@@ -8,9 +8,9 @@ import { useState } from 'react'
 import { FinishedView, RoundView, type Round, type RoundPhase } from '../play/[code]/page'
 
 const FAKE_STANDINGS = [
-  { user_id: '1', username: 'roger', avatar: '/images/levelup/javi-tostado.png', total_points: 887, delta: 0, rank: 1 },
-  { user_id: '2', username: 'akane', avatar: '/images/levelup/mimo.png', total_points: 879, delta: 0, rank: 2 },
-  { user_id: '3', username: 'carlos', avatar: '/images/levelup/zas.png', total_points: 640, delta: 0, rank: 3 },
+  { user_id: '1', username: 'roger', avatar: '/images/levelup/javi-tostado.png', total_points: 887, delta: 0, streak: 3, rank: 1 },
+  { user_id: '2', username: 'akane', avatar: '/images/levelup/mimo.png', total_points: 879, delta: 0, streak: 0, rank: 2 },
+  { user_id: '3', username: 'carlos', avatar: '/images/levelup/zas.png', total_points: 640, delta: 0, streak: 0, rank: 3 },
 ]
 
 const FAKE_ROUND: Round = {
@@ -119,7 +119,7 @@ export default function DevScoreboardPage() {
       </div>
 
       {view === 'finished' && (
-        <FinishedView standings={FAKE_STANDINGS} isHost={true} onFinish={() => alert('Finish battle clicked')} />
+        <FinishedView standings={FAKE_STANDINGS} isHost={true} currentUserId="1" onFinish={() => alert('Finish battle clicked')} />
       )}
       {view === 'contrast-results' && (
         <RoundView

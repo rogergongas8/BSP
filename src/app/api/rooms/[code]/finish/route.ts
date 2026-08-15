@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { checkAndAwardAchievements } from '@/lib/check-achievements'
+import { getLevelInfo } from '@/lib/levels'
 import { NextRequest, NextResponse } from 'next/server'
 import { checkOrigin } from '@/lib/security'
 
@@ -87,8 +88,10 @@ export async function POST(
   const today = new Date().toISOString().slice(0, 10)
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
 
-  // Only the caller (host) gets an in-app notification — everyone's unlocks are still recorded below.
+  // Only the caller (host) gets an in-app notification — everyone's unlocks/level-ups are still recorded below.
   let hostNewAchievements: string[] = []
+  let hostLeveledUp = false
+  let hostNewLevel = 1
 
   for (const player of players) {
     const totalPoints = pointsByUser.get(player.user_id) ?? 0
@@ -131,8 +134,19 @@ export async function POST(
       .eq('id', player.user_id)
 
     const earned = await checkAndAwardAchievements(player.user_id).catch(() => [] as string[])
-    if (player.user_id === user.id) hostNewAchievements = earned
+    if (player.user_id === user.id) {
+      hostNewAchievements = earned
+      const oldLevel = getLevelInfo(oldXp).level
+      const newLevel = getLevelInfo(newXp).level
+      hostLeveledUp = newLevel > oldLevel
+      hostNewLevel = newLevel
+    }
   }
 
-  return NextResponse.json({ ok: true, newAchievements: hostNewAchievements })
+  return NextResponse.json({
+    ok: true,
+    newAchievements: hostNewAchievements,
+    leveledUp: hostLeveledUp,
+    newLevel: hostNewLevel,
+  })
 }

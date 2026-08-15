@@ -476,7 +476,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
       <OverscrollColor top="#ffffff" bottom="#ffffff" />
       {/* Curtain up */}
       <motion.div
-        className="fixed inset-x-0 top-0 h-screen z-50 pointer-events-none"
+        className="fixed inset-x-0 top-0 h-dvh z-50 pointer-events-none"
         style={{ backgroundColor: meta.color }}
         initial={{ y: '0%' }}
         animate={{ y: 'calc(-100% - 50px)' }}

@@ -104,7 +104,13 @@ const TenseCard = memo(({ i, xValue, centerOffset, onClick, onPlay, isDragging, 
   itemW: number
 }) => {
   const itemX = i * itemW
-  const distance = useTransform(xValue, (latestX) => Math.abs(itemX + latestX))
+  // Snap sub-pixel rest values (spring settle jitter, odd-width centerOffset rounding) to exactly 0 —
+  // otherwise the centered card's scale/height/etc land a hair under their "selected" value and the
+  // Jugar button reads as randomly smaller even though nothing is actually mid-animation.
+  const distance = useTransform(xValue, (latestX) => {
+    const raw = Math.abs(itemX + latestX)
+    return raw < 1 ? 0 : raw
+  })
   const scale = useTransform(distance, [0, itemW], [1, 0.82], { clamp: true })
   const opacity = useTransform(distance, [0, itemW], [1, 0.65], { clamp: true })
   const catBottom = useTransform(distance, [0, itemW], contained ? [35, 15] : [80, 60], { clamp: true })

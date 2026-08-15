@@ -67,17 +67,40 @@ export async function GET(
     .select('id')
     .eq('room_id', round.room_id)
     .in('status', ['results', 'scoreboard', 'done'])
+    .order('round_number', { ascending: true })
 
   const completedIds = (completedRounds ?? []).map(r => r.id)
 
   const { data: allCompletedAnswers } = await admin
     .from('round_answers')
-    .select('user_id, points_awarded')
+    .select('round_id, user_id, points_awarded, is_correct')
     .in('round_id', completedIds)
 
   const pointsByUser = new Map<string, number>()
   for (const ans of allCompletedAnswers ?? []) {
     pointsByUser.set(ans.user_id, (pointsByUser.get(ans.user_id) ?? 0) + ans.points_awarded)
+  }
+
+  // Current streak per user: consecutive correct answers ending at the most recent completed round.
+  const answersByRound = new Map<string, { user_id: string; is_correct: boolean }[]>()
+  for (const ans of allCompletedAnswers ?? []) {
+    const list = answersByRound.get(ans.round_id) ?? []
+    list.push(ans)
+    answersByRound.set(ans.round_id, list)
+  }
+
+  const streakByUser = new Map<string, number>()
+  const brokenStreakUsers = new Set<string>()
+  for (let i = completedIds.length - 1; i >= 0; i--) {
+    const answers = answersByRound.get(completedIds[i]) ?? []
+    for (const ans of answers) {
+      if (brokenStreakUsers.has(ans.user_id)) continue
+      if (ans.is_correct) {
+        streakByUser.set(ans.user_id, (streakByUser.get(ans.user_id) ?? 0) + 1)
+      } else {
+        brokenStreakUsers.add(ans.user_id)
+      }
+    }
   }
 
   const deltaByUser = new Map<string, number>()
@@ -101,6 +124,7 @@ export async function GET(
         avatar: resolveAvatarPath(profile.avatar_id, catImagePath(info.cat)),
         total_points: pointsByUser.get(p.user_id) ?? 0,
         delta: deltaByUser.get(p.user_id) ?? 0,
+        streak: streakByUser.get(p.user_id) ?? 0,
       }
     })
     .sort((a, b) => b.total_points - a.total_points)

@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { checkOrigin } from '@/lib/security'
 import { z } from 'zod'
 import { validate, type Phrase } from '@/lib/game-logic'
-import type { ContrastPhrase } from '@/lib/contrast-game-logic'
+import { phraseGapCount, type ContrastPhrase } from '@/lib/contrast-game-logic'
 
 const BodySchema = z.union([
   z.object({ answer: z.string().min(1).max(100) }),
@@ -76,6 +76,7 @@ export async function POST(
 
   let isCorrect: boolean
   let insertPayload: Record<string, unknown>
+  let pointsAwarded: number
 
   if (round.contrast_phrase_id) {
     if (!('selected_1' in parsed.data)) {
@@ -83,17 +84,26 @@ export async function POST(
     }
     const phrase = round.contrast_phrases as unknown as ContrastPhrase
     const { selected_1, selected_2 } = parsed.data
-    const hasGap2 = phrase.option_a_2 && phrase.option_b_2 && phrase.correct_2
+    const hasGap2 = phraseGapCount(phrase) === 2
 
     const correct1 = selected_1 === phrase.correct_1
     const correct2 = hasGap2 ? selected_2 === phrase.correct_2 : true
     isCorrect = correct1 && correct2
+    const halfCorrect = hasGap2 && !isCorrect && (correct1 || correct2)
 
     insertPayload = {
       selected_1,
       selected_2: hasGap2 ? (selected_2 ?? null) : null,
-      validation_status: isCorrect ? 'correct' : (correct1 || correct2) ? 'half_correct' : 'missed',
+      validation_status: isCorrect ? 'correct' : halfCorrect ? 'half_correct' : 'missed',
     }
+
+    // 1 blank: 100 + seconds left if correct, else 0.
+    // 2 blanks: 100 + seconds left if both correct, 50 + half the seconds left if only one is, else 0.
+    pointsAwarded = isCorrect
+      ? 100 + Math.floor(secondsRemaining)
+      : halfCorrect
+        ? 50 + Math.floor(secondsRemaining / 2)
+        : 0
   } else {
     if (!('answer' in parsed.data)) {
       return NextResponse.json({ error: 'This round expects answer' }, { status: 400 })
@@ -105,10 +115,10 @@ export async function POST(
     isCorrect = result.status === 'correct'
 
     insertPayload = { answer, validation_status: result.status }
-  }
 
-  // Score: 100 + floor(secondsRemaining) if correct, else 0
-  const pointsAwarded = isCorrect ? 100 + Math.floor(secondsRemaining) : 0
+    // 1 blank: 100 + seconds left if correct, else 0.
+    pointsAwarded = isCorrect ? 100 + Math.floor(secondsRemaining) : 0
+  }
 
   await admin.from('round_answers').insert({
     round_id: id,

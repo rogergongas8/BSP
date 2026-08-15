@@ -215,7 +215,7 @@ export default function JoinPage() {
           whileTap={isFilled ? { scale: 0.97 } : {}}
           onClick={isFilled && joinState !== 'joining' ? handleJoin : undefined}
           className="w-full py-4 rounded-2xl font-black text-white text-base tracking-widest uppercase transition-all duration-300"
-          style={{ backgroundColor: isFilled ? ORANGE : '#D1D5DB' }}
+          style={{ backgroundColor: isFilled && joinState !== 'error' ? ORANGE : '#D1D5DB' }}
           disabled={!isFilled || joinState === 'joining'}
         >
           {joinState === 'joining' ? 'Joining...' : 'Join'}

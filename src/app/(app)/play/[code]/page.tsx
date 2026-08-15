@@ -46,6 +46,7 @@ type Standing = {
   avatar: string
   total_points: number
   delta: number
+  streak: number
   rank: number
 }
 
@@ -629,17 +630,22 @@ function ContrastRoundView({
           {phase.type === 'collecting' && (
             <motion.div
               key="cat"
-              className="flex flex-col items-center justify-center gap-4 pt-8"
+              className="flex flex-col items-center justify-center gap-3 pt-4"
               initial={{ opacity: 0, y: 32 }}
               animate={{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 280, damping: 24, delay: 0.05 } }}
               exit={{ opacity: 0, y: -12, transition: { duration: 0.2 } }}
             >
               <motion.div animate={{ y: [0, -14, 0] }} transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut' }}>
-                <Image src="/images/escribiendo/mimo.png" width={160} height={160} alt="" draggable={false} />
+                <Image src="/images/escribiendo/mimo.png" width={110} height={110} alt="" draggable={false} />
               </motion.div>
               <div className="text-center">
                 <p className="text-base font-bold text-gray-800">Collecting answers...</p>
                 <p className="text-sm text-gray-400 mt-1 font-medium">{phase.answeredCount}/{phase.totalCount}</p>
+                {isHost && (
+                  <p className="text-xs text-gray-400 mt-3 max-w-[260px] mx-auto leading-snug">
+                    All players will move on to the next question now, even if not everyone has answered yet.
+                  </p>
+                )}
               </div>
             </motion.div>
           )}
@@ -876,22 +882,28 @@ function ScoreboardView({
                     alt={s.username}
                     fill
                     sizes="42px"
-                    className="object-contain"
+                    className="object-contain p-0.5"
                   />
                 </div>
 
-                {/* Username */}
-                <span className="flex-1 font-bold text-[15px] text-gray-900 truncate">
-                  {s.username}
-                  {isMe && <span className="text-gray-400 font-normal text-xs ml-1">(tú)</span>}
-                </span>
+                {/* Username + streak */}
+                <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                  <span className="font-bold text-[15px] text-gray-900 truncate">
+                    {s.username}
+                    {isMe && <span className="text-gray-400 font-normal text-xs ml-1">(tú)</span>}
+                  </span>
+                  {s.streak >= 2 && (
+                    <span className="flex items-center gap-0.5 bg-orange-50 rounded-full px-1.5 py-0.5 shrink-0">
+                      <Image src="/images/home/fxemoji_fire.svg" alt="Racha" width={12} height={12} />
+                      <span className="text-[11px] font-black text-orange-500">{s.streak}</span>
+                    </span>
+                  )}
+                </div>
 
-                {/* Delta + total points */}
+                {/* Delta indicator + total points */}
                 <div className="flex items-center gap-2 shrink-0">
                   {s.delta > 0 && (
-                    <span className="text-[11px] font-black text-blue-600 flex items-center gap-0.5">
-                      ▲ {s.delta}
-                    </span>
+                    <span className="text-blue-600 text-xs font-black">▲</span>
                   )}
                   <span
                     className="font-black text-base"
@@ -938,14 +950,20 @@ function ScoreboardView({
 
 // TEMP: exported for the /dev-scoreboard preview route — revert to unexported when that route is deleted.
 export function FinishedView({
-  standings, isHost, onFinish,
+  standings, isHost, currentUserId, onFinish,
 }: {
   standings: Standing[]
   isHost: boolean
+  currentUserId: string
   onFinish: () => void
 }) {
   const [revealed, setRevealed] = useState(false)
+  const [finishing, setFinishing] = useState(false)
   const router = useRouter()
+
+  // Mirrors the server formula in /api/rooms/[code]/finish — Battle XP = round(points / 30) + 10.
+  const myPoints = standings.find(s => s.user_id === currentUserId)?.total_points ?? 0
+  const myXp = Math.round(myPoints / 30) + 10
 
   useEffect(() => {
     const t = setTimeout(() => setRevealed(true), 1200)
@@ -1002,7 +1020,7 @@ export function FinishedView({
           className="absolute top-6 right-2 opacity-25 pointer-events-none select-none"
           draggable={false}
         />
-        {/* Non-hosts have no "Finish battle" CTA (that also finalizes XP/stats, host-only) — give them a way out. */}
+        {/* Non-hosts can't trigger finish (that also finalizes XP/stats, host-only) — this X is a quicker way out than the CTA below. */}
         {!isHost && (
           <motion.button
             whileTap={{ scale: 0.9 }}
@@ -1081,15 +1099,24 @@ export function FinishedView({
         </AnimatePresence>
       </div>
 
-      {isHost && revealed && (
+      {revealed && (
         <div className="relative z-10 shrink-0 px-5 pb-6 pt-3">
           <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={onFinish}
-            className="w-full py-4 rounded-2xl font-black text-white text-sm tracking-widest uppercase"
+            whileTap={finishing ? {} : { scale: 0.97 }}
+            onClick={() => {
+              if (finishing) return
+              if (isHost) {
+                setFinishing(true)
+                onFinish()
+              } else {
+                router.push('/')
+              }
+            }}
+            disabled={finishing}
+            className="w-full py-4 rounded-2xl font-black text-white text-sm tracking-widest uppercase disabled:opacity-60"
             style={{ backgroundColor: '#FF8716' }}
           >
-            Finish battle
+            {finishing ? 'Finishing...' : `Get ${myXp} XP`}
           </motion.button>
         </div>
       )}
@@ -1471,11 +1498,11 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
   const handleFinish = useCallback(async () => {
     const res = await fetch(`/api/rooms/${code}/finish`, { method: 'POST' })
     const json = await res.json().catch(() => null)
-    if (json?.newAchievements?.length > 0) {
+    if (json?.newAchievements?.length > 0 || json?.leveledUp) {
       sessionStorage.setItem('bsp_session_result', JSON.stringify({
-        newAchievements: json.newAchievements,
-        leveledUp: false,
-        newLevel: 1,
+        newAchievements: json.newAchievements ?? [],
+        leveledUp: json.leveledUp ?? false,
+        newLevel: json.newLevel ?? 1,
       }))
     }
     router.push('/')
@@ -1631,6 +1658,7 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
             <FinishedView
               standings={phase.standings}
               isHost={isHost}
+              currentUserId={currentUserId ?? ''}
               onFinish={handleFinish}
             />
           </motion.div>

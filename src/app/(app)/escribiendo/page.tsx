@@ -111,7 +111,7 @@ export default function EscribiendoPage() {
       {/* ── Transition overlay ── */}
       {phase !== 'idle' && (
         <motion.div
-          className="fixed inset-x-0 top-0 h-screen bg-bsp-blue z-50 flex items-center justify-center gap-6"
+          className="fixed inset-x-0 top-0 h-dvh bg-bsp-blue z-50 flex items-center justify-center gap-6"
           initial={{ y: 'calc(-100% - 50px)' }}
           animate={{ y: phase === 'curtain-down' || phase === 'cats' ? '0%' : 'calc(-100% - 50px)' }}
           transition={{ duration: 0.55, ease: [0.4, 0, 0.6, 1] }}

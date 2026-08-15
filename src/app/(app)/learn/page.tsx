@@ -162,18 +162,18 @@ function TenseReviewCard({ tense, open, onToggle }: { tense: TenseReview; open: 
                       {sub.count > 0 && (
                         <Link
                           href={`/escribiendo/${encodeURIComponent(tense.tenseId)}?mode=redo&subcategory=${encodeURIComponent(sub.label)}`}
-                          className="flex items-center gap-1 rounded-full border border-blue-200 px-2.5 py-1 text-xs font-bold text-blue-500"
+                          className="flex items-center gap-1.5 rounded-full border border-blue-200 px-3.5 py-1.5 text-sm font-bold text-blue-500"
                         >
-                          <RotateCw className="w-3 h-3" /> Redo
+                          <RotateCw className="w-4 h-4" /> Redo
                         </Link>
                       )}
                       {sub.lessonId && (
                         <Link
                           href={`/learn/${sub.lessonId}`}
                           title="Ver teoría"
-                          className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-bsp-orange text-white"
+                          className="shrink-0 w-10 h-10 flex items-center justify-center rounded-lg bg-bsp-orange text-white"
                         >
-                          <BookOpen className="w-3.5 h-3.5" />
+                          <BookOpen className="w-[18px] h-[18px]" />
                         </Link>
                       )}
                     </div>
