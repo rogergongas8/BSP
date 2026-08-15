@@ -12,7 +12,19 @@ const PROTECTED_ROUTES = [
   '/join',
 ]
 
+// Layout/preview-only routes: useful while building screens, never reachable in production.
+const DEV_ONLY_ROUTES = ['/dev-scoreboard']
+
 export async function proxy(request: NextRequest) {
+  // Checked before anything else so these routes never exist on the public domain,
+  // regardless of session state. They stay available with `pnpm dev`.
+  if (
+    process.env.NODE_ENV === 'production' &&
+    DEV_ONLY_ROUTES.some((route) => request.nextUrl.pathname.startsWith(route))
+  ) {
+    return new NextResponse('Not Found', { status: 404 })
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
