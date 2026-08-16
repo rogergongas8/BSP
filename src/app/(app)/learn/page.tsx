@@ -361,12 +361,6 @@ export default function LearnLandingPage() {
             </div>
           </div>
         </div>
-        <motion.div whileTap={{ scale: 0.9 }} className="mb-2 w-fit">
-          <Link href="/" className="flex items-center gap-1 text-white/80 text-xs font-semibold">
-            <ChevronRight className="w-3.5 h-3.5 rotate-180" />
-            Back
-          </Link>
-        </motion.div>
         <h1 className="text-center text-3xl font-black text-white tracking-tight">Review</h1>
         <p className="text-center text-sm text-white/70 mt-1">Redo your mistakes to clear them!</p>
       </div>

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getLevelInfo, catImagePath } from '@/lib/levels'
 import { resolveAvatarPath } from '@/lib/avatars'
 import ActivityCard from './ActivityCard'
+import LogoutButton from './LogoutButton'
 import NotificationQueue from './NotificationQueue'
 import OverscrollColor from '@/components/overscroll-color'
 import {
@@ -111,6 +112,7 @@ export default async function HomePage() {
               <Image src="/images/home/streamline-plump-color_star-circle-flat.svg" alt="Nivel" width={16} height={16} />
               <span className="text-white text-xs font-semibold">Lvl {level}.</span>
             </div>
+            <LogoutButton />
           </div>
         </div>
 
