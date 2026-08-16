@@ -152,32 +152,41 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
       daily_challenges: {
         Row: {
-          day_index: number
+          day_index: number | null
+          difficulty: string
           id: number
+          scope: string | null
           target: number
+          target_secondary: number | null
           tense: string | null
           text: string
           type: string
           xp_reward: number
         }
         Insert: {
-          day_index: number
+          day_index?: number | null
+          difficulty: string
           id?: number
+          scope?: string | null
           target: number
+          target_secondary?: number | null
           tense?: string | null
           text: string
           type: string
           xp_reward: number
         }
         Update: {
-          day_index?: number
+          day_index?: number | null
+          difficulty?: string
           id?: number
+          scope?: string | null
           target?: number
+          target_secondary?: number | null
           tense?: string | null
           text?: string
           type?: string
@@ -298,7 +307,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
       practice_sessions: {

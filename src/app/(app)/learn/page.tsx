@@ -252,10 +252,14 @@ export default function LearnLandingPage() {
 
   // Which single Review card (Escribiendo tense or Lío combo) is expanded.
   // Persisted so it survives navigating away to redo mistakes / a lesson and back.
-  const [openCard, setOpenCard] = useState<string | null>(null)
-  useEffect(() => {
-    setOpenCard(sessionStorage.getItem(OPEN_REVIEW_CARD_KEY))
-  }, [])
+  //
+  // Seeded lazily from sessionStorage instead of in an effect: the initialiser runs once, on
+  // the client only, so the restored card is present in the very first client render — no
+  // setState-in-effect and no extra render pass. `typeof window` guards the server render,
+  // where sessionStorage does not exist.
+  const [openCard, setOpenCard] = useState<string | null>(() =>
+    typeof window === 'undefined' ? null : sessionStorage.getItem(OPEN_REVIEW_CARD_KEY)
+  )
   const toggleCard = (id: string) => {
     setOpenCard(prev => {
       const next = prev === id ? null : id

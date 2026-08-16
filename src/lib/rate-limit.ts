@@ -14,7 +14,6 @@ const redis =
     : null
 
 if (!redis) {
-  // eslint-disable-next-line no-console
   console.warn(
     '[rate-limit] UPSTASH_REDIS_REST_URL/TOKEN not set — rate limiting is DISABLED. ' +
     'Set them before shipping to production.'
@@ -80,7 +79,6 @@ export async function enforceRateLimit(
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
     }
   } catch (error) {
-    // eslint-disable-next-line no-console
     console.error('[rate-limit] limiter unavailable, allowing request:', error)
     return null
   }

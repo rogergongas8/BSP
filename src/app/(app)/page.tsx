@@ -6,6 +6,13 @@ import { resolveAvatarPath } from '@/lib/avatars'
 import ActivityCard from './ActivityCard'
 import NotificationQueue from './NotificationQueue'
 import OverscrollColor from '@/components/overscroll-color'
+import {
+  challengeProgress as challengeProgressFor,
+  challengeTargetCount,
+  dayNumber,
+  difficultyForDay,
+  pickChallenge,
+} from '@/lib/daily-challenges'
 
 const CAT_POSITIONS = [
   { cat: 'absolute -top-5 right-4 w-[60px] h-[60px] z-20', xp: 'absolute top-7 right-4 z-10' },
@@ -21,14 +28,14 @@ export default async function HomePage() {
   let level = 1
   let avatarSrc = '/images/nav/user-image.svg'
 
-  // eslint-disable-next-line react-hooks/purity
-  const challengeDayIndex = Math.floor(Date.now() / (1000 * 60 * 60 * 24)) % 6
+  const today = dayNumber()
   const todayStart = new Date()
   todayStart.setHours(0, 0, 0, 0)
 
-  // Parallelizar challenge + profile (son independientes entre sí)
-  const [{ data: challenge }, { data: profile }] = await Promise.all([
-    supabase.from('daily_challenges').select('*').eq('day_index', challengeDayIndex).single(),
+  // The challenge depends on the user's level, so the profile has to come back first; the
+  // pool query is unfiltered and independent, so both still go out together.
+  const [{ data: challengePool }, { data: profile }] = await Promise.all([
+    supabase.from('daily_challenges').select('*'),
     user
       ? supabase.from('profiles').select('streak, total_xp, avatar_id').eq('id', user.id).single()
       : Promise.resolve({ data: null, error: null }),
@@ -41,41 +48,38 @@ export default async function HomePage() {
     avatarSrc = resolveAvatarPath(profile.avatar_id, catImagePath(info.cat))
   }
 
-  // Challenge progress for logged-in user
-  let challengeProgress = 0
-  const challengeTarget = challenge?.target ?? 3
+  // Today's challenge: difficulty follows the user's level, then one is drawn from that
+  // block. Signed-out visitors have no level, so they see the easy rotation.
+  const difficulty = difficultyForDay(level, today)
+  const challenge = pickChallenge(
+    (challengePool ?? []).filter(c => c.difficulty === difficulty),
+    user?.id ?? 'anonymous',
+    today
+  )
 
-  if (user) {
+  let challengeProgress = 0
+  const challengeTarget = challenge ? challengeTargetCount(challenge) : 3
+
+  if (user && challenge) {
     const { data: todaySessions } = await supabase
       .from('practice_sessions')
-      .select('tense, correct, total, completed_at')
+      .select('tense, total, correct, first_try, with_hints, skipped, half_correct')
       .eq('user_id', user.id)
       .gte('completed_at', todayStart.toISOString())
 
-    if (todaySessions && challenge) {
-      if (challenge.type === 'activities') {
-        challengeProgress = Math.min(todaySessions.length, challenge.target)
-      } else if (challenge.type === 'tense_correct') {
-        challengeProgress = Math.min(
-          todaySessions.filter(s => s.tense === challenge.tense).reduce((sum, s) => sum + s.correct, 0),
-          challenge.target
-        )
-      } else if (challenge.type === 'cross_correct') {
-        challengeProgress = Math.min(
-          todaySessions.reduce((sum, s) => sum + s.correct, 0),
-          challenge.target
-        )
-      }
-    }
+    challengeProgress = Math.min(
+      challengeProgressFor(challenge, todaySessions ?? []),
+      challengeTarget
+    )
   }
 
   const progressPct = challengeTarget > 0 ? challengeProgress / challengeTarget : 0
   const CIRCUMFERENCE = 119.38
   const dashOffset = CIRCUMFERENCE * (1 - progressPct)
 
-  // eslint-disable-next-line react-hooks/purity
-  const dayIndex = 0 // TODO: revert to Math.floor(Date.now() / (1000 * 60 * 60 * 24)) % 3 — hardcoded for testing
-  const pos = CAT_POSITIONS[dayIndex]
+  // Cat artwork rotates through its three poses on the same daily clock as the challenge,
+  // so the card's illustration changes with the challenge it belongs to.
+  const pos = CAT_POSITIONS[today % CAT_POSITIONS.length]
 
   return (
     <div className="flex flex-col">

@@ -4,6 +4,12 @@ import { checkAndAwardAchievements } from '@/lib/check-achievements'
 import { getLevelInfo } from '@/lib/levels'
 import { NextRequest, NextResponse } from 'next/server'
 import { checkOrigin } from '@/lib/security'
+import {
+  dayNumber,
+  difficultyForDay,
+  isChallengeComplete,
+  pickChallenge,
+} from '@/lib/daily-challenges'
 import { z } from 'zod'
 
 const VALID_TENSES = ['indefinido', 'imperfecto', 'pretérito-perfecto', 'javi-zas', 'mimo-zas', 'javi-mimo-zas'] as const
@@ -85,8 +91,8 @@ export async function POST(request: NextRequest) {
   const oldXp    = profile?.total_xp ?? 0
   const oldLevel = getLevelInfo(oldXp).level
   const newXp    = oldXp + xpEarned
-  const newLevel = getLevelInfo(newXp).level
-  const leveledUp = newLevel > oldLevel
+  // The level-up check happens at the end, against the final total — completing a daily
+  // challenge adds more XP below and can be what crosses the boundary.
 
   // Streak logic
   const today     = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
@@ -114,13 +120,22 @@ export async function POST(request: NextRequest) {
     })
     .eq('id', user.id)
 
-  // Daily challenge completion — mirrors the progress calculation on the home page.
-  const dayIndex = Math.floor(Date.now() / (1000 * 60 * 60 * 24)) % 6
-  const { data: challenge } = await admin
-    .from('daily_challenges')
-    .select('type, target, tense')
-    .eq('day_index', dayIndex)
-    .single()
+  // Daily challenge completion. Selection must match the home page exactly — same level,
+  // same day, same pool — or the card would show one goal while XP was awarded for another.
+  // Both sides call into @/lib/daily-challenges to guarantee that.
+  // Keyed on the level the user had when the page rendered the card (oldLevel), not the one
+  // they may have just reached: levelling up mid-session must not swap the challenge out from
+  // under them and evaluate a goal they were never shown.
+  let challengeXpAwarded = 0
+  let finalXp = newXp
+
+  const today_ = dayNumber()
+  const { data: challengePool } = await admin.from('daily_challenges').select('*')
+  const challenge = pickChallenge(
+    (challengePool ?? []).filter(c => c.difficulty === difficultyForDay(oldLevel, today_)),
+    user.id,
+    today_
+  )
 
   if (challenge) {
     const todayStart = new Date()
@@ -128,22 +143,11 @@ export async function POST(request: NextRequest) {
 
     const { data: todaySessions } = await admin
       .from('practice_sessions')
-      .select('tense, correct')
+      .select('tense, total, correct, first_try, with_hints, skipped, half_correct')
       .eq('user_id', user.id)
       .gte('completed_at', todayStart.toISOString())
 
-    let challengeProgress = 0
-    if (todaySessions) {
-      if (challenge.type === 'activities') {
-        challengeProgress = todaySessions.length
-      } else if (challenge.type === 'tense_correct') {
-        challengeProgress = todaySessions.filter(s => s.tense === challenge.tense).reduce((sum, s) => sum + s.correct, 0)
-      } else if (challenge.type === 'cross_correct') {
-        challengeProgress = todaySessions.reduce((sum, s) => sum + s.correct, 0)
-      }
-    }
-
-    if (challengeProgress >= challenge.target) {
+    if (isChallengeComplete(challenge, todaySessions ?? [])) {
       // Unique (user_id, completion_date) makes this a no-op if today was already recorded
       const { error: completionError } = await admin
         .from('daily_challenge_completions')
@@ -161,9 +165,16 @@ export async function POST(request: NextRequest) {
             ? challengeProfile.daily_challenge_streak + 1
             : 1
 
+          // The challenge's own reward (50/70/90 by difficulty) on top of the session XP
+          // already applied above. Added to `newXp` rather than re-reading the profile so it
+          // does not clobber that update.
+          challengeXpAwarded = challenge.xp_reward
+          finalXp = newXp + challengeXpAwarded
+
           await admin
             .from('profiles')
             .update({
+              total_xp: finalXp,
               daily_challenges_completed: challengeProfile.daily_challenges_completed + 1,
               daily_challenge_streak: newChallengeStreak,
               last_daily_challenge_date: today,
@@ -177,11 +188,16 @@ export async function POST(request: NextRequest) {
   // Award achievements and return newly unlocked ones
   const newAchievements = await checkAndAwardAchievements(user.id).catch(() => [] as string[])
 
+  // Recomputed against the final total: completing a challenge can be what tips the user over
+  // a level boundary, and the level-up modal must fire for that case too.
+  const finalLevel = getLevelInfo(finalXp).level
+
   return NextResponse.json({
     ok: true,
-    xpEarned,
+    xpEarned: xpEarned + challengeXpAwarded,
+    challengeXpAwarded,
     newAchievements,
-    leveledUp,
-    newLevel,
+    leveledUp: finalLevel > oldLevel,
+    newLevel: finalLevel,
   })
 }
