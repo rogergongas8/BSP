@@ -229,11 +229,14 @@ const IMP_IRREG_FORMS: Record<string, string[]> = {
   imp_irreg_C: ['veía', 'veías', 'veía', 'veíamos', 'veíais', 'veían'],
 }
 
+// Keyed to the verb each type actually holds: A = ser (era…), B = ir (iba…), C = ver (veía…),
+// matching IMP_IRREG_FORMS above and the seeded rows. The hints for A and B used to be
+// swapped — a wrong answer on *ser* was told about *ir* and vice versa.
 const IMP_IRREG_INVALID_HINTS: Record<string, string> = {
   imp_irreg_A:
-    "Lucky you! Looks like you've run into one of the only three irregular imperfect verbs. *Ir* starts with \"i-\", but it's followed by an **unexpected consonant**. Does that ring a bell?",
-  imp_irreg_B:
     "Lucky you! Looks like you've run into one of the only three irregular imperfect verbs. *Ser* doesn't even start with \"s-\"; it **starts with \"e-\"**. Does that ring a bell?",
+  imp_irreg_B:
+    "Lucky you! Looks like you've run into one of the only three irregular imperfect verbs. *Ir* starts with \"i-\", but it's followed by an **unexpected consonant**. Does that ring a bell?",
   imp_irreg_C:
     "Lucky you! Looks like you've run into one of the only three irregular imperfect verbs. But don't worry, *ver* is the easiest one: it keeps the \"**ve-**\" base and adds the **imperfect endings**.",
 }
