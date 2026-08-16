@@ -32,34 +32,14 @@ export async function GET(request: NextRequest) {
 
   const supabase = createAdminClient()
 
-  const pickRandom = async (withExclude: boolean) => {
-    let countQ = supabase
-      .from('phrases')
-      .select('*', { count: 'exact', head: true })
-      .eq('tense', tense)
-    if (withExclude && excludeIds.length > 0)
-      countQ = countQ.not('id', 'in', excludeIds)
+  // Single round trip: the RPC does the exclusion, the fallback-to-full-pool and the random
+  // pick inside Postgres. This replaced a COUNT followed by an OFFSET query (and a second
+  // pair of those whenever the unseen pool ran out) — the hottest query during a class.
+  const { data, error } = await supabase
+    .rpc('random_phrase', { p_tense: tense, p_exclude: excludeIds })
+    .maybeSingle()
 
-    const { count } = await countQ
-    if (!count) return null
-
-    const offset = Math.floor(Math.random() * count)
-
-    let dataQ = supabase
-      .from('phrases')
-      .select('id, verb, sentence, answer, type, person, expected_stem, stem_group')
-      .eq('tense', tense)
-    if (withExclude && excludeIds.length > 0)
-      dataQ = dataQ.not('id', 'in', excludeIds)
-
-    const { data, error } = await dataQ.range(offset, offset).single()
-    return error ? null : data
-  }
-
-  // Try with exclusions first; fall back to unrestricted if pool exhausted
-  const data = (await pickRandom(true)) ?? (await pickRandom(false))
-
-  if (!data) return NextResponse.json({ error: 'No phrases found' }, { status: 404 })
+  if (error || !data) return NextResponse.json({ error: 'No phrases found' }, { status: 404 })
 
   return NextResponse.json({ data })
 }

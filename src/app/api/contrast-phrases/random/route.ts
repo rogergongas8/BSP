@@ -40,34 +40,12 @@ export async function GET(request: NextRequest) {
 
   const supabase = createAdminClient()
 
-  const pickRandom = async (withExclude: boolean) => {
-    let countQ = supabase
-      .from('contrast_phrases')
-      .select('*', { count: 'exact', head: true })
-      .in('battle_id', sourceIds)
-    if (withExclude && excludeIds.length > 0)
-      countQ = countQ.not('id', 'in', excludeIds)
+  // Single round trip — see the note in /api/phrases/random.
+  const { data, error } = await supabase
+    .rpc('random_contrast_phrase', { p_battles: sourceIds, p_exclude: excludeIds })
+    .maybeSingle()
 
-    const { count } = await countQ
-    if (!count) return null
-
-    const offset = Math.floor(Math.random() * count)
-
-    let dataQ = supabase
-      .from('contrast_phrases')
-      .select('id, battle_id, sentence, infinitive_1, option_a_1, option_b_1, correct_1, infinitive_2, option_a_2, option_b_2, correct_2')
-      .in('battle_id', sourceIds)
-    if (withExclude && excludeIds.length > 0)
-      dataQ = dataQ.not('id', 'in', excludeIds)
-
-    const { data, error } = await dataQ.range(offset, offset).single()
-    return error ? null : data
-  }
-
-  // Try with exclusions first; fall back to unrestricted if pool exhausted
-  const data = (await pickRandom(true)) ?? (await pickRandom(false))
-
-  if (!data) return NextResponse.json({ error: 'No phrases found' }, { status: 404 })
+  if (error || !data) return NextResponse.json({ error: 'No phrases found' }, { status: 404 })
 
   return NextResponse.json({ data })
 }

@@ -642,6 +642,35 @@ export type Database = {
     Functions: {
       generate_room_code: { Args: never; Returns: string }
       increment_activities: { Args: { p_user_id: string }; Returns: undefined }
+      random_contrast_phrase: {
+        Args: { p_battles: string[]; p_exclude?: string[] }
+        Returns: {
+          battle_id: string
+          correct_1: number
+          correct_2: number
+          id: string
+          infinitive_1: string
+          infinitive_2: string
+          option_a_1: string
+          option_a_2: string
+          option_b_1: string
+          option_b_2: string
+          sentence: string
+        }[]
+      }
+      random_phrase: {
+        Args: { p_exclude?: string[]; p_tense: string }
+        Returns: {
+          answer: string
+          expected_stem: string
+          id: string
+          person: string
+          sentence: string
+          stem_group: string
+          type: string
+          verb: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
