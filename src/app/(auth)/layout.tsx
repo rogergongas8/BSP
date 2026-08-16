@@ -40,14 +40,14 @@ const CATS: Record<string, {
     width: 637,
     height: 1004,
     alt: '',
-    style: { width: '70%', maxWidth: 410, bottom: 25, right: 20 },
+    style: { width: '70%', maxWidth: 410, bottom: 25, right: 100 },
   },
   '/signup': {
     src: '/images/login/registercat.png',
     width: 446,
     height: 1030,
     alt: '',
-    style: { width: '50%', maxWidth: 195, bottom: 10, right: -40 },
+    style: { width: '50%', maxWidth: 195, bottom: 10, right: -35 },
   },
 }
 
