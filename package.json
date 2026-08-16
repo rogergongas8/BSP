@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "type-check": "tsc --noEmit",
+    "db:active": "tsx --env-file=.env.local scripts/active-users.ts",
     "db:purge": "tsx --env-file=.env.local scripts/purge-game-data.ts",
     "db:seed-all": "pnpm db:seed-indefinido --confirm && pnpm db:seed-phrases-imp && pnpm db:seed-contrast-phrases",
     "db:seed-indefinido": "tsx --env-file=.env.local scripts/seed-indefinido.ts",
