@@ -396,7 +396,7 @@ export type Database = {
           total_xp?: number
           updated_at?: string
           username: string
-          username_slug?: string
+          username_slug: string
         }
         Update: {
           activities_completed?: number
