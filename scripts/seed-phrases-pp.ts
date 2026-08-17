@@ -27,9 +27,13 @@ async function seedPPIrreg() {
     'part_token: expected_irreg_stem': string
   }>(sheet, { range: 1 })
 
+  // The sheet is grouped by verb: each group starts with a one-cell banner row (DECIR, HACER…)
+  // followed by its own copy of the column headers. `range: 1` only skips the first banner, so
+  // the 9 remaining header rows arrive as data — and they pass a plain truthiness check because
+  // `Frase` holds the literal string "Frase". Drop them by value.
   const seenIrreg = new Set<string>()
   const phrases = rows
-    .filter(row => row.Frase && row.Respuesta)
+    .filter(row => row.Frase && row.Respuesta && row.Frase.trim() !== 'Frase')
     .map(row => {
       const participio = row['part_token: expected_irreg_stem'].trim()
       const verb = verbByParticipio.get(participio) ?? participio
@@ -53,7 +57,10 @@ async function seedPPIrreg() {
 }
 
 async function seedPPReg() {
-  const filePath = path.join(process.cwd(), 'docs', 'preterito perfecto', 'Presente_Perfecto_regulares_250_DEF.xlsx')
+  // DEF-2 (17 Aug 2026) supersedes the original DEF export: 250 items instead of 245, and
+  // nearly every sentence was rewritten — for many item numbers the verb, answer and
+  // person changed too. It is a replacement batch, not an increment.
+  const filePath = path.join(process.cwd(), 'docs', 'preterito perfecto', 'Presente_Perfecto_regulares_250_DEF-2.xlsx')
   const workbook = XLSX.readFile(filePath)
   const sheet = workbook.Sheets['Frases']
   const rows = XLSX.utils.sheet_to_json<{
