@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import AuthInput from '@/components/auth/auth-input'
 import PinInput from '@/components/auth/pin-input'
 import { createClient } from '@/lib/supabase/client'
+import { USERNAME_PROBLEM_MESSAGE, usernameToSlug, validateUsername } from '@/lib/username'
 
 type UsernameStatus = 'idle' | 'error' | 'success'
 type PinStatus = 'idle' | 'error' | 'success'
@@ -25,9 +26,25 @@ export default function SignupPage() {
   async function handleUsernameChange(value: string) {
     setUsername(value)
 
-    if (value.trim().length < 3) {
+    if (value.trim().length === 0) {
       setUsernameStatus('idle')
       setUsernameMessage(undefined)
+      return
+    }
+
+    // Validate the shape before the availability lookup. This page used to say "Good name!" for
+    // anything at least 3 characters long, including names the API would then reject — which is how
+    // an accented name turned into a bare "could not create account".
+    const problem = validateUsername(value)
+    if (problem) {
+      // Still typing towards the minimum length shouldn't be flagged as an error.
+      if (problem === 'too_short') {
+        setUsernameStatus('idle')
+        setUsernameMessage(undefined)
+      } else {
+        setUsernameStatus('error')
+        setUsernameMessage(USERNAME_PROBLEM_MESSAGE[problem])
+      }
       return
     }
 
@@ -35,7 +52,7 @@ export default function SignupPage() {
     const { data } = await supabase
       .from('profiles')
       .select('username')
-      .eq('username', value.trim().toLowerCase())
+      .eq('username_slug', usernameToSlug(value))
       .maybeSingle()
 
     if (data) {
@@ -62,14 +79,20 @@ export default function SignupPage() {
     const res = await fetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: username.trim().toLowerCase(), pin }),
+      // Sent as typed — the server keeps the accents for the display name and derives the login
+      // slug itself.
+      body: JSON.stringify({ username: username.trim(), pin }),
     })
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
       setError(data.error === 'Username already taken'
         ? 'This name is already taken. Try a new one!'
-        : 'No se ha podido crear la cuenta. Intenta de nuevo.')
+        // Validation messages from the API are already user-facing, so show them rather than
+        // replacing a precise reason with a generic failure.
+        : typeof data.error === 'string' && res.status === 400
+          ? data.error
+          : 'No se ha podido crear la cuenta. Intenta de nuevo.')
       setLoading(false)
       return
     }

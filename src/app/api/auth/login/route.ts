@@ -3,9 +3,10 @@ import { checkOrigin } from '@/lib/security'
 import { clientIp, enforceRateLimit, loginIpLimiter, loginLimiter } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
+import { usernameToSlug } from '@/lib/username'
 
 const LoginSchema = z.object({
-  username: z.string().min(1).max(30),
+  username: z.string().min(1).max(60),
   pin: z.string().length(4).regex(/^\d{4}$/),
 })
 
@@ -22,11 +23,14 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
 
   const { username, pin } = parsed.data
-  const email = `${username.toLowerCase()}@bsp.internal`
+  // Same transliteration as signup, so "José" and "Jose" both reach the account that was created
+  // under the accented name.
+  const slug = usernameToSlug(username)
+  const email = `${slug}@bsp.internal`
 
   // The real brute-force defence: throttle guesses against this specific account. Keyed on the
   // normalised username so "Roger" and "roger" share one budget and cannot double the attempts.
-  const accountLimitError = await enforceRateLimit(loginLimiter, `user:${username.toLowerCase()}`)
+  const accountLimitError = await enforceRateLimit(loginLimiter, `user:${slug}`)
   if (accountLimitError) return accountLimitError
 
   const supabase = await createClient()
