@@ -13,6 +13,12 @@
  * the two things it therefore does NOT cover.
  *
  * Refuses to run against anything but localhost — see assertLocal().
+ *
+ * Give the stack a moment after `supabase db reset` before running this. The local PostgREST
+ * holds a pool of 10 connections and reloads its schema cache on reset; a run started during
+ * that window can see "An invalid response was received from the upstream server" on the
+ * concurrent joins. That is the local container settling, not a fault in the game logic —
+ * re-run and it goes green.
  */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
