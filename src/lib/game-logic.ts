@@ -68,6 +68,13 @@ const STEM_IRREG_PERSON_MAP: Record<string, string[]> = {
 const STEM_WRONG_HINT =
   "One of those tricky ones with an **irregular stem**. Do you remember how it changes from the infinitive?"
 
+// `hacer` is the one verb in this group whose stem shifts again inside the group: hic- everywhere
+// except the 3rd person singular, which spells it hiz- (hizo). The source workbook flags that row
+// on its own — `expected_stem` reads "hiz- [3s special spelling: hiz-]" for it and plain "hic-"
+// for the other five persons — so the generic stem hint left the actual difficulty unexplained.
+const STEM_WRONG_HACER_3S_HINT =
+  "One of those tricky ones with an **irregular stem**. Do you remember how it changes from the infinitive? Tiny spelling detail: in the **3rd person singular**, *hacer* uses a special spelling in the indefinido."
+
 const ENDING_WRONG_HINT =
   "Nearly. You've got the trickiest part, the stem. Now the ending — there's a **specific pattern** for this irregular-stem group. Remember?"
 
@@ -112,9 +119,11 @@ function validateStemIrreg(normalized: string, phrase: Phrase): ValidationResult
     inputEnding !== null &&
     (STEM_IRREG_PERSON_MAP[phrase.person] ?? []).includes(inputEnding)
 
+  const isHacer3s = phrase.person === '3s' && expectedStem === 'hiz'
+
   return {
     status: 'wrong_stem',
-    hint: STEM_WRONG_HINT,
+    hint: isHacer3s ? STEM_WRONG_HACER_3S_HINT : STEM_WRONG_HINT,
     highlight: endingAndPersonOk ? (inputStem ?? undefined) : undefined,
   }
 }
@@ -132,11 +141,22 @@ const ERER_PERSON_MAP: Record<string, string> = {
   '1s': 'i', '2s': 'iste', '3s': 'io', '1pl': 'imos', '2pl': 'isteis', '3pl': 'ieron',
 }
 
+// The trailing warning is only appended for *tú*: "visitastes" / "comistes" is the single most
+// common ending mistake, and it lands here (the extra -s makes the ending unrecognisable), but
+// telling every other person not to add an -s would just be noise.
+const REG_ENDING_TU_WARNING =
+  " Also, hope you didn't add an **\"s\"** at the end for *tú*..."
+
 const REG_ENDING_WRONG_AR_HINT =
   "Remember: in regular indefinidos, **-ar** endings usually have the **'a'** sound, except for *yo* and *él/ella* (which only have an accented vowel)."
 
 const REG_ENDING_WRONG_ERER_HINT =
   "Remember: in regular indefinidos, **-er/-ir** endings all include an **'i'** sound."
+
+function regEndingWrongHint(isAR: boolean, person: string): string {
+  const base = isAR ? REG_ENDING_WRONG_AR_HINT : REG_ENDING_WRONG_ERER_HINT
+  return person === '2s' ? base + REG_ENDING_TU_WARNING : base
+}
 
 const REG_PERSON_WRONG_GUSTAR_HINT =
   "Close! This is a **gustar**-type verb. The verb agrees with the **What**, not the Who. Recheck who is doing the action."
@@ -145,8 +165,10 @@ const REG_PERSON_WRONG_HINT =
   "Close! Now it just has to match the subject. Recheck who is doing the action."
 
 const REG_STEM_HINTS: Record<string, string> = {
+  // "the stem just stays the same" contradicted the rest of the sentence: the stem is the
+  // infinitive *minus* its last two letters, which is what the instruction then asks for.
   Reg_default_stem:
-    "It's a regular indefinido, so the stem just stays the same — drop the last two letters of the infinitive and put it before your ending (good job there!).",
+    "It's a regular indefinido, so for the stem just drop the last two letters of the infinitive and put it before your ending (good job there!).",
   Reg_change_stem_1s_car:
     "Spelling tweak: **-car** verbs change **c → qu** in the 1st person singular to keep the sound.",
   Reg_change_stem_1s_gar:
@@ -182,7 +204,7 @@ function validateIndefReg(normalized: string, phrase: Phrase): ValidationResult 
     const stemCorrect = normalized.startsWith(expectedStem)
     return {
       status: 'wrong_ending',
-      hint: isAR ? REG_ENDING_WRONG_AR_HINT : REG_ENDING_WRONG_ERER_HINT,
+      hint: regEndingWrongHint(isAR, phrase.person),
       highlight: stemCorrect ? expectedStem : undefined,
     }
   }
@@ -192,7 +214,7 @@ function validateIndefReg(normalized: string, phrase: Phrase): ValidationResult 
   if (inputStem !== expectedStem && normalized.startsWith(expectedStem)) {
     return {
       status: 'wrong_ending',
-      hint: isAR ? REG_ENDING_WRONG_AR_HINT : REG_ENDING_WRONG_ERER_HINT,
+      hint: regEndingWrongHint(isAR, phrase.person),
       highlight: expectedStem,
     }
   }
