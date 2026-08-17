@@ -119,7 +119,8 @@ function InlineSentence({
     <div className="flex flex-wrap items-end justify-center gap-x-2 gap-y-3 px-4">
       {beforeWords.map((word, i) => <DottedWord key={`b${i}`} word={word} />)}
 
-      <div className="flex flex-col items-center gap-[2px]">
+      {/* gap-[5px]: a 2px gap left the infinitive label touching the input's rounded border. */}
+      <div className="flex flex-col items-center gap-[5px]">
         <span className="text-[9px] font-black tracking-widest uppercase" style={{ color }}>
           {verb}
         </span>

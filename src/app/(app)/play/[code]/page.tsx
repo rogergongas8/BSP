@@ -206,7 +206,8 @@ function PhraseSentence({
       {beforeWords.map((w, i) => (
         <span key={`b${i}`} className="text-gray-700 font-medium text-sm">{w}</span>
       ))}
-      <div className="flex flex-col items-center gap-[2px]">
+      {/* gap-[5px]: matches the singleplayer sentence — a 2px gap left the label touching the box. */}
+      <div className="flex flex-col items-center gap-[5px]">
         <span className="text-[9px] font-black tracking-widest uppercase" style={{ color: verbColor }}>
           {verb}
         </span>
@@ -625,7 +626,7 @@ function ContrastRoundView({
           <p className="[text-wrap:balance]">
             {sentenceParts[0]}
             <span className="relative inline-block align-middle mx-1">
-              <span className="absolute left-1/2 -top-4 -translate-x-1/2 text-[10px] font-black tracking-widest text-gray-400 uppercase whitespace-nowrap">
+              <span className="absolute left-1/2 -top-[19px] -translate-x-1/2 text-[10px] font-black tracking-widest text-gray-400 uppercase whitespace-nowrap">
                 {gapVerbOnly(phrase.infinitive_1)}
               </span>
               <span
@@ -640,7 +641,7 @@ function ContrastRoundView({
           {gapCount === 2 && phrase.option_a_2 && phrase.option_b_2 && (
             <p className="[text-wrap:balance]">
               <span className="relative inline-block align-middle mx-1">
-                <span className="absolute left-1/2 -top-4 -translate-x-1/2 text-[10px] font-black tracking-widest text-gray-400 uppercase whitespace-nowrap">
+                <span className="absolute left-1/2 -top-[19px] -translate-x-1/2 text-[10px] font-black tracking-widest text-gray-400 uppercase whitespace-nowrap">
                   {gapVerbOnly(phrase.infinitive_2 ?? '')}
                 </span>
                 <span

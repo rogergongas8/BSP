@@ -99,7 +99,9 @@ function GapWithLabel({ verb, value, color, result }: { verb: string; value: str
 
   return (
     <span className="relative inline-block align-middle mx-1">
-      <span className="absolute left-1/2 -top-4 -translate-x-1/2 text-[10px] font-bold tracking-widest text-gray-400 uppercase whitespace-nowrap">
+      {/* -top-[19px]: at -top-4 the label sat flush against the box's rounded border. The
+          sentence's leading-[2.6] is what makes this headroom available. */}
+      <span className="absolute left-1/2 -top-[19px] -translate-x-1/2 text-[10px] font-bold tracking-widest text-gray-400 uppercase whitespace-nowrap">
         {gapVerbOnly(verb)}
       </span>
       <span
