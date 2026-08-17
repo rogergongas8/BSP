@@ -97,11 +97,17 @@ export default function JoinPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code }),
     })
-    const json = await res.json()
-    if (json.data?.code) {
-      router.push(`/room/${json.data.code}`)
+    const json = await res.json().catch(() => null)
+    if (json?.data?.code) {
+      // A member reconnecting to a game already in progress goes straight to the board, not the
+      // lobby — the lobby only ever advances on a `waiting -> playing` event that already fired.
+      router.push(json.data.status === 'playing' ? `/play/${json.data.code}` : `/room/${json.data.code}`)
     } else {
-      setErrorMsg(json.error === 'Room is full' ? 'This room is already full.' : 'Looks like no host has started a session with this code. Make sure you entered the correct code.')
+      setErrorMsg(
+        json?.error === 'Room is full' ? 'This room is already full.' :
+        json?.error === 'Game already started' ? 'This session has already started, so you can no longer join it.' :
+        'Looks like no host has started a session with this code. Make sure you entered the correct code.',
+      )
       setJoinState('error')
     }
   }

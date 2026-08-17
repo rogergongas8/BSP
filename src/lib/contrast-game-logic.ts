@@ -40,10 +40,13 @@ export const CONTRAST_ICON: Record<ContrastSourceBattleId, { a: string; b: strin
   'mimo-zas': { a: '/images/loading/small-loading1.png', b: '/images/loading/small-loading2.png' }, // a=Indefinido(Zas), b=Imperfecto(Mimo)
 }
 
-export const CONTRAST_META: Record<ContrastBattleId, { color: string; xpAt100: number }> = {
-  'javi-zas':      { color: '#C85C6E', xpAt100: 25 },
-  'mimo-zas':      { color: '#E8922A', xpAt100: 30 },
-  'javi-mimo-zas': { color: '#4A5BB5', xpAt100: 30 },
+// `label` names the tenses a phrase actually contrasts. Shown per phrase in the mixed session
+// ("todo todo"), where consecutive questions come from different battles and the tense being
+// practised is otherwise unstated.
+export const CONTRAST_META: Record<ContrastBattleId, { color: string; xpAt100: number; label: string }> = {
+  'javi-zas':      { color: '#C85C6E', xpAt100: 25, label: 'Perfecto · Indefinido' },
+  'mimo-zas':      { color: '#E8922A', xpAt100: 30, label: 'Imperfecto · Indefinido' },
+  'javi-mimo-zas': { color: '#4A5BB5', xpAt100: 30, label: 'Perfecto · Indefinido · Imperfecto' },
 }
 
 // Fixed per-gap-slot colors (gap 1 = blue, gap 2 = orange): border for the sentence's input

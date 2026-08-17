@@ -325,11 +325,11 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
             <motion.div
               className="h-full rounded-full"
               style={{ backgroundColor: meta.color }}
-              animate={{ width: `${((progress + 1) / SESSION_TOTAL) * 100}%` }}
+              animate={{ width: `${((progress + 1) / Math.max(1, sessionTotal)) * 100}%` }}
               transition={{ type: 'spring', stiffness: 200, damping: 30 }}
             />
           </div>
-          <span className="text-xs font-bold text-gray-400">{progress + 1}/{SESSION_TOTAL}</span>
+          <span className="text-xs font-bold text-gray-400">{progress + 1}/{sessionTotal}</span>
         </div>
         <div className="flex justify-end">
           <HintToggle checked={showHints} onChange={setShowHints} />
@@ -340,6 +340,23 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
       <div className="flex-1 flex flex-col px-5 pt-8 pb-28 gap-8">
         {!loading && phrase ? (
           <>
+            {/* In a mixed session each phrase comes from a different battle, so the pair of tenses
+                being contrasted is named per phrase — otherwise "todo todo" gives no clue which
+                tense the question is actually testing. */}
+            {isMixed && (
+              <div className="flex justify-center -mb-4">
+                <span
+                  className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide"
+                  style={{
+                    backgroundColor: `${CONTRAST_META[phrase.battle_id].color}1A`,
+                    color: CONTRAST_META[phrase.battle_id].color,
+                  }}
+                >
+                  {CONTRAST_META[phrase.battle_id].label}
+                </span>
+              </div>
+            )}
+
             {/* Sentence with blank(s) as real input-style boxes */}
             {/* leading-[2.6] rather than leading-relaxed: the verb label above each blank is
                 absolutely positioned, so it takes up no line height of its own and would print
@@ -450,7 +467,7 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
               style={{ backgroundColor: outcome === 'full' ? '#22C55E' : '#F5A623' }}
             >
               <SkipForward className="w-5 h-5 stroke-[2.5]" />
-              {outcome === 'full' ? (progress + 1 >= SESSION_TOTAL ? 'Finish' : 'Next!') : 'Ok, next'}
+              {outcome === 'full' ? (progress + 1 >= sessionTotal ? 'Finish' : 'Next!') : 'Ok, next'}
             </motion.button>
           )}
         </AnimatePresence>

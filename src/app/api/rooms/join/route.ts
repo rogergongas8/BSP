@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
 import { checkOrigin } from '@/lib/security'
 import { clientIp, enforceRateLimit, roomJoinLimiter } from '@/lib/rate-limit'
@@ -25,35 +26,55 @@ export async function POST(request: NextRequest) {
 
   const { code } = parsed.data
 
-  const { data: room, error: roomError } = await supabase
+  // A room that is already `playing` is still joinable: during the IESE session several players
+  // had their game freeze, and re-entering the code told them it was invalid because this lookup
+  // only matched `waiting`. Reconnecting to a live game is the recovery path, so both states are
+  // accepted here and the response tells the client which screen to open.
+  const admin = createAdminClient()
+  const { data: room, error: roomError } = await admin
     .from('rooms')
     .select('id, code, status, max_players')
     .eq('code', code)
-    .eq('status', 'waiting')
+    .in('status', ['waiting', 'playing'])
     .single()
 
   if (roomError || !room) {
-    return NextResponse.json({ error: 'Room not found or already started' }, { status: 404 })
+    return NextResponse.json({ error: 'Room not found' }, { status: 404 })
   }
 
-  // Check player count
-  const { count } = await supabase
+  // Already a member? Let them straight back in without re-checking capacity — otherwise a
+  // reconnect into a full game is refused for a seat the player already owns.
+  const { data: existing } = await admin
     .from('room_players')
-    .select('*', { count: 'exact', head: true })
+    .select('user_id')
     .eq('room_id', room.id)
+    .eq('user_id', user.id)
+    .maybeSingle()
 
-  if ((count ?? 0) >= room.max_players) {
-    return NextResponse.json({ error: 'Room is full' }, { status: 409 })
+  if (!existing) {
+    // Joining a game that has already started would leave the newcomer with no answers for the
+    // rounds already played, and would inflate the per-round answer target everyone is waiting on.
+    if (room.status === 'playing') {
+      return NextResponse.json({ error: 'Game already started' }, { status: 409 })
+    }
+
+    const { count } = await admin
+      .from('room_players')
+      .select('*', { count: 'exact', head: true })
+      .eq('room_id', room.id)
+
+    if ((count ?? 0) >= room.max_players) {
+      return NextResponse.json({ error: 'Room is full' }, { status: 409 })
+    }
+
+    const { error: joinError } = await admin
+      .from('room_players')
+      .upsert({ room_id: room.id, user_id: user.id }, { onConflict: 'room_id,user_id' })
+
+    if (joinError) {
+      return NextResponse.json({ error: 'Failed to join room' }, { status: 500 })
+    }
   }
 
-  // Join (upsert handles re-joining)
-  const { error: joinError } = await supabase
-    .from('room_players')
-    .upsert({ room_id: room.id, user_id: user.id })
-
-  if (joinError) {
-    return NextResponse.json({ error: 'Failed to join room' }, { status: 500 })
-  }
-
-  return NextResponse.json({ data: { code: room.code } })
+  return NextResponse.json({ data: { code: room.code, status: room.status } })
 }

@@ -78,6 +78,12 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
       if (cancelled || !room) { if (!room) router.push('/room'); return }
       setHostId(room.host_id)
 
+      // Presence (below) is what the lobby *shows*; `room_players` is what the game *counts*.
+      // Reconcile the two before the host can start, or a player visible in the lobby but missing
+      // from the table gets frozen out of the round they are watching.
+      await fetch(`/api/rooms/${code}/ensure-membership`, { method: 'POST' }).catch(() => {})
+      if (cancelled) return
+
       const myPresence: PresencePayload = {
         user_id: user.id,
         username: myProfile?.username ?? 'Player',

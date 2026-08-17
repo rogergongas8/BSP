@@ -81,6 +81,24 @@ export type MyAnswer =
 
 const EMPTY_TEXT_ANSWER: MyAnswer = { kind: 'text', value: '' }
 
+/** Stand-in results used only when /api/rounds/[id]/results could not be read, so the round can
+ *  still leave the collecting screen. The reconcile poll refetches and replaces it. Rendering
+ *  guards on `correct_answer`/`correct_1` being absent, so no answer key is invented here. */
+const PLACEHOLDER_RESULTS: RoundResults = {
+  is_contraste: false,
+  my_validation_status: 'no_answer',
+  my_points: 0,
+  is_correct: false,
+  correct_count: 0,
+  total_count: 0,
+  my_rank: 1,
+  total_players: 1,
+  points_behind: 0,
+  player_ahead_name: null,
+  standings: [],
+  round_number: 0,
+}
+
 // TEMP: exported for the /dev-scoreboard preview route — revert to unexported when that route is deleted.
 export type Round = {
   id: string
@@ -436,6 +454,13 @@ function TextRoundView({
                 <p className="text-sm text-gray-400 mt-1 font-medium">
                   {phase.answeredCount}/{phase.totalCount}
                 </p>
+                {/* Same warning the contraste round already carries: the host needs to know that
+                    skipping closes the question for everyone, not just for themselves. */}
+                {isHost && (
+                  <p className="text-xs text-gray-400 mt-3 max-w-[260px] mx-auto leading-snug">
+                    All players will move on to the next question now, even if not everyone has answered yet.
+                  </p>
+                )}
               </div>
             </motion.div>
           )}
@@ -1211,6 +1236,7 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
   const timedOutRoundIdRef = useRef<string | null>(null)
   const currentRoundNumberRef = useRef(0)
   const hostIdRef = useRef<string | null>(null)
+  const roomIdRef = useRef<string | null>(null)
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   /**
@@ -1334,18 +1360,21 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
       const results = await fetchResults(round.id)
       if (results) {
         setPhase({ type: 'results', round, myAnswer: myAnswerRef.current, results })
+      } else {
+        // A null here means /results refused or failed. Bailing out silently is what left players
+        // staring at "Collecting answers..." for the rest of the game, so the phase still advances
+        // and the reconcile poll below retries the fetch.
+        setPhase({ type: 'results', round, myAnswer: myAnswerRef.current, results: PLACEHOLDER_RESULTS })
       }
     } else if (round.status === 'scoreboard') {
       stopTimer()
       const results = await fetchResults(round.id)
-      if (results) {
-        setPhase({
-          type: 'scoreboard',
-          roundNumber: round.round_number,
-          totalRounds,
-          standings: results.standings,
-        })
-      }
+      setPhase({
+        type: 'scoreboard',
+        roundNumber: round.round_number,
+        totalRounds,
+        standings: results?.standings ?? [],
+      })
     }
   }, [startTimer, stopTimer, fetchResults, fetchAnswerCount, totalRounds])
 
@@ -1365,6 +1394,7 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
 
       if (!room) { router.push('/'); return }
       const amHost = room.host_id === user.id
+      roomIdRef.current = room.id
       setTotalRounds(room.total_rounds)
       setIsHost(amHost)
       hostIdRef.current = room.host_id
@@ -1383,8 +1413,24 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
         .single()
 
       if (room.status === 'finished') {
-        const results = await fetchResults(currentRoundIdRef.current ?? '')
-        setPhase({ type: 'finished', standings: results?.standings ?? [] })
+        // currentRoundIdRef is still null on a fresh load, so this fetch always failed and the
+        // page rendered an empty podium. Read the last completed round instead, and if there is
+        // genuinely nothing to show, go home rather than to a blank scoreboard.
+        const { data: lastRound } = await supabase
+          .from('rounds')
+          .select('id')
+          .eq('room_id', room.id)
+          .in('status', ['done', 'scoreboard', 'results'])
+          .order('round_number', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        const results = lastRound ? await fetchResults(lastRound.id) : null
+        if (!results || results.standings.length === 0) {
+          router.push('/')
+          return
+        }
+        setPhase({ type: 'finished', standings: results.standings })
         return
       }
 
@@ -1433,7 +1479,12 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
             // which for anyone who waited in the lobby predates the host pressing start (that is
             // where total_rounds is actually written).
             const roundCount = updatedRoom.total_rounds ?? room.total_rounds
-            const endedEarly = currentRoundNumberRef.current > 0 && currentRoundNumberRef.current < roundCount
+            // The `> 0` half of this test used to exclude the very players who most needed it:
+            // anyone frozen before a round was applied still had the ref at 0, so they fell through
+            // to the final-scoreboard branch and got an empty podium with a "Get XP" button. Any
+            // finish before the last round is the host bailing out, whatever this client managed to
+            // render.
+            const endedEarly = currentRoundNumberRef.current < roundCount
             if (endedEarly && !amHost) {
               sessionStorage.setItem('bsp_host_ended_game', '1')
               router.push('/')
@@ -1449,7 +1500,14 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
               .single()
 
             const results = lastRound ? await fetchResults(lastRound.id) : null
-            setPhase({ type: 'finished', standings: results?.standings ?? [] })
+            // No standings means there is no podium to show and no XP legitimately earned — send
+            // them home with the host-ended modal instead of a blank final scoreboard.
+            if (!results || results.standings.length === 0) {
+              if (!amHost) sessionStorage.setItem('bsp_host_ended_game', '1')
+              router.push('/')
+              return
+            }
+            setPhase({ type: 'finished', standings: results.standings })
           }
         })
         // No round_answers subscription: Realtime applies RLS to postgres_changes, and after
@@ -1536,12 +1594,21 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
       ? { answer: ans.value }
       : { selected_1: ans.selected1, selected_2: ans.selected2 ?? undefined }
 
-    fetch(`/api/rounds/${roundId}/answer`, {
+    // The response used to be dropped on the floor. A rejected submit (403 when the player is
+    // missing from room_players, 409 when the round already closed) then looked identical to a
+    // successful one, and the player waited on a round that had moved on without them. The
+    // reconcile poll pulls the real state instead of leaving the screen wrong.
+    const res = await fetch(`/api/rounds/${roundId}/answer`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-    })
-  }, [])
+    }).catch(() => null)
+
+    if (!res || !res.ok) {
+      const round = await fetchCurrentRound(roomIdRef.current ?? '')
+      if (round) await applyRound(round)
+    }
+  }, [fetchCurrentRound, applyRound])
 
   const handleTimerEnd = useCallback(async () => {
     if (!isHost) return
@@ -1590,6 +1657,75 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
       clearInterval(interval)
     }
   }, [collectingRoundId, fetchAnswerCount])
+
+  /**
+   * Safety net against a frozen screen.
+   *
+   * The whole game timeline is driven by `postgres_changes` on `rounds`. That subscription is a
+   * single point of failure: a websocket that drops during the start burst, a phone that locks, a
+   * backgrounded Safari tab, or one refused fetch inside `applyRound`, and the client never hears
+   * about another round. Several players hit exactly this at IESE and sat on "Collecting
+   * answers..." until the game ended.
+   *
+   * So the server state is re-read on a slow interval regardless of Realtime. When the round in
+   * the database no longer matches what is on screen, the phase is rebuilt from the database — the
+   * missed event stops mattering. Also catches a room that finished while this client was deaf.
+   */
+  const reconcileRef = useRef(false)
+  // Read through a ref so the interval is created once for the whole game. Keying the effect on
+  // `phase` itself would restart the 5s timer on every transition, and a client that has just
+  // gone quiet is exactly the one that must not have its next check pushed back.
+  const phaseRef = useRef(phase)
+  useEffect(() => { phaseRef.current = phase }, [phase])
+
+  useEffect(() => {
+    const supabase = createClient()
+
+    const reconcile = async () => {
+      const phase = phaseRef.current
+      if (phase.type === 'loading' || phase.type === 'finished') return
+      if (reconcileRef.current) return
+      reconcileRef.current = true
+      try {
+        const { data: room } = await supabase
+          .from('rooms')
+          .select('id, status, total_rounds')
+          .eq('code', code)
+          .single()
+        if (!room) return
+
+        if (room.status === 'finished') {
+          // No `> 0` guard, same reasoning as the rooms subscription: a player frozen before any
+          // round was applied is precisely who needs sending home with the explanation.
+          const endedEarly = currentRoundNumberRef.current < (room.total_rounds ?? totalRounds)
+          if (endedEarly && hostIdRef.current !== currentUserId) {
+            stopTimer()
+            sessionStorage.setItem('bsp_host_ended_game', '1')
+            router.push('/')
+          }
+          return
+        }
+
+        const fresh = await fetchCurrentRound(room.id)
+        if (!fresh) return
+
+        // Only act when the server has genuinely moved on, so a healthy client is untouched.
+        const stale =
+          fresh.id !== currentRoundIdRef.current ||
+          (phase.type === 'active' && fresh.status !== 'active') ||
+          (phase.type === 'collecting' && fresh.status !== 'collecting') ||
+          (phase.type === 'results' && fresh.status !== 'results') ||
+          (phase.type === 'results' && phase.results === PLACEHOLDER_RESULTS)
+
+        if (stale) await applyRound(fresh)
+      } finally {
+        reconcileRef.current = false
+      }
+    }
+
+    const interval = setInterval(reconcile, 5000)
+    return () => clearInterval(interval)
+  }, [code, applyRound, fetchCurrentRound, stopTimer, router, totalRounds, currentUserId])
 
   const handleSkip = useCallback(async () => {
     const roundId = currentRoundIdRef.current
