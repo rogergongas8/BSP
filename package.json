@@ -15,7 +15,8 @@
     "db:seed-phrases": "tsx --env-file=.env.local scripts/seed-phrases.ts",
     "db:seed-phrases-pp": "tsx --env-file=.env.local scripts/seed-phrases-pp.ts",
     "db:seed-phrases-imp": "tsx --env-file=.env.local scripts/seed-phrases-imp.ts",
-    "db:seed-contrast-phrases": "tsx --env-file=.env.local scripts/seed-contrast-phrases.ts"
+    "db:seed-contrast-phrases": "tsx --env-file=.env.local scripts/seed-contrast-phrases.ts",
+    "test:loadtest": "tsx scripts/loadtest-multiplayer.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
