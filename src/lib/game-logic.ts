@@ -30,6 +30,26 @@ export type ValidationResult = {
   ppHighlight?: PPHighlightRange
 }
 
+/**
+ * Does `normalized` look like "the expected stem, followed by an attempt at an ending"?
+ *
+ * `startsWith` alone was too generous, and it drove the status rows: for *comer* (stem "com"),
+ * "comzzz" — or just "com" — reported Stem as correct, because everything after the stem went
+ * unexamined. A student typing a single stray letter was told their stem was right.
+ *
+ * The remainder must therefore be non-empty and plausibly an ending: made only of the letters
+ * Spanish endings are built from. That still accepts a genuinely wrong ending (the case this
+ * branch exists to report) while rejecting the junk that made the row lie.
+ */
+const ENDING_LETTERS = /^[aeiouins]+$/
+
+function looksLikeStemPlusEnding(normalized: string, expectedStem: string): boolean {
+  if (expectedStem.length === 0) return false
+  if (!normalized.startsWith(expectedStem)) return false
+  const rest = normalized.slice(expectedStem.length)
+  return rest.length > 0 && ENDING_LETTERS.test(rest)
+}
+
 // ─── indef_full_irreg ────────────────────────────────────────────────────────
 
 const VALID_FORMS: Record<string, string[]> = {
@@ -110,7 +130,7 @@ function validateStemIrreg(normalized: string, phrase: Phrase): ValidationResult
   }
 
   // Input starts with correct stem → stem is right, ending is the problem
-  if (normalized.startsWith(expectedStem)) {
+  if (looksLikeStemPlusEnding(normalized, expectedStem)) {
     return { status: 'wrong_ending', hint: ENDING_WRONG_HINT, highlight: expectedStem }
   }
 
@@ -201,7 +221,7 @@ function validateIndefReg(normalized: string, phrase: Phrase): ValidationResult 
 
   if (inputStem === null) {
     // No valid indefinido ending found — but stem may still be correct
-    const stemCorrect = normalized.startsWith(expectedStem)
+    const stemCorrect = looksLikeStemPlusEnding(normalized, expectedStem)
     return {
       status: 'wrong_ending',
       hint: regEndingWrongHint(isAR, phrase.person),
@@ -211,7 +231,7 @@ function validateIndefReg(normalized: string, phrase: Phrase): ValidationResult 
 
   // 2b. Valid ending found but stem is wrong AND input starts with expected stem →
   // user typed correct stem then an invalid ending sequence (e.g. "visitasto" vs "visitaste")
-  if (inputStem !== expectedStem && normalized.startsWith(expectedStem)) {
+  if (inputStem !== expectedStem && looksLikeStemPlusEnding(normalized, expectedStem)) {
     return {
       status: 'wrong_ending',
       hint: regEndingWrongHint(isAR, phrase.person),
@@ -328,7 +348,7 @@ function validateImpReg(normalized: string, phrase: Phrase): ValidationResult {
 
   // 2. No valid imperfecto ending found
   if (inputEnding === null) {
-    const stemCorrect = normalized.startsWith(expectedStem)
+    const stemCorrect = looksLikeStemPlusEnding(normalized, expectedStem)
     return {
       status: 'wrong_ending',
       hint: endingWrongHint,
