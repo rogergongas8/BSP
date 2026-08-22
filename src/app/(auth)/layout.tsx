@@ -57,8 +57,15 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <>
-      {/* Force body background to match so Safari's overscroll / gaps don't show white */}
-      <style>{`html, body { background-color: #2F54BA !important; overflow: hidden; height: 100%; }`}</style>
+      {/* Force body background to match so Safari's overscroll / gaps don't show white.
+          The desktop rule slides the cat further past the right edge: the art is framed for a
+          phone, where only its face peeks in, but on a wide viewport the same offset left most
+          of the body visible. It has to be a media query rather than a Tailwind class because
+          the base offset arrives through the inline `style` above, which would win over one. */}
+      <style>{`
+        html, body { background-color: #2F54BA !important; overflow: hidden; height: 100%; }
+        @media (min-width: 640px) { .auth-cat { right: -110px !important; } }
+      `}</style>
       <div className="fixed inset-0 bg-bsp-blue flex flex-col pl-10 pr-6 pt-20 pb-8 overflow-hidden">
         <Image
           src="/images/login/logo.png"
@@ -72,7 +79,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         {cat && (
           <div
             aria-hidden
-            className="pointer-events-none absolute left-auto -z-10"
+            className="auth-cat pointer-events-none absolute left-auto -z-10"
             style={cat.style}
           >
             <Image
