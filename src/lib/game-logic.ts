@@ -674,7 +674,7 @@ export type StatusRow = { label: string; ok: boolean }
  * so the two can no longer drift apart.
  */
 export function statusRowsFor(input: string, phrase: Phrase): StatusRow[] {
-  const { status, highlight } = validate(input, phrase)
+  const normalized = deaccent(input.trim().toLowerCase())
 
   if (phrase.type === 'PP_irreg' || phrase.type === 'PP_reg' || phrase.type === 'PP_reg_gustar') {
     const rows = ppStatusRows(input, phrase)
@@ -687,27 +687,82 @@ export function statusRowsFor(input: string, phrase: Phrase): StatusRow[] {
   }
 
   if (phrase.type === 'Indef_stem_irreg') {
-    return [
-      { label: 'Tense ending',  ok: status === 'wrong_person' || (status === 'wrong_stem' && highlight !== null) },
-      { label: 'Person/Number', ok: status === 'wrong_stem' && highlight !== null },
-      { label: 'Stem',          ok: status !== 'wrong_stem' },
-    ]
+    return singleTokenRows(
+      normalized,
+      phrase.expected_stem ?? '',
+      STEM_IRREG_ENDINGS,
+      STEM_IRREG_PERSON_MAP[phrase.person] ?? [],
+    )
   }
 
   if (
     phrase.type === 'Indef_reg' || phrase.type === 'Indef_reg_gustar' ||
     phrase.type === 'Imp_reg'   || phrase.type === 'Imp_reg_gustar'
   ) {
-    return [
-      { label: 'Tense ending',  ok: status !== 'wrong_ending' },
-      { label: 'Person/Number', ok: status === 'wrong_stem' },
-      { label: 'Stem',          ok: (status === 'wrong_person' || status === 'wrong_ending') && highlight !== null },
-    ]
+    const isAR = phrase.verb.toLowerCase().endsWith('ar')
+    const isImp = phrase.type === 'Imp_reg' || phrase.type === 'Imp_reg_gustar'
+    const endings = isImp
+      ? (isAR ? AR_IMP_ENDINGS : ERIR_IMP_ENDINGS)
+      : (isAR ? AR_ENDINGS : ERER_ENDINGS)
+    const personMap = isImp
+      ? (isAR ? AR_IMP_PERSON_MAP : ERIR_IMP_PERSON_MAP)
+      : (isAR ? AR_PERSON_MAP : ERER_PERSON_MAP)
+    const expectedStem = phrase.expected_stem
+      ?? deaccent(phrase.verb.toLowerCase()).slice(0, -2)
+
+    return singleTokenRows(
+      normalized,
+      expectedStem,
+      endings.map(deaccent),
+      [deaccent(personMap[phrase.person] ?? '')],
+    )
   }
 
-  // indef_full_irreg_A/B and imp_irreg_A/B/C: a single memorised form, nothing to decompose.
+  // indef_full_irreg_A/B and imp_irreg_A/B/C: a single memorised form with nothing to
+  // decompose, so the only questions are "is this a real form of the verb?" and "is it
+  // the right person?".
+  const forms = (VALID_FORMS[phrase.type] ?? IMP_IRREG_FORMS[phrase.type] ?? []).map(deaccent)
   return [
-    { label: 'Form',          ok: status === 'wrong_person' },
-    { label: 'Person/Number', ok: false },
+    { label: 'Form',          ok: forms.includes(normalized) },
+    { label: 'Person/Number', ok: normalized === deaccent(phrase.answer.toLowerCase()) },
+  ]
+}
+
+/**
+ * Status rows for the single-token tenses (indefinido and imperfecto), judged one
+ * dimension at a time.
+ *
+ * Deriving these from `validate`'s status was wrong for the same reason it was wrong in
+ * Pretérito Perfecto: the cascade stops at the first failure, so whatever it never got to
+ * inspect was reported as failing. Typing "tuvex" for *tuve* got Stem marked wrong even
+ * though `tuv-` — the hard part of that exercise — was right, while Tense ending and
+ * Person/Number were marked correct despite "x" being neither.
+ *
+ * Each row now answers its own question against the input:
+ *  - Stem: does the answer start with the expected stem?
+ *  - Tense ending: is what follows a real ending for this tense?
+ *  - Person/Number: is that ending the one this person takes?
+ */
+function singleTokenRows(
+  normalized: string,
+  expectedStem: string,
+  endings: readonly string[],
+  expectedEndings: readonly string[],
+): StatusRow[] {
+  // Longest ending first, so "isteis" is not read as "iste".
+  const sorted = [...endings].sort((a, b) => b.length - a.length)
+  const inputEnding = sorted.find(e => normalized.endsWith(e) && normalized.length > e.length) ?? null
+
+  const stemOk = expectedStem !== '' && normalized.startsWith(expectedStem)
+  // The ending only counts when it is what actually follows the expected stem: for "tuvo"
+  // the stem is `tuv-` and the ending `-o`, but a stem-less match would also accept the
+  // "-o" of a completely different word.
+  const endingOk = inputEnding !== null && (!stemOk || normalized === expectedStem + inputEnding)
+  const personOk = endingOk && inputEnding !== null && expectedEndings.includes(inputEnding)
+
+  return [
+    { label: 'Tense ending',  ok: endingOk },
+    { label: 'Person/Number', ok: personOk },
+    { label: 'Stem',          ok: stemOk },
   ]
 }
