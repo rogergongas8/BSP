@@ -522,8 +522,14 @@ function isParticipleCorrect(partToken: string, phrase: Phrase): boolean {
  * must judge every dimension independently — a wrong auxiliary must not make a
  * correct participle read as wrong.
  *
- * Structure is the exception: with anything other than two tokens there is no
- * auxiliary/participle to judge, so the remaining rows stay unchecked.
+ * That independence has to hold for an incomplete answer too. Typing just "hemos"
+ * for *nosotros* used to fail all four rows, because anything other than two tokens
+ * returned early: the student had written a real haber form, in the right person,
+ * and was told the auxiliary was wrong. Structure fails (the participle is missing),
+ * but every piece the answer *does* contain is still judged on its own merits.
+ *
+ * A missing token fails its rows rather than passing them — nothing was written, so
+ * there is nothing to credit.
  */
 export function ppStatusRows(input: string, phrase: Phrase): {
   structure: boolean
@@ -532,18 +538,21 @@ export function ppStatusRows(input: string, phrase: Phrase): {
   participle: boolean
 } {
   const rawTokens = input.trim().split(/\s+/).filter(Boolean)
-  if (rawTokens.length !== 2) {
-    return { structure: false, auxiliary: false, personNumber: false, participle: false }
-  }
 
-  const auxToken = deaccentToken(rawTokens[0])
-  const partToken = deaccentToken(rawTokens[1])
+  // Pretérito perfecto is exactly "aux + participle". With a different token count the
+  // structure is wrong, but the tokens that are present still get judged below.
+  const structure = rawTokens.length === 2
+
+  const auxToken = rawTokens.length > 0 ? deaccentToken(rawTokens[0]) : ''
+  // Only a two-token answer has a participle slot; with one token the student has
+  // written the auxiliary alone, not a participle in second position.
+  const partToken = rawTokens.length === 2 ? deaccentToken(rawTokens[1]) : ''
 
   return {
-    structure: true,
-    auxiliary: HABER_FORMS.includes(auxToken),
-    personNumber: auxToken === deaccentToken(HABER_PERSON_MAP[phrase.person] ?? ''),
-    participle: isParticipleCorrect(partToken, phrase),
+    structure,
+    auxiliary: auxToken !== '' && HABER_FORMS.includes(auxToken),
+    personNumber: auxToken !== '' && auxToken === deaccentToken(HABER_PERSON_MAP[phrase.person] ?? ''),
+    participle: partToken !== '' && isParticipleCorrect(partToken, phrase),
   }
 }
 
@@ -643,4 +652,62 @@ export function subcategoryFor(tenseId: string, phraseType: string): string {
     return 'Regular'
   }
   return t.includes('irreg') ? 'Irregular' : 'Regular'
+}
+
+// ─── Status rows (shared by singleplayer and multiplayer) ─────────────────────
+
+/** One labelled check shown next to the correct answer after a wrong attempt. */
+export type StatusRow = { label: string; ok: boolean }
+
+/**
+ * The per-dimension breakdown of a wrong answer, as the feedback UI renders it.
+ *
+ * Which rows exist depends on the tense: Pretérito Perfecto is built from two tokens
+ * (auxiliary + participle) and is judged on Structure/Auxiliary/Person-Number/Participle,
+ * while indefinido and imperfecto are single tokens judged on Stem/Tense ending/Person-Number.
+ * The fully-irregular forms have no decomposable stem at all, so they only report Form and
+ * Person/Number.
+ *
+ * Multiplayer used to hardcode the indefinido rows for every phrase type, so a Pretérito
+ * Perfecto question reported "Tense ending / Person-Number / Stem" — labels that do not exist
+ * in that tense. Both modes now derive their rows here, from the phrase and the raw answer,
+ * so the two can no longer drift apart.
+ */
+export function statusRowsFor(input: string, phrase: Phrase): StatusRow[] {
+  const { status, highlight } = validate(input, phrase)
+
+  if (phrase.type === 'PP_irreg' || phrase.type === 'PP_reg' || phrase.type === 'PP_reg_gustar') {
+    const rows = ppStatusRows(input, phrase)
+    return [
+      { label: 'Structure',     ok: rows.structure },
+      { label: 'Auxiliary',     ok: rows.auxiliary },
+      { label: 'Person/Number', ok: rows.personNumber },
+      { label: 'Participle',    ok: rows.participle },
+    ]
+  }
+
+  if (phrase.type === 'Indef_stem_irreg') {
+    return [
+      { label: 'Tense ending',  ok: status === 'wrong_person' || (status === 'wrong_stem' && highlight !== null) },
+      { label: 'Person/Number', ok: status === 'wrong_stem' && highlight !== null },
+      { label: 'Stem',          ok: status !== 'wrong_stem' },
+    ]
+  }
+
+  if (
+    phrase.type === 'Indef_reg' || phrase.type === 'Indef_reg_gustar' ||
+    phrase.type === 'Imp_reg'   || phrase.type === 'Imp_reg_gustar'
+  ) {
+    return [
+      { label: 'Tense ending',  ok: status !== 'wrong_ending' },
+      { label: 'Person/Number', ok: status === 'wrong_stem' },
+      { label: 'Stem',          ok: (status === 'wrong_person' || status === 'wrong_ending') && highlight !== null },
+    ]
+  }
+
+  // indef_full_irreg_A/B and imp_irreg_A/B/C: a single memorised form, nothing to decompose.
+  return [
+    { label: 'Form',          ok: status === 'wrong_person' },
+    { label: 'Person/Number', ok: false },
+  ]
 }

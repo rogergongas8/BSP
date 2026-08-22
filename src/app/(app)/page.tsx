@@ -171,7 +171,7 @@ export default async function HomePage() {
         <h2 className="mb-5 text-base leading-snug">
           <span className="font-black text-gray-900">SUPER</span>
           <span className="font-semibold text-gray-900"> useful activities </span>
-          <span className="font-normal text-gray-400 text-sm">(your welcome)</span>
+          <span className="font-normal text-gray-400 text-sm">(you&apos;re welcome)</span>
         </h2>
 
         {/* 2-col activity cards */}

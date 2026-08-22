@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
 import { getLevelInfo, catImagePath } from '@/lib/levels'
 import { resolveAvatarPath } from '@/lib/avatars'
+import { statusRowsFor, type Phrase } from '@/lib/game-logic'
 
 export async function GET(
   request: NextRequest,
@@ -21,7 +22,7 @@ export async function GET(
     .from('rounds')
     .select(`
       id, room_id, round_number, status, phrase_id, contrast_phrase_id,
-      phrases(answer),
+      phrases(id, verb, sentence, answer, type, person, expected_stem, stem_group),
       contrast_phrases(option_a_1, option_b_1, correct_1, option_a_2, option_b_2, correct_2)
     `)
     .eq('id', id)
@@ -182,11 +183,23 @@ export async function GET(
     })
   }
 
-  const phrase = round.phrases as unknown as { answer: string }
+  const phrase = round.phrases as unknown as Phrase
+
+  // Which checks to show is a property of the phrase, not of the game mode: a Pretérito
+  // Perfecto question breaks down into Structure/Auxiliary/Person-Number/Participle, an
+  // indefinido into Stem/Tense ending/Person-Number. Computed here (the server holds the
+  // answer key anyway) so multiplayer renders exactly what singleplayer would.
+  const myAnswerText = myAnswer?.answer ?? null
+  const statusRows =
+    myAnswerText != null && !(myAnswer?.is_correct ?? false)
+      ? statusRowsFor(myAnswerText, phrase)
+      : null
+
   return NextResponse.json({
     ...baseResponse,
     is_contraste: false,
     correct_answer: phrase.answer,
-    my_answer: myAnswer?.answer ?? null,
+    my_answer: myAnswerText,
+    status_rows: statusRows,
   })
 }

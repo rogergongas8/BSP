@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'motion/react'
 import { X, Check, SkipForward, Lightbulb, Send } from 'lucide-react'
-import { validate, ppStatusRows, TENSE_META, resolveTenseId, type Phrase, type ValidationStatus, type PPHighlightRange } from '@/lib/game-logic'
+import { validate, statusRowsFor, TENSE_META, resolveTenseId, type Phrase, type ValidationStatus, type PPHighlightRange } from '@/lib/game-logic'
 import OverscrollColor from '@/components/overscroll-color'
 
 const SESSION_TOTAL = 10
@@ -474,13 +474,9 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   const isError = status === 'invalid_form' || status === 'wrong_stem' || status === 'wrong_ending' || status === 'wrong_person'
     || status === 'structure_incomplete' || status === 'aux_invalid' || status === 'aux_wrong_person'
     || status === 'part_irreg_invalid' || status === 'part_ending_invalid' || status === 'part_stem_invalid'
-  const isStemIrreg = phrase?.type === 'Indef_stem_irreg'
-  const isIndefReg  = phrase?.type === 'Indef_reg' || phrase?.type === 'Indef_reg_gustar'
-    || phrase?.type === 'Imp_reg' || phrase?.type === 'Imp_reg_gustar'
-  const isPP        = phrase?.type === 'PP_irreg' || phrase?.type === 'PP_reg' || phrase?.type === 'PP_reg_gustar'
-  const ppRows      = isPP && phrase
-    ? ppStatusRows(input, phrase)
-    : { structure: false, auxiliary: false, personNumber: false, participle: false }
+  // Which checks apply is decided by the phrase's own type, in the same helper multiplayer
+  // uses, so the two modes cannot report different rows for the same question.
+  const statusRows = isError && phrase ? statusRowsFor(input, phrase) : []
 
   return (
     <>
@@ -633,31 +629,9 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
           <div className="fixed bottom-0 left-0 right-0 flex flex-col px-5 pb-6 pt-3 bg-white gap-2">
             {isError && (
               <div className="flex flex-col items-end gap-1 pb-1">
-                {isStemIrreg ? (
-                  <>
-                    <StatusRow label="Tense ending" ok={status === 'wrong_person' || (status === 'wrong_stem' && highlight !== null)} />
-                    <StatusRow label="Person/Number" ok={status === 'wrong_stem' && highlight !== null} />
-                    <StatusRow label="Stem"          ok={status !== 'wrong_stem'} />
-                  </>
-                ) : isIndefReg ? (
-                  <>
-                    <StatusRow label="Tense ending" ok={status !== 'wrong_ending'} />
-                    <StatusRow label="Person/Number" ok={status === 'wrong_stem'} />
-                    <StatusRow label="Stem"          ok={(status === 'wrong_person' || status === 'wrong_ending') && highlight !== null} />
-                  </>
-                ) : isPP ? (
-                  <>
-                    <StatusRow label="Structure"     ok={ppRows.structure} />
-                    <StatusRow label="Auxiliary"     ok={ppRows.auxiliary} />
-                    <StatusRow label="Person/Number" ok={ppRows.personNumber} />
-                    <StatusRow label="Participle"    ok={ppRows.participle} />
-                  </>
-                ) : (
-                  <>
-                    <StatusRow label="Form"          ok={status === 'wrong_person'} />
-                    <StatusRow label="Person/Number" ok={false} />
-                  </>
-                )}
+                {statusRows.map(row => (
+                  <StatusRow key={row.label} label={row.label} ok={row.ok} />
+                ))}
               </div>
             )}
             <div className="flex items-center gap-4">

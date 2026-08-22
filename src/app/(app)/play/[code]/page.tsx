@@ -10,6 +10,7 @@ import ContrastGap from '@/components/game/ContrastGap'
 import ContrastResultCard, { ResultBar } from '@/components/game/ContrastResultCard'
 import StreakBadge from '@/components/game/StreakBadge'
 import { CONTRAST_ICON, GAP_COLORS, gapVerbOnly, phraseGapCount, type ContrastPhrasePublic } from '@/lib/contrast-game-logic'
+import type { StatusRow } from '@/lib/game-logic'
 import { getLevelInfo, catImagePath } from '@/lib/levels'
 import { resolveAvatarPath } from '@/lib/avatars'
 
@@ -62,6 +63,9 @@ export type RoundResults = {
   my_selected_1?: 1 | 2 | null
   my_selected_2?: 1 | 2 | null
   my_validation_status: string
+  /** Per-dimension breakdown of a wrong answer, computed server-side from the phrase's own
+   *  type so each tense reports the checks that actually apply to it. Null when correct. */
+  status_rows?: StatusRow[] | null
   my_points: number
   is_correct: boolean
   correct_count: number
@@ -163,18 +167,6 @@ function CountdownCircle({ seconds, total }: { seconds: number; total: number })
       </span>
     </div>
   )
-}
-
-// ─── Validation status → checkmarks ──────────────────────────────────────────
-
-function validationToChecks(status: string): { stem: boolean; ending: boolean; person: boolean } {
-  switch (status) {
-    case 'correct':      return { stem: true,  ending: true,  person: true }
-    case 'wrong_person': return { stem: true,  ending: true,  person: false }
-    case 'wrong_ending': return { stem: true,  ending: false, person: false }
-    case 'wrong_stem':   return { stem: false, ending: true,  person: true }
-    default:             return { stem: false, ending: false, person: false }
-  }
 }
 
 // ─── Shared sentence display ──────────────────────────────────────────────────
@@ -410,7 +402,7 @@ function TextRoundView({
     onAnswer({ kind: 'text', value: typedInput.trim() })
   }
 
-  const checks = phase.type === 'results' ? validationToChecks(phase.results.my_validation_status) : null
+  const statusRows = phase.type === 'results' ? (phase.results.status_rows ?? null) : null
 
   if (!round.phrases) return null
 
@@ -487,26 +479,16 @@ function TextRoundView({
                   >
                     {phase.results.correct_answer}
                   </div>
-                  {checks && (
+                  {statusRows && statusRows.length > 0 && (
                     <div className="flex flex-col gap-1.5 text-xs font-semibold shrink-0">
-                      <div className="flex items-center gap-1.5">
-                        {checks.ending
-                          ? <Check className="w-3.5 h-3.5 text-green-500 stroke-[3]" />
-                          : <X className="w-3.5 h-3.5 text-red-400 stroke-[3]" />}
-                        <span className="text-gray-600">Tense ending</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        {checks.person
-                          ? <Check className="w-3.5 h-3.5 text-green-500 stroke-[3]" />
-                          : <X className="w-3.5 h-3.5 text-red-400 stroke-[3]" />}
-                        <span className="text-gray-600">Person/Number</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        {checks.stem
-                          ? <Check className="w-3.5 h-3.5 text-green-500 stroke-[3]" />
-                          : <X className="w-3.5 h-3.5 text-red-400 stroke-[3]" />}
-                        <span className="text-gray-600">Stem</span>
-                      </div>
+                      {statusRows.map(row => (
+                        <div key={row.label} className="flex items-center gap-1.5">
+                          {row.ok
+                            ? <Check className="w-3.5 h-3.5 text-green-500 stroke-[3]" />
+                            : <X className="w-3.5 h-3.5 text-red-400 stroke-[3]" />}
+                          <span className="text-gray-600">{row.label}</span>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>

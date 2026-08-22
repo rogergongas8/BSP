@@ -10,7 +10,7 @@ export default function StreakBadge({ streak }: { streak: number }) {
     >
       <span className="text-xl font-black text-white shrink-0">{streak}</span>
       <span className="text-xl shrink-0">🔥</span>
-      <span className="flex-1 text-sm font-bold text-white">You&apos;re on strike!</span>
+      <span className="flex-1 text-sm font-bold text-white">You&apos;re on a streak!</span>
       <Image
         src="/images/multiplayer/Strike.png"
         alt=""
