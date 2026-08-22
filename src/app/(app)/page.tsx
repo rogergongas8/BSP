@@ -87,7 +87,7 @@ export default async function HomePage() {
       <OverscrollColor top="#2F54BA" bottom="#F3F4F6" />
 
       {/* ── Blue header ── */}
-      <div className="bg-bsp-blue px-5 pt-8">
+      <div className="bg-bsp-blue px-5 sm:px-[26%] pt-8">
 
         {/* User row */}
         <div className="flex items-center justify-between mb-5">
@@ -165,7 +165,7 @@ export default async function HomePage() {
       </div>
 
       {/* ── Content area ── */}
-      <div className="bg-gray-100 px-4 pt-4 pb-6 flex-1">
+      <div className="bg-gray-100 px-4 sm:px-[26%] pt-4 pb-6 flex-1">
 
         {/* Section title */}
         <h2 className="mb-5 text-base leading-snug">
@@ -175,7 +175,7 @@ export default async function HomePage() {
         </h2>
 
         {/* 2-col activity cards */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="grid grid-cols-2 gap-3 mb-4 sm:max-w-[620px] sm:mx-auto">
           <ActivityCard
             href="/escribiendo"
             imageSrc="/images/home/escribiendo.png"
@@ -198,6 +198,7 @@ export default async function HomePage() {
         </div>
 
         {/* Battle / Multiplayer card */}
+        <div className="sm:max-w-[620px] sm:mx-auto">
         <ActivityCard
           href="/room"
           imageSrc="/images/home/multiplayer.png"
@@ -210,6 +211,7 @@ export default async function HomePage() {
           buttonRight="10%"
           buttonWidth="w-24"
         />
+        </div>
 
       </div>
       <NotificationQueue />

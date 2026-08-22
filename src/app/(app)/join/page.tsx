@@ -150,7 +150,7 @@ export default function JoinPage() {
       </div>
 
       {/* ── Content ── */}
-      <div className="bg-gray-100 flex-1 px-5 pt-6 pb-8 flex flex-col gap-4">
+      <div className="bg-gray-100 flex-1 px-5 sm:px-[26%] pt-6 pb-8 flex flex-col gap-4">
 
         {/* Session Code card */}
         <div

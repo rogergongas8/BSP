@@ -148,7 +148,7 @@ export default async function ProfilePage() {
       <OverscrollColor top="#2F54BA" bottom="#F3F4F6" />
 
       {/* Blue header */}
-      <div className="bg-bsp-blue px-5 pt-10 pb-6">
+      <div className="bg-bsp-blue px-5 sm:px-[26%] pt-10 pb-6">
 
         {/* Avatar + name */}
         <div className="flex items-center gap-4 mb-5">
@@ -207,7 +207,7 @@ export default async function ProfilePage() {
       </div>
 
       {/* Scrollable content */}
-      <div className="bg-gray-100 px-4 pt-4 pb-28 flex flex-col gap-4">
+      <div className="bg-gray-100 px-4 sm:px-[26%] pt-4 pb-28 flex flex-col gap-4">
 
         {/* Practice Time */}
         <div className="bg-white rounded-2xl p-5">

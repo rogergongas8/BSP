@@ -119,7 +119,7 @@ export default function RoomPage() {
       </div>
 
       {/* ── Content ── */}
-      <div className="bg-gray-100 flex-1 px-5 pt-6 pb-28 flex flex-col gap-4">
+      <div className="bg-gray-100 flex-1 px-5 sm:px-[26%] pt-6 pb-28 flex flex-col gap-4">
 
         <p className="text-sm font-black text-gray-900">Choose your role</p>
 

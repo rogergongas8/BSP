@@ -69,7 +69,7 @@ export default function EscribiendoPage() {
       <OverscrollColor top="#2F54BA" bottom="#ffffff" />
 
       {/* ── Blue header ── */}
-      <div className="relative bg-bsp-blue px-5 pt-8 pb-12 overflow-hidden">
+      <div className="relative bg-bsp-blue px-5 sm:px-[26%] pt-8 pb-12 overflow-hidden">
         <Image src="/images/escribiendo/background.png" alt="" fill className="object-cover opacity-20 pointer-events-none select-none scale-[1.3] translate-x-[15%]" />
         <div className="relative flex items-center justify-between mb-3">
           <div className="relative w-9 h-9 shrink-0">
@@ -104,7 +104,7 @@ export default function EscribiendoPage() {
 
       {/* ── Content ── */}
       <div className="bg-white flex-1 pt-5 pb-24">
-        <p className="px-5 text-sm font-black text-gray-900 mb-6">Choose your tense</p>
+        <p className="px-5 sm:px-[26%] text-sm font-black text-gray-900 mb-6">Choose your tense</p>
         <TenseCarousel onPlay={handlePlay} />
       </div>
 

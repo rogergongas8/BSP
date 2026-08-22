@@ -23,7 +23,7 @@ export default function AchievementsGrid({ unlockedIds }: Props) {
 
   return (
     <div className="flex flex-col">
-      <div className="grid grid-cols-5 gap-2">
+      <div className="grid grid-cols-5 gap-2 sm:gap-4 sm:max-w-[420px] sm:mx-auto">
         {ORDER.map(id => {
           const a = ACHIEVEMENTS[id]
           const isUnlocked = unlocked.has(id)

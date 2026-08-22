@@ -188,7 +188,7 @@ export default function BattleCarousel({ onPlay, contained = false }: { onPlay: 
       <AnimatePresence mode="wait">
         <motion.div
           key={renderIndex}
-          className="px-6 flex flex-col items-center gap-1.5 mt-2"
+          className="px-6 flex flex-col items-center gap-1.5 mt-2 sm:max-w-[620px] sm:mx-auto"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}

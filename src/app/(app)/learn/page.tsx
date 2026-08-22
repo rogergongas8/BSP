@@ -345,7 +345,7 @@ export default function LearnLandingPage() {
       <OverscrollColor top="#2F54BA" bottom="#ffffff" />
 
       {/* Header */}
-      <div className="bg-bsp-blue px-5 pt-8 pb-12">
+      <div className="bg-bsp-blue px-5 sm:px-[26%] pt-8 pb-12">
         <div className="flex items-center justify-between mb-3">
           <div className="relative w-9 h-9 shrink-0">
             <Image src={avatar} alt="Avatar" fill sizes="36px" className="object-contain" />
@@ -373,7 +373,7 @@ export default function LearnLandingPage() {
       </div>
 
       {/* Content */}
-      <div className="bg-white flex-1 pt-4 pb-24 px-5 flex flex-col gap-8">
+      <div className="bg-white flex-1 pt-4 pb-24 px-5 sm:px-[26%] flex flex-col gap-8">
 
         {/* Stat pills */}
         <div className="flex gap-3 -mt-14">

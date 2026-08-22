@@ -1,7 +1,7 @@
 export default function HomeLoading() {
   return (
     <div className="flex flex-col animate-pulse">
-      <div className="bg-bsp-blue px-5 pt-8 pb-8">
+      <div className="bg-bsp-blue px-5 sm:px-[26%] pt-8 pb-8">
         <div className="flex items-center justify-between mb-5">
           <div className="w-9 h-9 rounded-full bg-white/20" />
           <div className="flex gap-2">
@@ -18,13 +18,13 @@ export default function HomeLoading() {
         </svg>
       </div>
 
-      <div className="bg-gray-100 px-4 pt-4 pb-6 flex-1">
+      <div className="bg-gray-100 px-4 sm:px-[26%] pt-4 pb-6 flex-1">
         <div className="h-5 w-48 bg-gray-300 rounded mb-5" />
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="grid grid-cols-2 gap-3 mb-4 sm:max-w-[620px] sm:mx-auto">
           <div className="aspect-[9/16] bg-gray-300 rounded-2xl" />
           <div className="aspect-[9/16] bg-gray-300 rounded-2xl" />
         </div>
-        <div className="h-32 bg-gray-300 rounded-2xl" />
+        <div className="h-32 bg-gray-300 rounded-2xl sm:max-w-[620px] sm:mx-auto" />
       </div>
     </div>
   )
