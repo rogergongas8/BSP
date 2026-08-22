@@ -64,7 +64,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           the base offset arrives through the inline `style` above, which would win over one. */}
       <style>{`
         html, body { background-color: #2F54BA !important; overflow: hidden; height: 100%; }
-        @media (min-width: 640px) { .auth-cat { right: -70px !important; } }
+        @media (min-width: 640px) { .auth-cat { right: -50px !important; } }
       `}</style>
       <div className="fixed inset-0 bg-bsp-blue flex flex-col pl-10 pr-6 pt-20 pb-8 overflow-hidden">
         <Image
