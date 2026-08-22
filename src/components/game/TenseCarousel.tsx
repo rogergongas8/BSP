@@ -13,7 +13,8 @@ export type TenseItem = {
   tense: string
   color: string
   colorLight: string
-  descEs: React.ReactNode
+  /** Built from the tense's own colour, so the highlighted verbs match the card. */
+  descEs: (color: string) => React.ReactNode
   descEn: string
   bgProps: { rotate: number; scaleX: number; scaleY: number; y: number }
   bgSvg?: string
@@ -29,12 +30,12 @@ export const TENSES: TenseItem[] = [
     tense: 'PRETÉRITO PERFECTO',
     color: '#C85C6E',
     colorLight: '#D4758A',
-    descEs: (
+    descEs: (c) => (
       <>
         Siempre tuvo un pie en el presente: hoy{' '}
-        <span className="text-[#F5A623]">ha hecho</span> mucho, esta semana{' '}
-        <span className="text-[#F5A623]">ha visto</span> de todo y, por el camino,{' '}
-        <span className="text-[#F5A623]">ha cometido</span> algún error.
+        <Hl color={c}>ha hecho</Hl> mucho, esta semana{' '}
+        <Hl color={c}>ha visto</Hl> de todo y, por el camino,{' '}
+        <Hl color={c}>ha cometido</Hl> algún error.
       </>
     ),
     descEn: 'It always had one foot in the present. today it has done a lot, this week it has seen all sorts of things and along the way, it has made a few mistakes.',
@@ -50,14 +51,14 @@ export const TENSES: TenseItem[] = [
     tense: 'IMPERFECTO',
     color: '#E8922A',
     colorLight: '#F0A84A',
-    descEs: (
+    descEs: (c) => (
       <>
-        Siempre <span className="text-[#F5A623]">estaba</span> ahí, en el fondo de la escena; mientras otros{' '}
-        <span className="text-[#F5A623]">hacían</span> cosas, él{' '}
-        <span className="text-[#F5A623]">describía</span> cómo{' '}
-        <span className="text-[#F5A623]">era</span> todo, qué{' '}
-        <span className="text-[#F5A623]">pasaba</span> y qué{' '}
-        <span className="text-[#F5A623]">solía</span> ocurrir.
+        Siempre <Hl color={c}>estaba</Hl> ahí, en el fondo de la escena; mientras otros{' '}
+        <Hl color={c}>hacían</Hl> cosas, él{' '}
+        <Hl color={c}>describía</Hl> cómo{' '}
+        <Hl color={c}>era</Hl> todo, qué{' '}
+        <Hl color={c}>pasaba</Hl> y qué{' '}
+        <Hl color={c}>solía</Hl> ocurrir.
       </>
     ),
     descEn: 'It was always there in the background; while others were doing things, it described what things were like, what was going on and what used to happen.',
@@ -73,13 +74,13 @@ export const TENSES: TenseItem[] = [
     tense: 'INDEFINIDO',
     color: '#4A5BB5',
     colorLight: '#6272C8',
-    descEs: (
+    descEs: (c) => (
       <>
-        No se <span className="text-[#F5A623]">quedó</span> dando vueltas:{' '}
-        <span className="text-[#F5A623]">entró</span>,{' '}
-        <span className="text-[#F5A623]">decidió</span>,{' '}
-        <span className="text-[#F5A623]">pagó</span>,{' '}
-        <span className="text-[#F5A623]">salió</span> y dejó la historia lista para continuar.
+        No se <Hl color={c}>quedó</Hl> dando vueltas:{' '}
+        <Hl color={c}>entró</Hl>,{' '}
+        <Hl color={c}>decidió</Hl>,{' '}
+        <Hl color={c}>pagó</Hl>,{' '}
+        <Hl color={c}>salió</Hl> y dejó la historia lista para continuar.
       </>
     ),
     descEn: 'It did not hang around: it came in, made a decision, paid, left and moved the story on.',
@@ -89,6 +90,17 @@ export const TENSES: TenseItem[] = [
     bgFullSvg: '/images/escribiendo/bg-full-zas.svg',
   },
 ]
+
+/**
+ * A verb picked out inside a tense's description.
+ *
+ * These used to be hardcoded to one orange (#F5A623) in all three descriptions, so Javi's and
+ * Zas's highlighted verbs were the wrong colour for their card. Each description now receives
+ * its own tense colour instead.
+ */
+function Hl({ color, children }: { color: string; children: React.ReactNode }) {
+  return <span style={{ color }}>{children}</span>
+}
 
 const GAP = 0
 
@@ -258,7 +270,7 @@ export default function TenseCarousel({ onPlay, contained = false }: { onPlay: (
           <p className="text-[10px] font-medium tracking-widest text-center text-gray-500">{selected.tense}</p>
           {!contained && (
             <>
-              <p className="text-sm text-gray-600 text-center leading-relaxed mt-1">{selected.descEs}</p>
+              <p className="text-sm text-gray-600 text-center leading-relaxed mt-1">{selected.descEs(selected.color)}</p>
               <p className="text-[11px] text-gray-400 text-center leading-relaxed mt-1 px-4">{selected.descEn}</p>
             </>
           )}
