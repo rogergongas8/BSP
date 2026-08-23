@@ -1,0 +1,17 @@
+-- Shrink the `rounds` Realtime payload back to the primary key on UPDATE.
+--
+-- 0011 set REPLICA IDENTITY FULL on `rounds` so UPDATE events could carry old row values. Nothing
+-- ever read them: the /play subscription uses `payload.new.id` and `payload.new.status` only, then
+-- re-queries the full row (with its phrase joins) over REST. Leave detection is Presence-based, not
+-- postgres_changes, so no consumer depends on `old` here.
+--
+-- What FULL did cost is bandwidth at exactly the wrong moment. Starting a game writes 8 rounds in
+-- one burst, and every one of those events was fanned out at full row width to every subscribed
+-- client — including lobby clients, which do not subscribe to `rounds` at all but share the same
+-- project-level Realtime budget. Past three players that burst pushed the trailing `rooms` UPDATE
+-- (the lobby's only start signal) past the per-channel message budget, and Realtime dropped it
+-- silently: some players stayed in the lobby while the rest played.
+--
+-- `rooms` keeps REPLICA IDENTITY FULL — it is small, low-frequency, and its events are the ones
+-- that must not be lost.
+alter table public.rounds replica identity default;

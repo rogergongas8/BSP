@@ -543,7 +543,8 @@ function isParticipleCorrect(partToken: string, phrase: Phrase): boolean {
  * but every piece the answer *does* contain is still judged on its own merits.
  *
  * A missing token fails its rows rather than passing them — nothing was written, so
- * there is nothing to credit.
+ * there is nothing to credit. Which slot a lone token fills is decided by its shape,
+ * not its position: see the assignment below.
  */
 export function ppStatusRows(input: string, phrase: Phrase): {
   structure: boolean
@@ -557,10 +558,28 @@ export function ppStatusRows(input: string, phrase: Phrase): {
   // structure is wrong, but the tokens that are present still get judged below.
   const structure = rawTokens.length === 2
 
-  const auxToken = rawTokens.length > 0 ? deaccentToken(rawTokens[0]) : ''
-  // Only a two-token answer has a participle slot; with one token the student has
-  // written the auxiliary alone, not a participle in second position.
-  const partToken = rawTokens.length === 2 ? deaccentToken(rawTokens[1]) : ''
+  // With two tokens the slots are positional: auxiliary first, participle second.
+  //
+  // With one token, position cannot decide which slot it fills. Treating it as the auxiliary
+  // was right for "hemos" but wrong for "tenido": a lone correct participle was judged as a
+  // haber form, so Auxiliary and Person/Number failed, and Participle failed too because the
+  // slot had been left empty — four ✗ for an answer that got the hard half right and only
+  // omitted "he". So a single token is assigned to the slot it actually fits: the auxiliary
+  // when it is a haber form, the participle otherwise.
+  const soleToken = rawTokens.length === 1 ? deaccentToken(rawTokens[0]) : ''
+  const soleIsAux = soleToken !== '' && HABER_FORMS.includes(soleToken)
+
+  const auxToken =
+    rawTokens.length >= 2 ? deaccentToken(rawTokens[0]) :
+    soleIsAux            ? soleToken :
+    ''
+  // The last token, not the second: with a stray extra word ("he he comido") the participle
+  // is still the word at the end, and crediting it costs nothing — Structure already reports
+  // that the answer is not two tokens.
+  const partToken =
+    rawTokens.length >= 2      ? deaccentToken(rawTokens[rawTokens.length - 1]) :
+    (soleToken !== '' && !soleIsAux) ? soleToken :
+    ''
 
   return {
     structure,
@@ -703,7 +722,6 @@ export function statusRowsFor(input: string, phrase: Phrase): StatusRow[] {
   if (phrase.type === 'Indef_stem_irreg') {
     return singleTokenRows(
       input,
-      normalized,
       phrase.expected_stem ?? '',
       STEM_IRREG_ENDINGS,
       STEM_IRREG_PERSON_MAP[phrase.person] ?? [],
@@ -727,7 +745,6 @@ export function statusRowsFor(input: string, phrase: Phrase): StatusRow[] {
 
     return singleTokenRows(
       input,
-      normalized,
       expectedStem,
       endings.map(deaccent),
       [deaccent(personMap[phrase.person] ?? '')],
@@ -761,18 +778,33 @@ export function statusRowsFor(input: string, phrase: Phrase): StatusRow[] {
  */
 function singleTokenRows(
   rawInput: string,
-  normalized: string,
   expectedStem: string,
   endings: readonly string[],
   expectedEndings: readonly string[],
 ): StatusRow[] {
-  const isSingleToken = rawInput.trim().split(/\s+/).filter(Boolean).length === 1
+  const tokens = rawInput.trim().split(/\s+/).filter(Boolean)
+  const isSingleToken = tokens.length === 1
+
+  // The three morphology rows judge the *verb* the student wrote, not the raw string.
+  //
+  // Writing "han miramos" for *miramos* is one mistake — a compound tense where a simple one
+  // belongs — and Structure is the row that says so. Judging the other three against the whole
+  // string turned that single mistake into four ✗: "han miramos" does not start with `mir-`,
+  // so Stem failed, and with it the ending and person checks that hang off it. The student had
+  // the stem, the ending and the person all right inside the token that carries the verb, and
+  // was told they got everything wrong.
+  //
+  // The last token is the verb slot: a compound attempt puts the auxiliary first and the
+  // participle-shaped word last ("han miramos", "he desayunado"), and a stray pronoun does the
+  // same ("nos fuimos"). This mirrors ppStatusRows, which already credits each piece an answer
+  // actually contains instead of failing them all on a structure error.
+  const verbToken = tokens.length > 0 ? deaccent(tokens[tokens.length - 1].toLowerCase()) : ''
 
   // Longest ending first, so "isteis" is not read as "iste".
   const sorted = [...endings].sort((a, b) => b.length - a.length)
-  const inputEnding = sorted.find(e => normalized.endsWith(e) && normalized.length > e.length) ?? null
+  const inputEnding = sorted.find(e => verbToken.endsWith(e) && verbToken.length > e.length) ?? null
 
-  const stemOk = expectedStem !== '' && normalized.startsWith(expectedStem)
+  const stemOk = expectedStem !== '' && verbToken.startsWith(expectedStem)
   // The ending only counts when it is what actually follows the expected stem: for "tuvo"
   // the stem is `tuv-` and the ending `-o`.
   //
@@ -782,7 +814,7 @@ function singleTokenRows(
   // collected a ✓ — "he desayunado" was told its tense ending was right, because of the
   // final "o" of a participle. The row has to answer its own question against the
   // expected stem, or it cannot be trusted at all.
-  const endingOk = inputEnding !== null && normalized === expectedStem + inputEnding
+  const endingOk = inputEnding !== null && verbToken === expectedStem + inputEnding
   const personOk = endingOk && inputEnding !== null && expectedEndings.includes(inputEnding)
 
   // Indefinido and imperfecto are a single word. Writing "he desayunado" is a compound-tense

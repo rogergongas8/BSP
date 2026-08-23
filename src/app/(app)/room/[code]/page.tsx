@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, use, useEffect, useRef } from 'react'
+import { useState, use, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -45,8 +45,16 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
   const channelRef = useRef<any>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const roomsChannelRef = useRef<any>(null)
+  /** Guards against the Realtime event and the reconcile poll both firing router.push. */
+  const navigatedRef = useRef(false)
 
   const sessionCode = `BSP-${code}`
+
+  const goToGame = useCallback(() => {
+    if (navigatedRef.current) return
+    navigatedRef.current = true
+    router.push(`/play/${code}`)
+  }, [code, router])
 
   useEffect(() => {
     const supabase = createClient()
@@ -132,7 +140,7 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
         }, (payload) => {
           const updated = payload.new as { status: string }
           if (updated.status === 'playing') {
-            router.push(`/play/${code}`)
+            goToGame()
           }
         })
         .subscribe()
@@ -148,6 +156,36 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
       if (roomsChannelRef.current) { supabase.removeChannel(roomsChannelRef.current); roomsChannelRef.current = null }
     }
   }, [code]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  /**
+   * Safety net against a lobby that never starts.
+   *
+   * Entering the game hangs entirely off one `postgres_changes` UPDATE on `rooms`. Pressing Jugar
+   * emits a burst of round INSERTs plus the room UPDATE in the same instant, fanned out to every
+   * subscribed client, and the room UPDATE is the last message of that burst — exactly the one
+   * Realtime drops first when the burst exceeds the per-channel message budget. With three players
+   * the burst fits; from four upward some clients never receive it and sit in the lobby while the
+   * rest play.
+   *
+   * So the room status is re-read on a short interval regardless of Realtime. 2s rather than the
+   * 5s used in /play: this is the moment of peak congestion, and a player who arrives two seconds
+   * late still catches round 1.
+   */
+  useEffect(() => {
+    const supabase = createClient()
+
+    const interval = setInterval(async () => {
+      if (navigatedRef.current) return
+      const { data } = await supabase
+        .from('rooms')
+        .select('status')
+        .eq('code', code)
+        .single()
+      if (data?.status === 'playing') goToGame()
+    }, 2000)
+
+    return () => clearInterval(interval)
+  }, [code, goToGame])
 
   const handleCopy = () => {
     navigator.clipboard.writeText(code)

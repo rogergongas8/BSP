@@ -55,10 +55,18 @@ export async function POST(
   const isContraste = room.game_type === 'contraste'
 
   // Pick TOTAL_ROUNDS random phrases from the pool matching this room's game_mode
+  // Round 1 is inserted already `active` rather than inserted `pending` and then updated.
+  // Every write here fans out to all subscribed clients, and the trailing `rooms` UPDATE — the
+  // only event the lobby listens for — was competing with a `rounds` UPDATE in the same instant.
+  // Dropping that update removes one message from the burst and, more to the point, stops the
+  // two from landing simultaneously.
+  const startedAt = new Date().toISOString()
+
   const roundsToInsert: {
     room_id: string
     round_number: number
-    status: 'pending'
+    status: 'pending' | 'active'
+    started_at: string | null
     duration_seconds: number
     phrase_id?: string
     contrast_phrase_id?: string
@@ -80,7 +88,8 @@ export async function POST(
       room_id: room.id,
       contrast_phrase_id: p.id,
       round_number: i + 1,
-      status: 'pending' as const,
+      status: i === 0 ? ('active' as const) : ('pending' as const),
+      started_at: i === 0 ? startedAt : null,
       duration_seconds: DURATION_SECONDS,
     })))
   } else {
@@ -98,7 +107,8 @@ export async function POST(
       room_id: room.id,
       phrase_id: p.id,
       round_number: i + 1,
-      status: 'pending' as const,
+      status: i === 0 ? ('active' as const) : ('pending' as const),
+      started_at: i === 0 ? startedAt : null,
       duration_seconds: DURATION_SECONDS,
     })))
   }
@@ -115,11 +125,7 @@ export async function POST(
   const firstRound = rounds.find(r => r.round_number === 1)
   if (!firstRound) return NextResponse.json({ error: 'Failed to find first round' }, { status: 500 })
 
-  // Activate first round
-  await admin
-    .from('rounds')
-    .update({ status: 'active', started_at: new Date().toISOString() })
-    .eq('id', firstRound.id)
+  // Round 1 was inserted `active` above — no separate activation write.
 
   // Mark room as playing
   await admin
