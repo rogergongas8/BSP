@@ -674,6 +674,14 @@ export type Database = {
           verb: string
         }[]
       }
+      record_contrast_mistake: {
+        Args: { p_battle_id: string; p_contrast_phrase_id: string }
+        Returns: undefined
+      }
+      record_phrase_mistake: {
+        Args: { p_phrase_id: string; p_phrase_type: string; p_tense: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

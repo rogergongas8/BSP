@@ -30,14 +30,15 @@ export async function POST(request: NextRequest) {
 
   const { phrase_id, tense, phrase_type } = parsed.data
 
-  const { error } = await supabase
-    .from('phrase_mistakes')
-    .insert({ user_id: user.id, phrase_id, tense, phrase_type })
+  // RPC inserts with `on conflict do nothing`: a phrase that already has an open mistake is
+  // skipped silently instead of raising a 23505 that would fill the Postgres log.
+  const { error } = await supabase.rpc('record_phrase_mistake', {
+    p_phrase_id:   phrase_id,
+    p_tense:       tense,
+    p_phrase_type: phrase_type,
+  })
 
-  // 23505 = this phrase already has an open mistake (unique index) — already tracked, not an error
-  if (error && error.code !== '23505') {
-    return NextResponse.json({ error: 'Failed to save mistake' }, { status: 500 })
-  }
+  if (error) return NextResponse.json({ error: 'Failed to save mistake' }, { status: 500 })
 
   return NextResponse.json({ ok: true })
 }

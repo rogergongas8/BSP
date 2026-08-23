@@ -145,7 +145,9 @@ export default async function HomePage() {
                 />
               </svg>
             </div>
-            <div className="flex-1 min-w-0 pr-14">
+            {/* pr leaves room for the cat + XP badge pinned to the card's right edge,
+                so the challenge text wraps before it reaches the artwork. */}
+            <div className="flex-1 min-w-0 pr-24">
               <p className="text-white/70 text-xs mb-0.5">Today&apos;s challenge</p>
               <p className="text-white font-bold text-sm">{challenge?.text ?? 'Complete 3 activities'}</p>
             </div>
