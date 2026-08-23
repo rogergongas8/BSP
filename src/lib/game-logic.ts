@@ -30,26 +30,6 @@ export type ValidationResult = {
   ppHighlight?: PPHighlightRange
 }
 
-/**
- * Does `normalized` look like "the expected stem, followed by an attempt at an ending"?
- *
- * `startsWith` alone was too generous, and it drove the status rows: for *comer* (stem "com"),
- * "comzzz" — or just "com" — reported Stem as correct, because everything after the stem went
- * unexamined. A student typing a single stray letter was told their stem was right.
- *
- * The remainder must therefore be non-empty and plausibly an ending: made only of the letters
- * Spanish endings are built from. That still accepts a genuinely wrong ending (the case this
- * branch exists to report) while rejecting the junk that made the row lie.
- */
-const ENDING_LETTERS = /^[aeiouins]+$/
-
-function looksLikeStemPlusEnding(normalized: string, expectedStem: string): boolean {
-  if (expectedStem.length === 0) return false
-  if (!normalized.startsWith(expectedStem)) return false
-  const rest = normalized.slice(expectedStem.length)
-  return rest.length > 0 && ENDING_LETTERS.test(rest)
-}
-
 // ─── indef_full_irreg ────────────────────────────────────────────────────────
 
 const VALID_FORMS: Record<string, string[]> = {
@@ -129,8 +109,15 @@ function validateStemIrreg(normalized: string, phrase: Phrase): ValidationResult
     }
   }
 
-  // Input starts with correct stem → stem is right, ending is the problem
-  if (looksLikeStemPlusEnding(normalized, expectedStem)) {
+  // Input starts with correct stem → stem is right, ending is the problem.
+  //
+  // `startsWith`, not looksLikeStemPlusEnding: that helper additionally demands the remainder
+  // be built only from ending letters, so "tuvex" fell through to wrong_stem and the student
+  // was asked "do you remember how the stem changes?" about `tuv-` — the hard part, which they
+  // had written correctly. The Stem row (a plain startsWith) said ✓ at the same time. The stem
+  // is either present or it is not; whether what follows is a plausible ending is the *ending*
+  // row's question, and it already reports it.
+  if (expectedStem !== '' && normalized.startsWith(expectedStem)) {
     return { status: 'wrong_ending', hint: ENDING_WRONG_HINT, highlight: expectedStem }
   }
 
@@ -219,19 +206,26 @@ function validateIndefReg(normalized: string, phrase: Phrase): ValidationResult 
   const expectedStem = phrase.expected_stem
     ?? deaccent(phrase.verb.toLowerCase()).slice(0, -2)
 
+  // Does the answer carry the expected stem? A plain prefix test, matching what the Stem
+  // status row asks. `looksLikeStemPlusEnding` additionally demands the remainder be built
+  // only from ending letters, which is the *ending* row's question — using it here sent
+  // "habliste" and "hablábamos" (both with a correct `habl-`) down to the wrong_stem branch,
+  // where the student was told "good job there!" about the ending they had just got wrong
+  // while the Stem row showed ✓.
+  const hasExpectedStem = expectedStem !== '' && normalized.startsWith(expectedStem)
+
   if (inputStem === null) {
     // No valid indefinido ending found — but stem may still be correct
-    const stemCorrect = looksLikeStemPlusEnding(normalized, expectedStem)
     return {
       status: 'wrong_ending',
       hint: regEndingWrongHint(isAR, phrase.person),
-      highlight: stemCorrect ? expectedStem : undefined,
+      highlight: hasExpectedStem ? expectedStem : undefined,
     }
   }
 
   // 2b. Valid ending found but stem is wrong AND input starts with expected stem →
   // user typed correct stem then an invalid ending sequence (e.g. "visitasto" vs "visitaste")
-  if (inputStem !== expectedStem && looksLikeStemPlusEnding(normalized, expectedStem)) {
+  if (inputStem !== expectedStem && hasExpectedStem) {
     return {
       status: 'wrong_ending',
       hint: regEndingWrongHint(isAR, phrase.person),
@@ -360,14 +354,26 @@ function validateImpReg(normalized: string, phrase: Phrase): ValidationResult {
     }
   }
 
+  // Does the answer carry the expected stem? A plain prefix test, matching the Stem status
+  // row, so the cascade and the rows cannot disagree — see the same guard in validateIndefReg.
+  const hasExpectedStem = expectedStem !== '' && normalized.startsWith(expectedStem)
+
   // 2. No valid imperfecto ending found
   if (inputEnding === null) {
-    const stemCorrect = looksLikeStemPlusEnding(normalized, expectedStem)
     return {
       status: 'wrong_ending',
       hint: endingWrongHint,
-      highlight: stemCorrect ? expectedStem : undefined,
+      highlight: hasExpectedStem ? expectedStem : undefined,
     }
+  }
+
+  // 2b. A valid ending was found, but stripping it leaves something other than the expected
+  // stem while the answer still *starts* with that stem: the student wrote the stem and then
+  // garbled the ending ("hableábamos" for *hablábamos*). That is an ending mistake. Without
+  // this branch it fell through to step 4 and was reported as a wrong stem, contradicting the
+  // Stem row, which reads ✓.
+  if (inputStem !== expectedStem && hasExpectedStem) {
+    return { status: 'wrong_ending', hint: endingWrongHint, highlight: expectedStem }
   }
 
   // 3. Check person/number
@@ -396,6 +402,11 @@ const HABER_FORMS = ['he', 'has', 'ha', 'hemos', 'habéis', 'han'].map(deaccent)
 const HABER_PERSON_MAP: Record<string, string> = {
   '1s': 'he', '2s': 'has', '3s': 'ha', '1pl': 'hemos', '2pl': 'habéis', '3pl': 'han',
 }
+
+// The mirror of PP_STRUCTURE_HINT for the tenses that are a single word: it names the
+// compound-tense mistake ("he mirado" where *miré* belongs) without giving the form away.
+const SINGLE_TOKEN_STRUCTURE_HINT =
+  "Careful! This tense is **one single word** — no helper verb in front of it."
 
 const PP_STRUCTURE_HINT =
   "Careful! Pretérito Perfecto needs two parts: **helper verb + participle**."
@@ -507,11 +518,17 @@ function validatePreteritoPerfecto(input: string, phrase: Phrase): ValidationRes
 
   const partStem = partToken.slice(0, partToken.length - expectedEnding.length)
   if (partStem !== expectedStem) {
+    // "all letters before part_ending" — part_ending is the trailing -ado/-ido, already
+    // confirmed valid above. When the student wrote no stem at all ("he ido" for *he sido*)
+    // that range is empty and nothing renders red, leaving the hint pointing at a part of the
+    // word the student cannot see; highlight the whole token instead, which is what is wrong.
+    const stemEnd = partRaw.length - expectedEnding.length
     return {
       status: 'part_stem_invalid',
       hint: PP_PART_STEM_INVALID_HINT,
-      // "all letters before part_ending" — part_ending is the trailing -ado/-ido, already confirmed valid above
-      ppHighlight: { token: 'part', start: 0, end: partRaw.length - expectedEnding.length },
+      ppHighlight: stemEnd > 0
+        ? { token: 'part', start: 0, end: stemEnd }
+        : { token: 'part', start: 0, end: partRaw.length },
     }
   }
 
@@ -602,6 +619,22 @@ export function validate(input: string, phrase: Phrase): ValidationResult {
   const correct    = deaccent(phrase.answer.toLowerCase())
 
   if (normalized === correct) return { status: 'correct' }
+
+  const isPP = phrase.type === 'PP_irreg' || phrase.type === 'PP_reg' || phrase.type === 'PP_reg_gustar'
+
+  // Indefinido and imperfecto are a single word, so a multi-token answer is a structure
+  // mistake and has to be reported as one before anything else is examined.
+  //
+  // Without this gate the cascade fell through to the stem check, which compares the whole
+  // string to the expected stem: "he repetimos" was told its *stem* was wrong ("...just drop
+  // the last two letters of the infinitive... good job there!") when the stem, the ending and
+  // the person inside "repetimos" were all correct and the only error was writing a compound
+  // tense. The Structure row already said so; the hint contradicted it.
+  //
+  // PP is excluded — it is legitimately two tokens and runs its own structure check.
+  if (!isPP && input.trim().split(/\s+/).filter(Boolean).length > 1) {
+    return { status: 'structure_incomplete', hint: SINGLE_TOKEN_STRUCTURE_HINT }
+  }
 
   if (phrase.type === 'Indef_stem_irreg') {
     return validateStemIrreg(normalized, phrase)
@@ -720,12 +753,17 @@ export function statusRowsFor(input: string, phrase: Phrase): StatusRow[] {
   }
 
   if (phrase.type === 'Indef_stem_irreg') {
-    return singleTokenRows(
-      input,
-      phrase.expected_stem ?? '',
-      STEM_IRREG_ENDINGS,
-      STEM_IRREG_PERSON_MAP[phrase.person] ?? [],
-    )
+    // 3pl is the one person with two possible endings in this group (-ieron / -eron), but a
+    // given verb takes exactly one, and `phrase.answer` says which. Passing both let "tuveron"
+    // for *tuvieron* score Person/Number ✓ on the wrong variant — and because the longest-first
+    // scan then stripped "eron" down to a stem that matched, the only row left to carry the
+    // error was Stem, which was the part the student had actually got right.
+    const expectedStem = phrase.expected_stem ?? ''
+    const answerEnding = deaccent(phrase.answer.toLowerCase()).slice(expectedStem.length)
+    const persons = STEM_IRREG_PERSON_MAP[phrase.person] ?? []
+    const narrowed = persons.includes(answerEnding) ? [answerEnding] : persons
+
+    return singleTokenRows(input, phrase.answer, expectedStem, STEM_IRREG_ENDINGS, narrowed)
   }
 
   if (
@@ -745,6 +783,7 @@ export function statusRowsFor(input: string, phrase: Phrase): StatusRow[] {
 
     return singleTokenRows(
       input,
+      phrase.answer,
       expectedStem,
       endings.map(deaccent),
       [deaccent(personMap[phrase.person] ?? '')],
@@ -778,6 +817,7 @@ export function statusRowsFor(input: string, phrase: Phrase): StatusRow[] {
  */
 function singleTokenRows(
   rawInput: string,
+  answer: string,
   expectedStem: string,
   endings: readonly string[],
   expectedEndings: readonly string[],
@@ -825,12 +865,21 @@ function singleTokenRows(
   // — the vowel-changing verbs stored as Indef_reg (*seguir* → derived `segu-`, real
   // `sigu-`). The breakdown only ever renders for an answer that was already judged wrong,
   // so a full set of ticks is never a truthful outcome: the stem is the part that differs.
-  const allGreen = stemOk && endingOk && personOk && isSingleToken
+  // A *wrong* answer must never show four ticks: the derived stem can disagree with
+  // `phrase.answer` for the vowel-changing verbs stored as Indef_reg (*seguir* → derived
+  // `segu-`, real `sigu-`), so "seguieron" reconstructs perfectly while *siguieron* is the
+  // real form. There the stem is the part that differs, and the row has to say so.
+  //
+  // This is keyed off the answer rather than blanket-suppressing a full set of ticks: the
+  // guard used to fire on the *correct* answer too, so "tuve" for *tuve* reported Stem ✗.
+  // Only the UI's isError check kept that off the screen.
+  const matchesAnswer = verbToken === deaccent(answer.toLowerCase())
+  const falselyAllGreen = stemOk && endingOk && personOk && isSingleToken && !matchesAnswer
 
   return [
     { label: 'Structure',     ok: isSingleToken },
     { label: 'Tense ending',  ok: endingOk },
     { label: 'Person/Number', ok: personOk },
-    { label: 'Stem',          ok: stemOk && !allGreen },
+    { label: 'Stem',          ok: stemOk && !falselyAllGreen },
   ]
 }
