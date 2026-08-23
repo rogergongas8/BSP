@@ -79,7 +79,17 @@ function ConfettiPieceEl({ p }: { p: ConfettiPiece }) {
         delay: p.delay,
         repeat: Infinity,
         ease: 'easeIn',                    // accelerates downward like gravity
-        opacity: { times: [0, 0.6, 0.8, 1], ease: 'linear' },
+        // A per-property override replaces the parent transition rather than extending it, so
+        // duration/delay/repeat have to be repeated here. Without them opacity ran on its own
+        // default (~0.3s, no repeat), reaching its last keyframe — 0 — a quarter of a second
+        // in and staying there: the pieces kept falling for the full 2-4s, invisibly.
+        opacity: {
+          duration: p.duration,
+          delay: p.delay,
+          repeat: Infinity,
+          times: [0, 0.6, 0.8, 1],
+          ease: 'linear',
+        },
       }}
     />
   )

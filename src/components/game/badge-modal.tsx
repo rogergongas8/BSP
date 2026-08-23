@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { motion, AnimatePresence } from 'motion/react'
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
 import { Button } from '@/components/ui/button'
 import { Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -14,8 +14,120 @@ type BadgeModalProps = {
   achievement: Achievement
 }
 
+type Piece = {
+  id: number
+  angle: number
+  distance: number
+  color: string
+  w: number
+  h: number
+  rotations: number
+  duration: number
+  delay: number
+}
+
+/**
+ * Confetti that bursts from behind the card when the badge lands.
+ *
+ * Deterministic rather than `Math.random()`: this renders inside a portal that mounts on the
+ * client, and a random layout would differ between the server pass and hydration.
+ *
+ * The throw is deliberately biased vertically. The card is tall and narrow (320px wide, ~600px
+ * tall), so an evenly-spread circular burst hides most of its pieces behind the card and only
+ * the near-horizontal ones escape — which reads as "a few bits peeking out at the sides", not
+ * as a celebration. Pieces are pushed toward the top and bottom edges, where there is room for
+ * them to be seen, and thrown far enough to clear the card in every direction.
+ */
+function generateBurst(): Piece[] {
+  const colors = ['#F55379', '#F5A623', '#FFFFFF', '#FF8716', '#FFD166']
+  return Array.from({ length: 46 }, (_, i) => {
+    const seed = (i * 137 + 31) % 100
+    const seed2 = (i * 79 + 17) % 100
+
+    // Spread within the upper OR lower fan rather than the full circle: alternating pieces go
+    // up and down, each covering a 150° arc centred on straight up / straight down.
+    const up = i % 2 === 0
+    const t = (i / 46) + (seed % 10) / 100          // 0..~1.1, the position within the fan
+    const spread = 150
+    const angle = up
+      ? -90 - spread / 2 + (t % 1) * spread          // fan pointing up
+      :  90 - spread / 2 + (t % 1) * spread          // fan pointing down
+
+    return {
+      id: i,
+      angle,
+      // Far enough to clear the card: half its width is 160px, half its height ~300px.
+      distance: 300 + (seed2 % 220),
+      color: colors[i % colors.length],
+      w: 8 + (i * 3) % 8,
+      h: 10 + (i * 5) % 9,
+      rotations: 200 + seed * 5,
+      duration: 1.1 + seed2 * 0.008,
+      // A small stagger so it reads as a burst rather than a single popped ring.
+      delay: (i % 5) * 0.045,
+    }
+  })
+}
+
+const BURST = generateBurst()
+
+/** Fires just after the badge has sprung into place (its own delay is 0.08s). */
+const BURST_AT_S = 0.3
+
+function BurstPiece({ p, still }: { p: Piece; still: boolean }) {
+  const rad = (p.angle * Math.PI) / 180
+  const x = Math.cos(rad) * p.distance
+  const y = Math.sin(rad) * p.distance
+
+  // Reduced motion: pieces sit in their landed positions instead of flying out.
+  if (still) {
+    return (
+      <div
+        className="absolute left-1/2 top-1/2 pointer-events-none"
+        style={{
+          width: p.w,
+          height: p.h,
+          backgroundColor: p.color,
+          borderRadius: 1,
+          transform: `translate(${x * 0.7}px, ${y * 0.7}px)`,
+          opacity: 0.9,
+        }}
+      />
+    )
+  }
+
+  return (
+    <motion.div
+      className="absolute left-1/2 top-1/2 pointer-events-none"
+      style={{ width: p.w, height: p.h, backgroundColor: p.color, borderRadius: 1 }}
+      initial={{ x: 0, y: 0, scale: 0, opacity: 0, rotate: 0 }}
+      animate={{
+        x: [0, x * 0.85, x],
+        y: [0, y * 0.85, y + 56],   // drifts down at the end, so it falls rather than freezes
+        scale: [0, 1, 1],
+        opacity: [0, 1, 0],
+        rotate: [0, p.rotations],
+      }}
+      transition={{
+        duration: p.duration,
+        delay: BURST_AT_S + p.delay,
+        ease: 'easeOut',
+        // A per-property override replaces the parent transition rather than extending it, so
+        // duration and delay have to be repeated here or opacity runs on its own default.
+        opacity: {
+          duration: p.duration,
+          delay: BURST_AT_S + p.delay,
+          times: [0, 0.12, 1],
+          ease: 'linear',
+        },
+      }}
+    />
+  )
+}
+
 export function BadgeModal({ open, onClose, achievement }: BadgeModalProps) {
   const [mounted, setMounted] = useState(false)
+  const reduceMotion = useReducedMotion()
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setMounted(true) }, [])
@@ -38,9 +150,14 @@ export function BadgeModal({ open, onClose, achievement }: BadgeModalProps) {
           {/* Backdrop */}
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
+          {/* Burst origin sits behind the card, so the pieces read as coming from under it. */}
+          <div className="absolute left-1/2 top-1/2 z-0 -translate-x-1/2 -translate-y-1/2">
+            {BURST.map(p => <BurstPiece key={p.id} p={p} still={!!reduceMotion} />)}
+          </div>
+
           {/* Card */}
           <motion.div
-            className="relative w-full max-w-[320px] overflow-visible rounded-3xl shadow-2xl"
+            className="relative z-10 w-full max-w-[320px] overflow-visible rounded-3xl shadow-2xl"
             initial={{ scale: 0.75, opacity: 0, y: 40 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.85, opacity: 0, y: 20 }}

@@ -10,10 +10,11 @@ const PROTECTED_ROUTES = [
   '/practice',
   '/room',
   '/join',
+  '/admin',
 ]
 
 // Layout/preview-only routes: useful while building screens, never reachable in production.
-const DEV_ONLY_ROUTES = ['/dev-scoreboard']
+const DEV_ONLY_ROUTES = ['/dev-scoreboard', '/preview']
 
 export async function proxy(request: NextRequest) {
   // Checked before anything else so these routes never exist on the public domain,

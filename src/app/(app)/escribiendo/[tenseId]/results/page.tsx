@@ -106,11 +106,15 @@ export default function ResultsPage({ params }: { params: Promise<{ tenseId: str
     })
       .then(r => r.json())
       .then(json => {
-        if (json.newAchievements?.length > 0 || json.leveledUp) {
+        // challengeXpAwarded is non-zero only on the request that actually completed the
+        // daily challenge, so it doubles as the "show the popup" flag.
+        if (json.newAchievements?.length > 0 || json.leveledUp || json.challengeXpAwarded > 0) {
           sessionStorage.setItem('bsp_session_result', JSON.stringify({
-            newAchievements: json.newAchievements ?? [],
-            leveledUp:       json.leveledUp ?? false,
-            newLevel:        json.newLevel ?? 1,
+            newAchievements:    json.newAchievements ?? [],
+            leveledUp:          json.leveledUp ?? false,
+            newLevel:           json.newLevel ?? 1,
+            challengeXpAwarded: json.challengeXpAwarded ?? 0,
+            challengeText:      json.challengeText ?? null,
           }))
         }
       })

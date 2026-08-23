@@ -5,7 +5,6 @@ import { getLevelInfo, catImagePath } from '@/lib/levels'
 import { resolveAvatarPath } from '@/lib/avatars'
 import ActivityCard from './ActivityCard'
 import LogoutButton from './LogoutButton'
-import NotificationQueue from './NotificationQueue'
 import OverscrollColor from '@/components/overscroll-color'
 import {
   challengeProgress as challengeProgressFor,
@@ -214,7 +213,6 @@ export default async function HomePage() {
         </div>
 
       </div>
-      <NotificationQueue />
     </div>
   )
 }

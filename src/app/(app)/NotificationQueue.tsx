@@ -4,12 +4,14 @@ import { useEffect, useState } from 'react'
 import { BadgeModal } from '@/components/game/badge-modal'
 import { LevelUpModal } from '@/components/game/level-up-modal'
 import { HostEndedModal } from '@/components/game/host-ended-modal'
+import { DailyChallengeModal } from '@/components/game/daily-challenge-modal'
 import { ACHIEVEMENTS } from '@/lib/achievements'
 import type { AchievementId } from '@/lib/achievements'
 
 type QueueItem =
   | { type: 'badge'; achievementId: AchievementId }
   | { type: 'levelup'; level: number }
+  | { type: 'challenge'; text: string; xp: number }
 
 export default function NotificationQueue() {
   const [queue, setQueue] = useState<QueueItem[]>([])
@@ -22,8 +24,18 @@ export default function NotificationQueue() {
       sessionStorage.removeItem('bsp_session_result')
 
       try {
-        const { newAchievements, leveledUp, newLevel } = JSON.parse(raw)
+        const { newAchievements, leveledUp, newLevel, challengeXpAwarded, challengeText } = JSON.parse(raw)
         const items: QueueItem[] = []
+
+        // First in the queue: it is the goal the user was chasing, and the badges and level-up
+        // that follow are often consequences of the XP it just paid out.
+        if (challengeXpAwarded > 0) {
+          items.push({
+            type: 'challenge',
+            text: challengeText ?? 'Reto diario completado',
+            xp: challengeXpAwarded,
+          })
+        }
 
         for (const id of (newAchievements as string[])) {
           if (id in ACHIEVEMENTS) {
@@ -66,6 +78,14 @@ export default function NotificationQueue() {
           open
           onClose={handleClose}
           achievement={ACHIEVEMENTS[current.achievementId]}
+        />
+      )}
+      {current?.type === 'challenge' && (
+        <DailyChallengeModal
+          open
+          onClose={handleClose}
+          text={current.text}
+          xp={current.xp}
         />
       )}
       {current?.type === 'levelup' && (

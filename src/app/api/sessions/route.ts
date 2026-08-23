@@ -127,6 +127,9 @@ export async function POST(request: NextRequest) {
   // they may have just reached: levelling up mid-session must not swap the challenge out from
   // under them and evaluate a goal they were never shown.
   let challengeXpAwarded = 0
+  // The challenge's own wording, returned only when this request is the one that completed it,
+  // so the client can name the goal in the completion popup without re-deriving the pick.
+  let challengeText: string | null = null
   let finalXp = newXp
 
   const today_ = dayNumber()
@@ -169,6 +172,7 @@ export async function POST(request: NextRequest) {
           // already applied above. Added to `newXp` rather than re-reading the profile so it
           // does not clobber that update.
           challengeXpAwarded = challenge.xp_reward
+          challengeText = challenge.text
           finalXp = newXp + challengeXpAwarded
 
           await admin
@@ -196,6 +200,7 @@ export async function POST(request: NextRequest) {
     ok: true,
     xpEarned: xpEarned + challengeXpAwarded,
     challengeXpAwarded,
+    challengeText,
     newAchievements,
     leveledUp: finalLevel > oldLevel,
     newLevel: finalLevel,
