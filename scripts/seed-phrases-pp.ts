@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import * as XLSX from 'xlsx'
 import * as path from 'path'
+import { validatePhrases } from './phrase-schema'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -51,7 +52,8 @@ async function seedPPIrreg() {
     .filter(p => { if (seenIrreg.has(p.sentence)) return false; seenIrreg.add(p.sentence); return true })
 
   console.log(`Seeding ${phrases.length} PP_irreg phrases...`)
-  const { error } = await supabase.from('phrases').upsert(phrases, { onConflict: 'sentence' })
+  const validated = validatePhrases(phrases, 'PP_irreg')
+  const { error } = await supabase.from('phrases').upsert(validated, { onConflict: 'sentence' })
   if (error) { console.error('Error seeding PP_irreg:', error.message); process.exit(1) }
   console.log(`✓ ${phrases.length} PP_irreg phrases seeded`)
 }
@@ -87,7 +89,8 @@ async function seedPPReg() {
     .filter(p => { if (seenReg.has(p.sentence)) return false; seenReg.add(p.sentence); return true })
 
   console.log(`Seeding ${phrases.length} PP_reg phrases...`)
-  const { error } = await supabase.from('phrases').upsert(phrases, { onConflict: 'sentence' })
+  const validated = validatePhrases(phrases, 'PP_reg')
+  const { error } = await supabase.from('phrases').upsert(validated, { onConflict: 'sentence' })
   if (error) { console.error('Error seeding PP_reg:', error.message); process.exit(1) }
   console.log(`✓ ${phrases.length} PP_reg phrases seeded`)
 }

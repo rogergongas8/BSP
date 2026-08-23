@@ -260,7 +260,21 @@ function validateIndefReg(normalized: string, phrase: Phrase): ValidationResult 
     }
   }
 
-  return { status: 'correct' }
+  // Stem and ending both check out against a *derived* stem — but `validate` already
+  // compared the input to `phrase.answer` and it did not match, so this cannot be the
+  // right answer no matter what the reconstruction says.
+  //
+  // The two disagree whenever the derived stem is wrong: a vowel-changing verb like
+  // *seguir* is stored as Indef_reg, so the stem is derived as `segu-` when the 3rd person
+  // actually takes `sigu-`. That made "seguieron" pass as correct while the real answer,
+  // *siguieron*, was accepted only by the equality check above. `answer` is the authority
+  // on correctness; this function's job is to explain a wrong answer, not to overrule it.
+  const stemGroup = phrase.stem_group ?? 'Reg_change_stem_3s3pl'
+  return {
+    status: 'wrong_stem',
+    hint: REG_STEM_HINTS[stemGroup] ?? REG_STEM_HINTS.Reg_change_stem_3s3pl,
+    highlight: inputStem,
+  }
 }
 
 // ─── imperfecto (imp_irreg) ─────────────────────────────────────────────────
@@ -688,6 +702,7 @@ export function statusRowsFor(input: string, phrase: Phrase): StatusRow[] {
 
   if (phrase.type === 'Indef_stem_irreg') {
     return singleTokenRows(
+      input,
       normalized,
       phrase.expected_stem ?? '',
       STEM_IRREG_ENDINGS,
@@ -711,6 +726,7 @@ export function statusRowsFor(input: string, phrase: Phrase): StatusRow[] {
       ?? deaccent(phrase.verb.toLowerCase()).slice(0, -2)
 
     return singleTokenRows(
+      input,
       normalized,
       expectedStem,
       endings.map(deaccent),
@@ -744,25 +760,45 @@ export function statusRowsFor(input: string, phrase: Phrase): StatusRow[] {
  *  - Person/Number: is that ending the one this person takes?
  */
 function singleTokenRows(
+  rawInput: string,
   normalized: string,
   expectedStem: string,
   endings: readonly string[],
   expectedEndings: readonly string[],
 ): StatusRow[] {
+  const isSingleToken = rawInput.trim().split(/\s+/).filter(Boolean).length === 1
+
   // Longest ending first, so "isteis" is not read as "iste".
   const sorted = [...endings].sort((a, b) => b.length - a.length)
   const inputEnding = sorted.find(e => normalized.endsWith(e) && normalized.length > e.length) ?? null
 
   const stemOk = expectedStem !== '' && normalized.startsWith(expectedStem)
   // The ending only counts when it is what actually follows the expected stem: for "tuvo"
-  // the stem is `tuv-` and the ending `-o`, but a stem-less match would also accept the
-  // "-o" of a completely different word.
-  const endingOk = inputEnding !== null && (!stemOk || normalized === expectedStem + inputEnding)
+  // the stem is `tuv-` and the ending `-o`.
+  //
+  // This used to fall back to a bare suffix match whenever the stem was wrong
+  // (`!stemOk || …`), to avoid penalising the same mistake twice. But indefinido has
+  // single-letter endings ("o", "e", "i"), so any word ending in one of those letters
+  // collected a ✓ — "he desayunado" was told its tense ending was right, because of the
+  // final "o" of a participle. The row has to answer its own question against the
+  // expected stem, or it cannot be trusted at all.
+  const endingOk = inputEnding !== null && normalized === expectedStem + inputEnding
   const personOk = endingOk && inputEnding !== null && expectedEndings.includes(inputEnding)
 
+  // Indefinido and imperfecto are a single word. Writing "he desayunado" is a compound-tense
+  // mistake, and without this row the breakdown had no way to say so: every check was judged
+  // against a two-token string as if it were one, and the student was left reading three
+  // verdicts that never named the actual error.
+  // Every row green on a wrong answer means the derived stem disagrees with `phrase.answer`
+  // — the vowel-changing verbs stored as Indef_reg (*seguir* → derived `segu-`, real
+  // `sigu-`). The breakdown only ever renders for an answer that was already judged wrong,
+  // so a full set of ticks is never a truthful outcome: the stem is the part that differs.
+  const allGreen = stemOk && endingOk && personOk && isSingleToken
+
   return [
+    { label: 'Structure',     ok: isSingleToken },
     { label: 'Tense ending',  ok: endingOk },
     { label: 'Person/Number', ok: personOk },
-    { label: 'Stem',          ok: stemOk },
+    { label: 'Stem',          ok: stemOk && !allGreen },
   ]
 }

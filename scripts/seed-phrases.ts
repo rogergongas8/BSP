@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import * as XLSX from 'xlsx'
 import * as path from 'path'
+import { validatePhrases } from './phrase-schema'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -43,7 +44,8 @@ async function seedFullIrreg() {
   }))
 
   console.log(`Seeding ${phrases.length} full_irreg phrases...`)
-  const { error } = await supabase.from('phrases').upsert(phrases, { onConflict: 'sentence' })
+  const validated = validatePhrases(phrases, 'full_irreg')
+  const { error } = await supabase.from('phrases').upsert(validated, { onConflict: 'sentence' })
   if (error) { console.error('Error seeding full_irreg:', error.message); process.exit(1) }
   console.log(`✓ ${phrases.length} full_irreg phrases seeded`)
 }
@@ -75,7 +77,8 @@ async function seedStemIrreg() {
     }))
 
   console.log(`Seeding ${phrases.length} stem_irreg phrases...`)
-  const { error } = await supabase.from('phrases').upsert(phrases, { onConflict: 'sentence' })
+  const validated = validatePhrases(phrases, 'stem_irreg')
+  const { error } = await supabase.from('phrases').upsert(validated, { onConflict: 'sentence' })
   if (error) { console.error('Error seeding stem_irreg:', error.message); process.exit(1) }
   console.log(`✓ ${phrases.length} stem_irreg phrases seeded`)
 }
@@ -110,7 +113,8 @@ async function seedIndefReg() {
     .filter(p => { if (seen.has(p.sentence)) return false; seen.add(p.sentence); return true })
 
   console.log(`Seeding ${phrases.length} indef_reg phrases...`)
-  const { error } = await supabase.from('phrases').upsert(phrases, { onConflict: 'sentence' })
+  const validated = validatePhrases(phrases, 'indef_reg')
+  const { error } = await supabase.from('phrases').upsert(validated, { onConflict: 'sentence' })
   if (error) { console.error('Error seeding indef_reg:', error.message); process.exit(1) }
   console.log(`✓ ${phrases.length} indef_reg phrases seeded`)
 }

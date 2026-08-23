@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import * as XLSX from 'xlsx'
 import * as path from 'path'
+import { validatePhrases } from './phrase-schema'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -38,8 +39,10 @@ async function seedImpIrreg() {
     }))
     .filter(p => { if (seen.has(p.sentence)) return false; seen.add(p.sentence); return true })
 
-  console.log(`Seeding ${phrases.length} imp_irreg phrases...`)
-  const { error } = await supabase.from('phrases').upsert(phrases, { onConflict: 'sentence' })
+  const validated = validatePhrases(phrases, 'imp_irreg')
+
+  console.log(`Seeding ${validated.length} imp_irreg phrases...`)
+  const { error } = await supabase.from('phrases').upsert(validated, { onConflict: 'sentence' })
   if (error) { console.error('Error seeding imp_irreg:', error.message); process.exit(1) }
   console.log(`✓ ${phrases.length} imp_irreg phrases seeded`)
 }
@@ -71,8 +74,10 @@ async function seedImpReg() {
     }))
     .filter(p => { if (seen.has(p.sentence)) return false; seen.add(p.sentence); return true })
 
-  console.log(`Seeding ${phrases.length} imp_reg phrases...`)
-  const { error } = await supabase.from('phrases').upsert(phrases, { onConflict: 'sentence' })
+  const validated = validatePhrases(phrases, 'imp_reg')
+
+  console.log(`Seeding ${validated.length} imp_reg phrases...`)
+  const { error } = await supabase.from('phrases').upsert(validated, { onConflict: 'sentence' })
   if (error) { console.error('Error seeding imp_reg:', error.message); process.exit(1) }
   console.log(`✓ ${phrases.length} imp_reg phrases seeded`)
 }
