@@ -210,3 +210,175 @@ export function StackedBar({
     </div>
   )
 }
+
+/** Compact trend line for stat cards — no axes, just the shape of the series. */
+export function Sparkline({
+  values,
+  color = CHART_COLORS.blue,
+  width = 96,
+  height = 28,
+}: {
+  values: number[]
+  color?: string
+  width?: number
+  height?: number
+}) {
+  if (values.length < 2) return null
+
+  const max = Math.max(...values, 1)
+  const stepX = width / (values.length - 1)
+  const y = (v: number) => height - 2 - (v / max) * (height - 4)
+  const points = values.map((v, i) => `${i * stepX},${y(v)}`).join(' ')
+
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-hidden="true">
+      <polyline
+        points={`0,${height} ${points} ${width},${height}`}
+        fill={color}
+        fillOpacity="0.12"
+        stroke="none"
+      />
+      <polyline
+        points={points}
+        fill="none"
+        stroke={color}
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+/** Ring chart for a single proportion. Reads faster than a bar for "X of Y". */
+export function Donut({
+  value,
+  total,
+  label,
+  color = CHART_COLORS.green,
+  size = 128,
+}: {
+  value: number
+  total: number
+  label?: string
+  color?: string
+  size?: number
+}) {
+  const stroke = 12
+  const r = (size - stroke) / 2
+  const circumference = 2 * Math.PI * r
+  const ratio = total > 0 ? value / total : 0
+  const percent = Math.round(ratio * 100)
+
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#232A42" strokeWidth={stroke} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={`${circumference * ratio} ${circumference}`}
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+        <text
+          x="50%"
+          y="50%"
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontSize={size * 0.22}
+          fontWeight="700"
+          fill="#E8ECF7"
+        >
+          {percent}%
+        </text>
+      </svg>
+      {label ? <p className="text-center text-xs text-slate-400">{label}</p> : null}
+    </div>
+  )
+}
+
+const WEEKDAY_INITIALS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
+
+/**
+ * GitHub-style calendar heatmap. Columns are weeks, rows are weekdays starting Monday —
+ * which lines up because the course starts on a Monday.
+ */
+export function Heatmap({
+  cells,
+  color = CHART_COLORS.green,
+}: {
+  cells: { date: string; weekday: number; week: number; items: number }[]
+  color?: string
+}) {
+  if (cells.length === 0) return <p className="text-sm text-slate-500">Sin datos.</p>
+
+  const max = Math.max(1, ...cells.map(c => c.items))
+  const weeks = Math.max(...cells.map(c => c.week)) + 1
+  const byKey = new Map(cells.map(c => [`${c.week}:${c.weekday}`, c]))
+
+  const CELL = 22
+  const GAP = 4
+
+  return (
+    <div className="overflow-x-auto">
+      <div className="flex gap-2">
+        <div className="flex flex-col" style={{ gap: GAP }}>
+          {WEEKDAY_INITIALS.map(d => (
+            <span
+              key={d}
+              className="text-[10px] leading-none text-slate-600"
+              style={{ height: CELL, lineHeight: `${CELL}px` }}
+            >
+              {d}
+            </span>
+          ))}
+        </div>
+
+        <div className="flex" style={{ gap: GAP }}>
+          {Array.from({ length: weeks }, (_, w) => (
+            <div key={w} className="flex flex-col" style={{ gap: GAP }}>
+              {Array.from({ length: 7 }, (_, d) => {
+                const cell = byKey.get(`${w}:${d}`)
+                const intensity = cell ? cell.items / max : 0
+                return (
+                  <div
+                    key={d}
+                    className="rounded-[4px]"
+                    style={{
+                      width: CELL,
+                      height: CELL,
+                      backgroundColor: !cell
+                        ? 'transparent'
+                        : cell.items === 0
+                          ? '#1B2237'
+                          : color,
+                      opacity: !cell ? 0 : cell.items === 0 ? 1 : 0.25 + intensity * 0.75,
+                    }}
+                    title={cell ? `${cell.date}: ${cell.items} respuestas` : ''}
+                  />
+                )
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-3 flex items-center gap-2 text-[10px] text-slate-500">
+        <span>Menos</span>
+        {[0, 0.25, 0.5, 0.75, 1].map(o => (
+          <span
+            key={o}
+            className="h-3 w-3 rounded-[3px]"
+            style={{ backgroundColor: o === 0 ? '#1B2237' : color, opacity: o === 0 ? 1 : 0.25 + o * 0.75 }}
+          />
+        ))}
+        <span>Más</span>
+      </div>
+    </div>
+  )
+}

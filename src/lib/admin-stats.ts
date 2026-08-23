@@ -18,6 +18,14 @@ import { ACHIEVEMENTS, type AchievementId } from '@/lib/achievements'
  */
 
 /** The 6 game modes, in display order. Mirrors VALID_TENSES in /api/sessions. */
+/**
+ * The course started on Monday 2026-08-17. Every time series is anchored here rather than to
+ * the first row found, so the axis stays stable as data arrives and week buckets line up with
+ * real calendar weeks (the 17th is a Monday). Nothing in the database predates it today, so
+ * the filter drops no rows — it exists to keep the frame fixed.
+ */
+export const COURSE_START = '2026-08-17'
+
 export const MODES = [
   'indefinido',
   'imperfecto',
@@ -147,6 +155,25 @@ export type AdminStats = {
   }
   topMistakes: MistakeRow[]
   achievements: AchievementRow[]
+  /** Why multiplayer answers were marked wrong — the teaching signal, not just the count. */
+  failureReasons: { status: string; label: string; count: number }[]
+  /** Which verbs, persons and conjugation families generate the most mistakes. */
+  difficulty: {
+    verbs:   { label: string; mistakes: number }[]
+    persons: { label: string; mistakes: number }[]
+    types:   { label: string; mistakes: number; phrases: number; ratePct: number }[]
+  }
+  /** How often people come back, and how fast they answer. */
+  retention: {
+    daysActive: { days: number; users: number }[]
+    avgSecondsPerItem: number | null
+    returningUsers: number
+    oneDayUsers: number
+    multiplayerPoints: number
+    avgPointsPerAnswer: number
+  }
+  /** Calendar heatmap, one cell per day from COURSE_START. */
+  heatmap: { date: string; weekday: number; week: number; items: number }[]
 }
 
 /** YYYY-MM-DD in local time, so days line up with how the app counts a "day". */
@@ -162,20 +189,26 @@ function pct(part: number, whole: number): number {
 export async function getAdminStats(): Promise<AdminStats> {
   const admin = createAdminClient()
 
+  // Everything time-bounded starts at the course start date; see COURSE_START.
+  const since = `${COURSE_START}T00:00:00.000Z`
+
   const [
     profilesRes, sessionsRes, playTimeRes, roomsRes, roomPlayersRes,
     roundsRes, answersRes, achievementsRes, phraseMistakesRes, contrastMistakesRes,
+    phraseCatalogRes,
   ] = await Promise.all([
     admin.from('profiles').select('id, username, total_xp, streak, activities_completed, games_won, top3_finishes, daily_challenges_completed, created_at, last_activity_date'),
-    admin.from('practice_sessions').select('user_id, tense, total, correct, first_try, with_hints, skipped, half_correct, duration_seconds, completed_at'),
-    admin.from('play_time_logs').select('user_id, seconds, source, logged_at'),
-    admin.from('rooms').select('id, code, game_type, game_mode, status, created_at'),
+    admin.from('practice_sessions').select('user_id, tense, total, correct, first_try, with_hints, skipped, half_correct, duration_seconds, completed_at').gte('completed_at', since),
+    admin.from('play_time_logs').select('user_id, seconds, source, logged_at').gte('logged_at', since),
+    admin.from('rooms').select('id, code, game_type, game_mode, status, created_at').gte('created_at', since),
     admin.from('room_players').select('room_id, user_id'),
     admin.from('rounds').select('id, room_id, round_number, phrase_id, contrast_phrase_id'),
-    admin.from('round_answers').select('round_id, user_id, is_correct, response_time_ms, points_awarded'),
+    admin.from('round_answers').select('round_id, user_id, is_correct, response_time_ms, points_awarded, validation_status, submitted_at').gte('submitted_at', since),
     admin.from('user_achievements').select('achievement_id, user_id'),
-    admin.from('phrase_mistakes').select('phrase_id, tense, resolved_at'),
-    admin.from('contrast_mistakes').select('contrast_phrase_id, battle_id, resolved_at'),
+    admin.from('phrase_mistakes').select('phrase_id, tense, resolved_at, created_at').gte('created_at', since),
+    admin.from('contrast_mistakes').select('contrast_phrase_id, battle_id, resolved_at, created_at').gte('created_at', since),
+    // Full catalogue: needed to normalise mistakes-per-type by how many phrases exist of each.
+    admin.from('phrases').select('id, verb, person, type, tense'),
   ])
 
   const profiles = profilesRes.data ?? []
@@ -188,6 +221,7 @@ export async function getAdminStats(): Promise<AdminStats> {
   const achievements = achievementsRes.data ?? []
   const phraseMistakes = phraseMistakesRes.data ?? []
   const contrastMistakes = contrastMistakesRes.data ?? []
+  const phraseCatalog = phraseCatalogRes.data ?? []
 
   // ── Per-user rollups ────────────────────────────────────────────────────────
   const sessionsByUser = new Map<string, typeof sessions>()
@@ -254,12 +288,13 @@ export async function getAdminStats(): Promise<AdminStats> {
     acc.users.add(t.user_id)
   }
 
-  // Fill the gaps so a quiet day reads as a zero rather than vanishing from the axis.
-  const dayKeys = [...byDay.keys()].sort()
+  // Always run from COURSE_START to today, filling the gaps: a quiet day must read as a zero
+  // rather than vanishing from the axis, and the left edge must not drift with the data.
   const timeline: DayPoint[] = []
-  if (dayKeys.length > 0) {
-    const cursor = new Date(`${dayKeys[0]}T00:00:00`)
-    const last = new Date(`${dayKeys[dayKeys.length - 1]}T00:00:00`)
+  {
+    const cursor = new Date(`${COURSE_START}T00:00:00`)
+    const last = new Date()
+    last.setHours(0, 0, 0, 0)
     while (cursor <= last) {
       const key = dayKey(cursor.toISOString())
       const acc = byDay.get(key)
@@ -273,6 +308,20 @@ export async function getAdminStats(): Promise<AdminStats> {
       cursor.setDate(cursor.getDate() + 1)
     }
   }
+
+  // Calendar heatmap: same daily buckets, positioned by ISO weekday (Mon=0) and week offset.
+  const startDate = new Date(`${COURSE_START}T00:00:00`)
+  const heatmap = timeline.map(d => {
+    const date = new Date(`${d.date}T00:00:00`)
+    const dayOffset = Math.round((date.getTime() - startDate.getTime()) / 86_400_000)
+    // COURSE_START is a Monday, so offsets map straight onto week columns.
+    return {
+      date: d.date,
+      weekday: (date.getDay() + 6) % 7,
+      week: Math.floor((dayOffset + ((startDate.getDay() + 6) % 7)) / 7),
+      items: d.items,
+    }
+  })
 
   // ── Hour-of-day histogram, from multiplayer answers (the finest timestamp there is) ──
   const hourCounts = new Array(24).fill(0) as number[]
@@ -427,6 +476,106 @@ export async function getAdminStats(): Promise<AdminStats> {
     }))
     .sort((a, b) => b.unlocked - a.unlocked)
 
+  // ── Why answers were wrong ──────────────────────────────────────────────────
+  // round_answers.validation_status records how an answer failed, not just that it did.
+  // That distinction is the teaching signal: a wrong ending is a conjugation gap, a
+  // structure_incomplete is usually running out of time.
+  const FAILURE_LABELS: Record<string, string> = {
+    wrong_ending:         'Terminación incorrecta',
+    wrong_stem:           'Raíz incorrecta',
+    wrong_person:         'Persona incorrecta',
+    invalid_form:         'Forma inexistente',
+    structure_incomplete: 'Estructura incompleta',
+    no_answer:            'Sin responder',
+    missed:               'Fuera de tiempo',
+    half_correct:         'Media correcta',
+    aux_invalid:          'Auxiliar incorrecto',
+    aux_wrong_person:     'Auxiliar, persona incorrecta',
+    part_stem_invalid:    'Participio incorrecto',
+  }
+
+  const failureCounts = new Map<string, number>()
+  for (const a of answers) {
+    if (a.validation_status === 'correct') continue
+    failureCounts.set(a.validation_status, (failureCounts.get(a.validation_status) ?? 0) + 1)
+  }
+  const failureReasons = [...failureCounts]
+    .map(([status, count]) => ({ status, label: FAILURE_LABELS[status] ?? status, count }))
+    .sort((a, b) => b.count - a.count)
+
+  // ── Where the difficulty lives: verbs, persons, conjugation families ────────
+  const PERSON_LABELS: Record<string, string> = {
+    '1s': 'yo', '2s': 'tú', '3s': 'él/ella', '1pl': 'nosotros', '2pl': 'vosotros', '3pl': 'ellos',
+  }
+
+  const catalogById = new Map(phraseCatalog.map(p => [p.id, p]))
+
+  const verbMistakes = new Map<string, number>()
+  const personMistakes = new Map<string, number>()
+  const typeMistakes = new Map<string, number>()
+  for (const m of phraseMistakes) {
+    const p = catalogById.get(m.phrase_id)
+    if (!p) continue
+    verbMistakes.set(p.verb, (verbMistakes.get(p.verb) ?? 0) + 1)
+    personMistakes.set(p.person, (personMistakes.get(p.person) ?? 0) + 1)
+    typeMistakes.set(p.type, (typeMistakes.get(p.type) ?? 0) + 1)
+  }
+
+  // Normalise by catalogue size: a family with 348 phrases will collect more raw mistakes
+  // than one with 12 without being harder.
+  const typeTotals = new Map<string, number>()
+  for (const p of phraseCatalog) typeTotals.set(p.type, (typeTotals.get(p.type) ?? 0) + 1)
+
+  const difficulty = {
+    verbs: [...verbMistakes]
+      .map(([label, mistakes]) => ({ label, mistakes }))
+      .sort((a, b) => b.mistakes - a.mistakes)
+      .slice(0, 10),
+    persons: (['1s', '2s', '3s', '1pl', '2pl', '3pl'] as const)
+      .map(key => ({ label: PERSON_LABELS[key], mistakes: personMistakes.get(key) ?? 0 }))
+      .sort((a, b) => b.mistakes - a.mistakes),
+    types: [...typeMistakes]
+      .map(([label, mistakes]) => {
+        const phrases = typeTotals.get(label) ?? 0
+        return {
+          label,
+          mistakes,
+          phrases,
+          ratePct: phrases > 0 ? Math.round((mistakes / phrases) * 1000) / 10 : 0,
+        }
+      })
+      .sort((a, b) => b.ratePct - a.ratePct),
+  }
+
+  // ── Retention and pace ──────────────────────────────────────────────────────
+  const daysByUser = new Map<string, Set<string>>()
+  for (const sess of sessions) {
+    let set = daysByUser.get(sess.user_id)
+    if (!set) { set = new Set(); daysByUser.set(sess.user_id, set) }
+    set.add(dayKey(sess.completed_at))
+  }
+  const daysDist = new Map<number, number>()
+  for (const [, days] of daysByUser) daysDist.set(days.size, (daysDist.get(days.size) ?? 0) + 1)
+
+  const timedSessions = sessions.filter(sess => sess.duration_seconds > 0 && sess.total > 0)
+  const totalPoints = answers.reduce((n, a) => n + a.points_awarded, 0)
+
+  const retention = {
+    daysActive: [...daysDist]
+      .map(([days, n]) => ({ days, users: n }))
+      .sort((a, b) => a.days - b.days),
+    avgSecondsPerItem: timedSessions.length > 0
+      ? Math.round(
+          (timedSessions.reduce((n, sess) => n + sess.duration_seconds / sess.total, 0) /
+            timedSessions.length) * 10
+        ) / 10
+      : null,
+    returningUsers: [...daysByUser.values()].filter(d => d.size > 1).length,
+    oneDayUsers: [...daysByUser.values()].filter(d => d.size === 1).length,
+    multiplayerPoints: totalPoints,
+    avgPointsPerAnswer: answers.length > 0 ? Math.round(totalPoints / answers.length) : 0,
+  }
+
   // ── Totals ──────────────────────────────────────────────────────────────────
   const totalItems = sessions.reduce((n, s) => n + s.total, 0)
   const totalCorrect = sessions.reduce((n, s) => n + s.correct, 0)
@@ -464,5 +613,9 @@ export async function getAdminStats(): Promise<AdminStats> {
     multiplayer,
     topMistakes,
     achievements: achievementRows,
+    failureReasons,
+    difficulty,
+    retention,
+    heatmap,
   }
 }

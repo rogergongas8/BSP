@@ -23,26 +23,69 @@ export function Panel({
   )
 }
 
-/** Single headline number with a label and optional secondary line. */
+/** Single headline number with a label, optional secondary line and trend sparkline. */
 export function Stat({
   label,
   value,
   hint,
   accent,
+  chart,
 }: {
   label: string
   value: string | number
   hint?: string
   accent?: string
+  chart?: React.ReactNode
 }) {
   return (
     <div className="rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-3.5">
       <p className="text-[11px] font-medium tracking-wide text-slate-500 uppercase">{label}</p>
-      <p className="mt-1 text-2xl font-bold tabular-nums" style={{ color: accent ?? '#E8ECF7' }}>
-        {value}
-      </p>
+      <div className="mt-1 flex items-end justify-between gap-2">
+        <p className="text-2xl font-bold tabular-nums" style={{ color: accent ?? '#E8ECF7' }}>
+          {value}
+        </p>
+        {chart ? <div className="shrink-0 pb-0.5">{chart}</div> : null}
+      </div>
       {hint ? <p className="mt-0.5 text-xs text-slate-500">{hint}</p> : null}
     </div>
+  )
+}
+
+/**
+ * Colour for a percentage where higher is better. Used to make accuracy columns readable
+ * at a glance instead of forcing a comparison of similar-looking numbers.
+ */
+export function scoreColor(percent: number): string {
+  if (percent >= 90) return '#3DD68C'
+  if (percent >= 75) return '#A3D956'
+  if (percent >= 60) return '#F5B544'
+  return '#F26A6A'
+}
+
+/** Top-3 ranking with medals. */
+export function Podium({
+  entries,
+}: {
+  entries: { name: string; value: string; hint?: string }[]
+}) {
+  const MEDALS = ['🥇', '🥈', '🥉']
+
+  return (
+    <ol className="flex flex-col gap-2">
+      {entries.slice(0, 3).map((e, i) => (
+        <li
+          key={e.name}
+          className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/40 px-3 py-2.5"
+        >
+          <span className="text-lg leading-none">{MEDALS[i]}</span>
+          <span className="min-w-0 flex-1 truncate font-semibold text-slate-100">{e.name}</span>
+          <span className="text-right">
+            <span className="block text-sm font-bold tabular-nums text-slate-100">{e.value}</span>
+            {e.hint ? <span className="block text-[11px] text-slate-500">{e.hint}</span> : null}
+          </span>
+        </li>
+      ))}
+    </ol>
   )
 }
 
