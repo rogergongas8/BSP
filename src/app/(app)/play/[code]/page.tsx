@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useState, useEffect, useRef, useCallback } from 'react'
+import { use, useState, useEffect, useRef, useCallback, type CSSProperties } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'motion/react'
@@ -13,31 +13,12 @@ import { CONTRAST_ICON, GAP_COLORS, gapVerbOnly, phraseGapCount, type ContrastPh
 import type { StatusRow } from '@/lib/game-logic'
 import { getLevelInfo, catImagePath } from '@/lib/levels'
 import { resolveAvatarPath } from '@/lib/avatars'
+import { useKeyboardOffset, keyboardLiftStyle } from '@/hooks/use-keyboard-offset'
 
 // ─── Keyboard-aware bottom offset ────────────────────────────────────────────
-// On iOS Safari, `fixed bottom-0` is anchored to the layout viewport (full page height),
-// so the virtual keyboard slides over it. We use visualViewport to track the real
-// visible bottom and shift the button up to stay above the keyboard.
-
-function useKeyboardBottom() {
-  const [bottom, setBottom] = useState(0)
-  useEffect(() => {
-    const vv = window.visualViewport
-    if (!vv) return
-    const update = () => {
-      const gap = window.innerHeight - (vv.height + vv.offsetTop)
-      setBottom(Math.max(0, gap))
-    }
-    vv.addEventListener('resize', update)
-    vv.addEventListener('scroll', update)
-    update()
-    return () => {
-      vv.removeEventListener('resize', update)
-      vv.removeEventListener('scroll', update)
-    }
-  }, [])
-  return bottom
-}
+// `fixed bottom-0` anchors to the layout viewport, so the virtual keyboard slides
+// over it. useKeyboardOffset tracks the visual viewport frame-by-frame so the bar
+// rides the keyboard's own animation curve instead of chasing it with a transition.
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -244,7 +225,7 @@ export type RoundPhase =
 
 /** Bottom action bar shared by both round types: Submit (active) / Skip (host, collecting) / Next (host, results). */
 function RoundActionBar({
-  phase, isHost, canSubmit, onSubmit, onSkip, onNext, kbBottom,
+  phase, isHost, canSubmit, onSubmit, onSkip, onNext, kbLift,
 }: {
   phase: RoundPhase
   isHost: boolean
@@ -252,7 +233,7 @@ function RoundActionBar({
   onSubmit: () => void
   onSkip: () => void
   onNext: () => void
-  kbBottom: number
+  kbLift: CSSProperties
 }) {
   const [skipping, setSkipping] = useState(false)
   const [nexting, setNexting] = useState(false)
@@ -262,9 +243,11 @@ function RoundActionBar({
     (isHost && (phase.type === 'collecting' || phase.type === 'results'))
 
   return (
+    // Outer div owns the keyboard lift (plain transform, no Motion involvement so
+    // nothing competes for `transform`); inner Motion div only fades the backdrop.
+    <div className="fixed bottom-0 left-0 right-0" style={kbLift}>
     <motion.div
-      className="fixed left-0 right-0 px-5 pb-6 pt-3 transition-[bottom] duration-100"
-      style={{ bottom: kbBottom }}
+      className="px-5 pb-6 pt-3"
       animate={{ backgroundColor: hasButton ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0)' }}
       transition={{ duration: 0.25 }}
     >
@@ -328,6 +311,7 @@ function RoundActionBar({
         )}
       </AnimatePresence>
     </motion.div>
+    </div>
   )
 }
 
@@ -366,7 +350,8 @@ function TextRoundView({
   const [typedInput, setTypedInput] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const autoSubmittedRef = useRef(false)
-  const kbBottom = useKeyboardBottom()
+  const { offset: kbOffset, settling: kbSettling } = useKeyboardOffset()
+  const kbLift = keyboardLiftStyle(kbOffset, kbSettling)
 
   const round = phase.round
   const hasSubmitted = phase.type === 'collecting' || phase.type === 'results'
@@ -515,7 +500,7 @@ function TextRoundView({
         onSubmit={handleSubmit}
         onSkip={onSkip}
         onNext={onNext}
-        kbBottom={kbBottom}
+        kbLift={kbLift}
       />
     </div>
   )
@@ -542,7 +527,8 @@ function ContrastRoundView({
   const [selected1, setSelected1] = useState<1 | 2 | null>(null)
   const [selected2, setSelected2] = useState<1 | 2 | null>(null)
   const autoSubmittedRef = useRef(false)
-  const kbBottom = useKeyboardBottom()
+  const { offset: kbOffset, settling: kbSettling } = useKeyboardOffset()
+  const kbLift = keyboardLiftStyle(kbOffset, kbSettling)
 
   const round = phase.round
   const phrase = round.contrast_phrases
@@ -737,7 +723,7 @@ function ContrastRoundView({
         onSubmit={handleSubmit}
         onSkip={onSkip}
         onNext={onNext}
-        kbBottom={kbBottom}
+        kbLift={kbLift}
       />
     </div>
   )

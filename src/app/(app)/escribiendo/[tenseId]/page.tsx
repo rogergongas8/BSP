@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'motion/react'
 import { X, Check, SkipForward, Lightbulb, Send } from 'lucide-react'
 import { validate, statusRowsFor, TENSE_META, resolveTenseId, type Phrase, type ValidationStatus, type PPHighlightRange } from '@/lib/game-logic'
 import OverscrollColor from '@/components/overscroll-color'
+import { useKeyboardOffset, keyboardLiftStyle } from '@/hooks/use-keyboard-offset'
 
 const SESSION_TOTAL = 10
 
@@ -242,24 +243,11 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
   const fetchSeqRef = useRef(0)
   const hasInitRef = useRef(false)
   const earlyFocusRef = useRef<HTMLInputElement>(null)
-  const [keyboardInset, setKeyboardInset] = useState(0)
 
   // Fixed bottom bars stay pinned to the layout viewport, so the on-screen keyboard
-  // covers them unless we manually offset by the visual viewport's shrink amount.
-  useEffect(() => {
-    const vv = window.visualViewport
-    if (!vv) return
-    const handleViewportChange = () => {
-      setKeyboardInset(Math.max(0, window.innerHeight - vv.height - vv.offsetTop))
-    }
-    vv.addEventListener('resize', handleViewportChange)
-    vv.addEventListener('scroll', handleViewportChange)
-    handleViewportChange()
-    return () => {
-      vv.removeEventListener('resize', handleViewportChange)
-      vv.removeEventListener('scroll', handleViewportChange)
-    }
-  }, [])
+  // covers them unless we lift them by the visual viewport's shrink amount.
+  const { offset: keyboardInset, settling: keyboardSettling } = useKeyboardOffset()
+  const keyboardLift = keyboardLiftStyle(keyboardInset, keyboardSettling)
 
   const prefetchNext = useCallback(async (currentIds: Set<string>) => {
     if (isRedo || isMixed) return
@@ -625,8 +613,10 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
             </div>
           </div>
 
-          {/* Buttons — always fixed at bottom-0; keyboard overlaps Submit/Hint, that's fine (Skip floats separately below) */}
-          <div className="fixed bottom-0 left-0 right-0 flex flex-col px-5 pb-6 pt-3 bg-white gap-2">
+          {/* Buttons ride on top of the keyboard as one unit, so Submit is never covered.
+              The lift is a plain transform driven frame-by-frame by the visual viewport. */}
+          <div className="fixed bottom-0 left-0 right-0" style={keyboardLift}>
+          <div className="flex flex-col px-5 pb-6 pt-3 bg-white gap-2">
             {isError && (
               <div className="flex flex-col items-end gap-1 pb-1">
                 {statusRows.map(row => (
@@ -680,15 +670,16 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
             </div>
           </div>
 
-          {/* Skip floats independently just above the keyboard (only Skip — Submit/Hint stay put, reachable via the keyboard's own return key) */}
+          {/* Skip sits inside the same lifted container, so it tracks the keyboard
+              identically instead of drifting relative to Submit. */}
           {status !== 'correct' && status !== 'skipped' && (
             <motion.button whileTap={{ scale: 0.9 }} onClick={handleSkip}
-              className="fixed left-5 flex items-center gap-1.5 text-sm font-bold text-gray-900"
-              style={{ bottom: 24 + keyboardInset, transition: 'bottom 150ms ease-out' }}
+              className="absolute left-5 bottom-6 flex items-center gap-1.5 text-sm font-bold text-gray-900"
             >
               <SkipForward className="w-4 h-4" /> Skip
             </motion.button>
           )}
+          </div>
 
         </div>
       </div>
