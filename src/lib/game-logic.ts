@@ -174,6 +174,7 @@ const REG_PERSON_WRONG_HINT =
 const REG_STEM_HINTS: Record<string, string> = {
   // "the stem just stays the same" contradicted the rest of the sentence: the stem is the
   // infinitive *minus* its last two letters, which is what the instruction then asks for.
+  // The trailing praise is stripped when the ending is not in fact right — see stemHintFor.
   Reg_default_stem:
     "It's a regular indefinido, so for the stem just drop the last two letters of the infinitive and put it before your ending (good job there!).",
   Reg_change_stem_1s_car:
@@ -186,7 +187,23 @@ const REG_STEM_HINTS: Record<string, string> = {
     "This is one of those almost-regular indefinidos: the stem is regular, but it has a **vowel change in the 3rd person**. Can you recall that stem change?",
 }
 
+/**
+ * The stem hint for a phrase, minus any praise the answer has not earned.
+ *
+ * The flowchart only reaches REG_DEFAULT_STEM_INVALID after the ending has already been
+ * judged correct, so "…put it before your ending (good job there!)" is apt there. The code
+ * also reaches it when the ending is wrong — a compound attempt like "han hablé", whose
+ * first letters are not the stem — and there the parenthetical congratulates the student on
+ * an ending the breakdown marks ✗.
+ */
+function stemHintFor(phrase: Phrase, endingOk: boolean): string {
+  const group = phrase.stem_group ?? 'Reg_default_stem'
+  const hint = REG_STEM_HINTS[group] ?? REG_STEM_HINTS.Reg_default_stem
+  return endingOk ? hint : hint.replace(' (good job there!)', '')
+}
+
 function validateIndefReg(normalized: string, phrase: Phrase): ValidationResult {
+  const isSingleWord = normalized.split(/\s+/).filter(Boolean).length === 1
   const isAR = phrase.verb.toLowerCase().endsWith('ar')
   const endings   = isAR ? AR_ENDINGS   : ERER_ENDINGS
   const personMap = isAR ? AR_PERSON_MAP : ERER_PERSON_MAP
@@ -244,12 +261,13 @@ function validateIndefReg(normalized: string, phrase: Phrase): ValidationResult 
     }
   }
 
-  // 4. Check stem
+  // 4. Check stem. The ending has passed both checks above, so the praise in the default hint
+  // is earned — unless the answer is not one word, in which case the Tense ending row reads ✗
+  // and there is nothing to congratulate.
   if (inputStem !== expectedStem) {
-    const stemGroup = phrase.stem_group ?? 'Reg_default_stem'
     return {
       status: 'wrong_stem',
-      hint: REG_STEM_HINTS[stemGroup] ?? REG_STEM_HINTS.Reg_default_stem,
+      hint: stemHintFor(phrase, isSingleWord),
       highlight: inputStem, // split point: stem (red) | ending (theme)
     }
   }
@@ -263,10 +281,9 @@ function validateIndefReg(normalized: string, phrase: Phrase): ValidationResult 
   // actually takes `sigu-`. That made "seguieron" pass as correct while the real answer,
   // *siguieron*, was accepted only by the equality check above. `answer` is the authority
   // on correctness; this function's job is to explain a wrong answer, not to overrule it.
-  const stemGroup = phrase.stem_group ?? 'Reg_change_stem_3s3pl'
   return {
     status: 'wrong_stem',
-    hint: REG_STEM_HINTS[stemGroup] ?? REG_STEM_HINTS.Reg_change_stem_3s3pl,
+    hint: stemHintFor({ ...phrase, stem_group: phrase.stem_group ?? 'Reg_change_stem_3s3pl' }, isSingleWord),
     highlight: inputStem,
   }
 }
@@ -402,11 +419,6 @@ const HABER_FORMS = ['he', 'has', 'ha', 'hemos', 'habéis', 'han'].map(deaccent)
 const HABER_PERSON_MAP: Record<string, string> = {
   '1s': 'he', '2s': 'has', '3s': 'ha', '1pl': 'hemos', '2pl': 'habéis', '3pl': 'han',
 }
-
-// The mirror of PP_STRUCTURE_HINT for the tenses that are a single word: it names the
-// compound-tense mistake ("he mirado" where *miré* belongs) without giving the form away.
-const SINGLE_TOKEN_STRUCTURE_HINT =
-  "Careful! This tense is **one single word** — no helper verb in front of it."
 
 const PP_STRUCTURE_HINT =
   "Careful! Pretérito Perfecto needs two parts: **helper verb + participle**."
@@ -620,22 +632,6 @@ export function validate(input: string, phrase: Phrase): ValidationResult {
 
   if (normalized === correct) return { status: 'correct' }
 
-  const isPP = phrase.type === 'PP_irreg' || phrase.type === 'PP_reg' || phrase.type === 'PP_reg_gustar'
-
-  // Indefinido and imperfecto are a single word, so a multi-token answer is a structure
-  // mistake and has to be reported as one before anything else is examined.
-  //
-  // Without this gate the cascade fell through to the stem check, which compares the whole
-  // string to the expected stem: "he repetimos" was told its *stem* was wrong ("...just drop
-  // the last two letters of the infinitive... good job there!") when the stem, the ending and
-  // the person inside "repetimos" were all correct and the only error was writing a compound
-  // tense. The Structure row already said so; the hint contradicted it.
-  //
-  // PP is excluded — it is legitimately two tokens and runs its own structure check.
-  if (!isPP && input.trim().split(/\s+/).filter(Boolean).length > 1) {
-    return { status: 'structure_incomplete', hint: SINGLE_TOKEN_STRUCTURE_HINT }
-  }
-
   if (phrase.type === 'Indef_stem_irreg') {
     return validateStemIrreg(normalized, phrase)
   }
@@ -822,62 +818,65 @@ function singleTokenRows(
   endings: readonly string[],
   expectedEndings: readonly string[],
 ): StatusRow[] {
-  const tokens = rawInput.trim().split(/\s+/).filter(Boolean)
-  const isSingleToken = tokens.length === 1
-
-  // The three morphology rows judge the *verb* the student wrote, not the raw string.
-  //
-  // Writing "han miramos" for *miramos* is one mistake — a compound tense where a simple one
-  // belongs — and Structure is the row that says so. Judging the other three against the whole
-  // string turned that single mistake into four ✗: "han miramos" does not start with `mir-`,
-  // so Stem failed, and with it the ending and person checks that hang off it. The student had
-  // the stem, the ending and the person all right inside the token that carries the verb, and
-  // was told they got everything wrong.
-  //
-  // The last token is the verb slot: a compound attempt puts the auxiliary first and the
-  // participle-shaped word last ("han miramos", "he desayunado"), and a stray pronoun does the
-  // same ("nos fuimos"). This mirrors ppStatusRows, which already credits each piece an answer
-  // actually contains instead of failing them all on a structure error.
-  const verbToken = tokens.length > 0 ? deaccent(tokens[tokens.length - 1].toLowerCase()) : ''
+  // The whole input is the word under test. Per the flowchart, `reg_stem` is "first letters of
+  // the input" and `reg_ending` "last letters of the input": these tenses are a single word,
+  // and they have no Structure row to report anything else. So a compound attempt
+  // ("han miramos" for *miramos*) fails the stem check — its first letters are "han …", not
+  // `mir-` — which is the flowchart's REG_..._STEM_INVALID outcome and the only row that can
+  // carry the error. Crediting the last token instead would show every row ✓ on an answer the
+  // app had just rejected.
+  const verbToken = deaccent(rawInput.trim().toLowerCase())
+  const tokens = verbToken.split(/\s+/).filter(Boolean)
 
   // Longest ending first, so "isteis" is not read as "iste".
   const sorted = [...endings].sort((a, b) => b.length - a.length)
   const inputEnding = sorted.find(e => verbToken.endsWith(e) && verbToken.length > e.length) ?? null
 
   const stemOk = expectedStem !== '' && verbToken.startsWith(expectedStem)
-  // The ending only counts when it is what actually follows the expected stem: for "tuvo"
-  // the stem is `tuv-` and the ending `-o`.
+  // Ending and stem are independent questions in the flowchart — `reg_ending` is "last letters
+  // of the input", asked without reference to the stem — so a pure stem mistake with a good
+  // ending ("comé" for *hablé*) must not fail the ending row as well.
   //
-  // This used to fall back to a bare suffix match whenever the stem was wrong
-  // (`!stemOk || …`), to avoid penalising the same mistake twice. But indefinido has
-  // single-letter endings ("o", "e", "i"), so any word ending in one of those letters
-  // collected a ✓ — "he desayunado" was told its tense ending was right, because of the
-  // final "o" of a participle. The row has to answer its own question against the
-  // expected stem, or it cannot be trusted at all.
-  const endingOk = inputEnding !== null && verbToken === expectedStem + inputEnding
-  const personOk = endingOk && inputEnding !== null && expectedEndings.includes(inputEnding)
+  // But the split has to be a real one, or the row credits an ending the student did not
+  // write. Two ways it went wrong: requiring the whole word to equal `expectedStem + ending`
+  // collapsed the two questions, while a bare suffix match let "tuvaste" (for *tuve*) score ✓
+  // on a trailing "e" and "he desayunado" score ✓ on the final "o" of a participle.
+  //
+  // So the ending is judged against the stem the *student* wrote: the word must be one token
+  // that splits as (their stem) + (a valid ending of this tense), where their stem is either
+  // the expected one or a plausible stem in its own right — letters only, no leftover ending
+  // fragment. That accepts "comé" (stem "com", ending "é") and rejects "tuvaste", whose real
+  // split is "tuv"+"aste" — and "aste" is not an ending this group has.
+  // The split must be a real one. When the student wrote the expected stem, the ending is
+  // simply what follows it. When the stem is wrong, the only honest reading is the word's
+  // longest valid ending — and the remainder must not itself end in an ending, or a mangled
+  // word like "tuvaste" (real split "tuv"+"aste", and "aste" is not in this group) would be
+  // read as "tuvast"+"e" and credited with a correct 1s ending it never had.
+  const isSingleToken = tokens.length === 1
+  const afterExpected = stemOk ? verbToken.slice(expectedStem.length) : null
+  const endingOk =
+    isSingleToken &&
+    (afterExpected !== null
+      ? endings.includes(afterExpected)
+      : inputEnding !== null && verbToken.length > inputEnding.length)
+  const actualEnding = afterExpected !== null ? afterExpected : inputEnding
+  const personOk = endingOk && actualEnding !== null && expectedEndings.includes(actualEnding)
 
-  // Indefinido and imperfecto are a single word. Writing "he desayunado" is a compound-tense
-  // mistake, and without this row the breakdown had no way to say so: every check was judged
-  // against a two-token string as if it were one, and the student was left reading three
-  // verdicts that never named the actual error.
-  // Every row green on a wrong answer means the derived stem disagrees with `phrase.answer`
-  // — the vowel-changing verbs stored as Indef_reg (*seguir* → derived `segu-`, real
-  // `sigu-`). The breakdown only ever renders for an answer that was already judged wrong,
-  // so a full set of ticks is never a truthful outcome: the stem is the part that differs.
-  // A *wrong* answer must never show four ticks: the derived stem can disagree with
+  // A *wrong* answer must never show a full set of ticks: the derived stem can disagree with
   // `phrase.answer` for the vowel-changing verbs stored as Indef_reg (*seguir* → derived
   // `segu-`, real `sigu-`), so "seguieron" reconstructs perfectly while *siguieron* is the
   // real form. There the stem is the part that differs, and the row has to say so.
   //
-  // This is keyed off the answer rather than blanket-suppressing a full set of ticks: the
-  // guard used to fire on the *correct* answer too, so "tuve" for *tuve* reported Stem ✗.
-  // Only the UI's isError check kept that off the screen.
+  // Keyed off the answer rather than blanket-suppressing every-row-green: the guard used to
+  // fire on the *correct* answer too, so "tuve" for *tuve* reported Stem ✗. Only the UI's
+  // isError check kept that off the screen.
   const matchesAnswer = verbToken === deaccent(answer.toLowerCase())
-  const falselyAllGreen = stemOk && endingOk && personOk && isSingleToken && !matchesAnswer
+  const falselyAllGreen = stemOk && endingOk && personOk && !matchesAnswer
 
+  // Three rows, per the spec: these tenses are a single token, so there is no Structure
+  // check to make — that row belongs to Pretérito Perfecto, which is the only form built
+  // from two pieces. The order matches the flowchart's status box.
   return [
-    { label: 'Structure',     ok: isSingleToken },
     { label: 'Tense ending',  ok: endingOk },
     { label: 'Person/Number', ok: personOk },
     { label: 'Stem',          ok: stemOk && !falselyAllGreen },
