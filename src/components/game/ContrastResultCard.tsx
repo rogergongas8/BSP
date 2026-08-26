@@ -3,13 +3,19 @@
 import Image from 'next/image'
 import { Check, X } from 'lucide-react'
 
-/** One gap's worth of result data — the correct answer, the class-wide correct/incorrect tally
- * for that gap, and whether the current user got this specific gap right. */
+/** One gap's worth of result data — what this player picked for it, the class-wide
+ * correct/incorrect tally for that gap, and whether they got this specific gap right.
+ *
+ * The answer key is not in here: the sentence above the card already reads correctly once the
+ * round is revealed, so repeating it underneath left the player without the one thing the card
+ * is for — seeing what they themselves chose. */
 type GapResult = {
-  answer: string
+  /** Null when the round closed before this player picked anything. */
+  answer: string | null
   correctCount: number
   incorrectCount: number
-  icon: string
+  /** The character standing for the option they picked. Null alongside a null answer. */
+  icon: string | null
   userWasCorrect: boolean
 }
 
@@ -81,25 +87,36 @@ export default function ContrastResultCard({
   if (!gap1) return null
 
   const gaps = gap2 ? [gap1, gap2] : [gap1]
+  // One header for a card that can hold two gaps, so it only reads green when every gap landed.
+  const allCorrect = gaps.every(gap => gap.userWasCorrect)
 
   return (
     <div className="bg-white rounded-2xl p-4 border-2 border-gray-200">
-      <p className="text-[10px] font-black tracking-widest uppercase mb-4" style={{ color: '#1D841D' }}>
-        Correct Answer
+      <p
+        className="text-[10px] font-black tracking-widest uppercase mb-4"
+        style={{ color: allCorrect ? '#1D841D' : '#962F45' }}
+      >
+        Your Answer
       </p>
       <div className={gaps.length === 2 ? 'grid grid-cols-2 gap-4' : ''}>
         {gaps.map((gap, i) => (
           <div key={i} className="flex flex-col items-center gap-5 rounded-2xl pt-5 pb-3 px-3">
             {/* Icon floats directly over the answer box's top border — no backing circle. */}
             <div className="relative w-full max-w-[140px] flex flex-col items-center">
-              <div className="absolute -top-4 z-10 w-8 h-8">
-                <Image src={gap.icon} alt="" width={32} height={32} className="w-full h-full object-contain" />
-              </div>
+              {gap.icon && (
+                <div className="absolute -top-4 z-10 w-8 h-8">
+                  <Image src={gap.icon} alt="" width={32} height={32} className="w-full h-full object-contain" />
+                </div>
+              )}
               <div
-                className="w-full aspect-[4/3] rounded-xl px-3 flex items-center justify-center text-center text-base font-semibold bg-gray-100 text-gray-900 border-2"
-                style={{ borderColor: '#1D841D' }}
+                className="w-full aspect-[4/3] rounded-xl px-3 flex items-center justify-center text-center text-base font-semibold border-2"
+                style={{
+                  borderColor: gap.userWasCorrect ? '#22C55E' : '#EF4444',
+                  backgroundColor: gap.userWasCorrect ? '#F0FDF4' : '#FEF2F2',
+                  color: gap.userWasCorrect ? '#16A34A' : '#DC2626',
+                }}
               >
-                {gap.answer}
+                {gap.answer ?? 'No answer'}
               </div>
             </div>
 

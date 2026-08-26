@@ -602,6 +602,11 @@ function ContrastRoundView({
   const displaySelected1 = myAnswer ? myAnswer.selected1 : selected1
   const displaySelected2 = myAnswer ? myAnswer.selected2 : selected2
 
+  // At results the server's record of what this player picked wins — it is what was scored. The
+  // locally held pick covers a results payload that arrived without it (a failed /results read).
+  const mySelected1 = phase.type === 'results' ? phase.results.my_selected_1 ?? displaySelected1 : displaySelected1
+  const mySelected2 = phase.type === 'results' ? phase.results.my_selected_2 ?? displaySelected2 : displaySelected2
+
   // Time's up: lock in whichever gaps were already picked — a half-finished answer isn't lost.
   useEffect(() => {
     if (phase.type === 'active' && secondsLeft <= 0 && !autoSubmittedRef.current && phrase) {
@@ -634,13 +639,14 @@ function ContrastRoundView({
 
   const sentenceParts = splitContrastSentence(phrase.sentence, gapCount)
 
-  // Once the round is revealed the blanks show the correct word on a white box with a green
-  // outline, whatever the player picked — the sentence they are left reading should be the right
-  // one. Which option they chose is still marked on the cards below.
+  // Once the round is revealed the blanks show the correct word, whatever the player picked — the
+  // sentence they are left reading should be the right one. What they chose is on the card below.
   const revealed = phase.type === 'results' && correct1 !== null
-  // Neutral outline, not green: the sentence is showing the right answer either way, so colouring
-  // it as a verdict would read as "you got this right" to someone who did not.
-  const revealStyle = { borderColor: '#111827', backgroundColor: '#FFFFFF', color: '#111827' }
+  // The green-bordered "correct answer" box the results cards use, now that a label above the
+  // sentence says so outright. It used to be a neutral outline to avoid reading as a verdict on
+  // this player's own attempt — with the attempt spelled out separately below, in its own colours,
+  // there is nothing left to confuse it with.
+  const revealStyle = { borderColor: '#1D841D', backgroundColor: '#F3F4F6', color: '#111827' }
   const gapWord1 = revealed
     ? (correct1 === 1 ? phrase.option_a_1 : phrase.option_b_1)
     : displaySelected1 === 1 ? phrase.option_a_1 : displaySelected1 === 2 ? phrase.option_b_1 : null
@@ -648,9 +654,35 @@ function ContrastRoundView({
     ? (correct2 === 1 ? phrase.option_a_2 : phrase.option_b_2)
     : displaySelected2 === 1 ? phrase.option_a_2 : displaySelected2 === 2 ? phrase.option_b_2 : null
 
+  // What this player put in each blank, for the "Your Answer" card. The icon is the character
+  // standing for the option they picked — the card used to show the two gap icons in fixed order,
+  // which said nothing about their choice.
+  const myWord1 = mySelected1 === 1 ? phrase.option_a_1 : mySelected1 === 2 ? phrase.option_b_1 : null
+  const myWord2 = mySelected2 === 1 ? phrase.option_a_2 : mySelected2 === 2 ? phrase.option_b_2 : null
+  const myIcon1 = mySelected1 === 1 ? icons.a : mySelected1 === 2 ? icons.b : null
+  const myIcon2 = mySelected2 === 1 ? icons.a : mySelected2 === 2 ? icons.b : null
+
   return (
     <div className="flex-1 flex flex-col">
       <div className="flex flex-col items-center pt-10 pb-6 px-5 gap-2">
+        {/* Fixed-height slot: the label only exists at results, and letting it push the sentence
+            down on arrival would jog the whole screen at the moment the answer is revealed. */}
+        <div className="h-4 flex items-center">
+          <AnimatePresence>
+            {revealed && (
+              <motion.p
+                key="correct-label"
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="text-[10px] font-black tracking-widest uppercase"
+                style={{ color: '#1D841D' }}
+              >
+                Correct Answer
+              </motion.p>
+            )}
+          </AnimatePresence>
+        </div>
         {/* leading-[2.6]: the verb label above each blank is absolutely positioned and takes up no
             line height, so a tighter leading lets it print over the line above when the sentence
             wraps. */}
@@ -658,7 +690,10 @@ function ContrastRoundView({
           <p className="[text-wrap:balance]">
             {sentenceParts[0]}
             <span className="relative inline-block align-middle mx-1">
-              <span className="absolute left-1/2 -top-[19px] -translate-x-1/2 text-[10px] font-black tracking-widest text-gray-400 uppercase whitespace-nowrap">
+              <span
+                className="absolute left-1/2 -top-[19px] -translate-x-1/2 text-[10px] font-black tracking-widest uppercase whitespace-nowrap"
+                style={{ color: revealed ? '#1D841D' : '#9CA3AF' }}
+              >
                 {gapVerbOnly(phrase.infinitive_1)}
               </span>
               <span
@@ -673,7 +708,10 @@ function ContrastRoundView({
           {gapCount === 2 && phrase.option_a_2 && phrase.option_b_2 && (
             <p className="[text-wrap:balance]">
               <span className="relative inline-block align-middle mx-1">
-                <span className="absolute left-1/2 -top-[19px] -translate-x-1/2 text-[10px] font-black tracking-widest text-gray-400 uppercase whitespace-nowrap">
+                <span
+                  className="absolute left-1/2 -top-[19px] -translate-x-1/2 text-[10px] font-black tracking-widest uppercase whitespace-nowrap"
+                  style={{ color: revealed && correct2 !== null ? '#1D841D' : '#9CA3AF' }}
+                >
                   {gapVerbOnly(phrase.infinitive_2 ?? '')}
                 </span>
                 <span
@@ -757,20 +795,20 @@ function ContrastRoundView({
             >
               <ContrastResultCard
                 gap1={correct1 ? {
-                  answer: correct1 === 1 ? phrase.option_a_1 : phrase.option_b_1,
+                  answer: myWord1,
                   // Per-gap class tallies aren't tracked server-side yet — falls back to the round's
                   // overall correct/incorrect count until RoundResults exposes a per-gap breakdown.
                   correctCount: phase.results.correct_count,
                   incorrectCount: phase.results.total_count - phase.results.correct_count,
-                  icon: icons.a,
-                  userWasCorrect: displaySelected1 === correct1,
+                  icon: myIcon1,
+                  userWasCorrect: mySelected1 === correct1,
                 } : null}
                 gap2={gapCount === 2 && correct2 && phrase.option_a_2 && phrase.option_b_2 ? {
-                  answer: correct2 === 1 ? phrase.option_a_2 : phrase.option_b_2,
+                  answer: myWord2,
                   correctCount: phase.results.correct_count,
                   incorrectCount: phase.results.total_count - phase.results.correct_count,
-                  icon: icons.b,
-                  userWasCorrect: displaySelected2 === correct2,
+                  icon: myIcon2,
+                  userWasCorrect: mySelected2 === correct2,
                 } : null}
               />
 
