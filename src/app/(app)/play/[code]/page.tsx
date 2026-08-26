@@ -184,6 +184,13 @@ function PhraseSentence({
   const afterWords = (after ?? '').trim().split(/\s+/).filter(Boolean)
   const boxWidth = Math.max(80, Math.max(value.length, 8) * 10 + 36)
 
+  useEffect(() => {
+    if (editable && inputRef?.current) {
+      const t = setTimeout(() => inputRef.current?.focus(), 150)
+      return () => clearTimeout(t)
+    }
+  }, [editable, inputRef])
+
   return (
     <div className="flex flex-wrap items-end justify-center gap-x-2 gap-y-3 px-8">
       {beforeWords.map((w, i) => (
@@ -709,9 +716,9 @@ function ContrastRoundView({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto overscroll-none px-5 pb-36">
+      <div className="flex-1 overflow-y-auto overscroll-none px-5">
         {phase.type === 'active' && (
-          <div className={gapCount === 2 ? 'grid grid-cols-2 gap-4' : ''}>
+          <div className={`pb-36 ${gapCount === 2 ? 'grid grid-cols-2 gap-4' : ''}`}>
             <ContrastGap
               optionA={phrase.option_a_1}
               optionB={phrase.option_b_1}
@@ -746,7 +753,7 @@ function ContrastRoundView({
           {phase.type === 'collecting' && (
             <motion.div
               key="cat"
-              className="flex flex-col items-center justify-center gap-3 pt-4"
+              className="flex flex-col items-center justify-center gap-3 pt-4 pb-36"
               initial={{ opacity: 0, y: 32 }}
               animate={{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 280, damping: 24, delay: 0.05 } }}
               exit={{ opacity: 0, y: -12, transition: { duration: 0.2 } }}
@@ -769,7 +776,7 @@ function ContrastRoundView({
           {phase.type === 'results' && (
             <motion.div
               key="results-card"
-              className="flex flex-col pt-2 gap-4"
+              className="flex flex-col pt-2 gap-4 pb-36"
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
