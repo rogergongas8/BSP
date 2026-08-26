@@ -66,6 +66,11 @@ export type MyAnswer =
 
 const EMPTY_TEXT_ANSWER: MyAnswer = { kind: 'text', value: '' }
 
+/** Narrows a stored gap selection — the column is a plain integer — to the two options a gap has. */
+function toGapChoice(value: number | null): 1 | 2 | null {
+  return value === 1 || value === 2 ? value : null
+}
+
 /** Stand-in results used only when /api/rounds/[id]/results could not be read, so the round can
  *  still leave the collecting screen. The reconcile poll refetches and replaces it. Rendering
  *  guards on `correct_answer`/`correct_1` being absent, so no answer key is invented here. */
@@ -1195,6 +1200,15 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
   const streakRoundIdRef = useRef<string | null>(null)
   const playerCountRef = useRef(0)
   const myAnswerRef = useRef<MyAnswer>(EMPTY_TEXT_ANSWER)
+  /**
+   * The round this player has already submitted an answer for.
+   *
+   * `rounds.status` is per round, not per player: it stays 'active' until the last answer lands
+   * (or the host advances), so nothing in the row says "this player is done". Without this flag,
+   * every re-read of a still-active round — the reconcile poll, a Realtime event, a retry — put
+   * an already-answered player back into the question.
+   */
+  const answeredRoundIdRef = useRef<string | null>(null)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const channelRef = useRef<any>(null)
@@ -1305,8 +1319,30 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
     currentRoundNumberRef.current = round.round_number
 
     if (round.status === 'active') {
-      myAnswerRef.current = EMPTY_TEXT_ANSWER
       startTimer(round)
+
+      // An 'active' round the player has already answered means everyone else is still typing —
+      // they belong on the collecting screen, not back in the question. Rebuilding the phase here
+      // used to wipe `myAnswerRef`, which is why the submitted word also vanished from the
+      // results card once the round finally closed.
+      if (answeredRoundIdRef.current === round.id) {
+        const counts = await fetchAnswerCount(round.id)
+        setPhase(prev => {
+          if (prev.type === 'collecting' && prev.round.id === round.id) {
+            return counts ? { ...prev, answeredCount: counts.answered, totalCount: counts.total } : prev
+          }
+          return {
+            type: 'collecting',
+            round,
+            myAnswer: myAnswerRef.current,
+            answeredCount: counts?.answered ?? 1,
+            totalCount: counts?.total ?? playerCountRef.current,
+          }
+        })
+        return
+      }
+
+      myAnswerRef.current = EMPTY_TEXT_ANSWER
       setPhase({ type: 'active', round })
     } else if (round.status === 'collecting') {
       // Timer keeps running so it stays visible during collecting phase
@@ -1405,6 +1441,25 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
 
       const round = await fetchCurrentRound(room.id)
       if (round) {
+        // A reload mid-round loses the in-memory "already answered" flag, so it is read back from
+        // the row this player is allowed to see (0026: your own answer, at any time). Without it a
+        // returning player gets the question again with an empty box and their answer missing from
+        // the results card.
+        if (round.status === 'active') {
+          const { data: mine } = await supabase
+            .from('round_answers')
+            .select('answer, selected_1, selected_2')
+            .eq('round_id', round.id)
+            .eq('user_id', user.id)
+            .maybeSingle()
+
+          if (mine) {
+            answeredRoundIdRef.current = round.id
+            myAnswerRef.current = round.contrast_phrase_id
+              ? { kind: 'contrast', selected1: toGapChoice(mine.selected_1), selected2: toGapChoice(mine.selected_2) }
+              : { kind: 'text', value: mine.answer ?? '' }
+          }
+        }
         await applyRound(round)
       }
 
@@ -1546,6 +1601,7 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
     if (!roundId) return
 
     myAnswerRef.current = ans
+    answeredRoundIdRef.current = roundId
 
     setPhase(prev => {
       if (prev.type !== 'active') return prev
@@ -1574,6 +1630,10 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
     }).catch(() => null)
 
     if (!res || !res.ok) {
+      // 409 means the server already holds an answer for this player, or the round closed before
+      // the request landed — either way the answer is in, so the collecting screen stays. Any
+      // other failure did not record anything, so the question has to come back.
+      if (res?.status !== 409) answeredRoundIdRef.current = null
       const round = await fetchCurrentRound(roomIdRef.current ?? '')
       if (round) await applyRound(round)
     }
@@ -1679,10 +1739,14 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
         if (!fresh) return
 
         // Only act when the server has genuinely moved on, so a healthy client is untouched.
+        // 'collecting' is a per-player screen with no counterpart in the row — the round stays
+        // 'active' until the last player answers — so a waiting player matched against
+        // `status !== 'collecting'` looked stale on every single pass and was dropped back into
+        // the question five seconds after answering.
         const stale =
           fresh.id !== currentRoundIdRef.current ||
           (phase.type === 'active' && fresh.status !== 'active') ||
-          (phase.type === 'collecting' && fresh.status !== 'collecting') ||
+          (phase.type === 'collecting' && fresh.status !== 'collecting' && fresh.status !== 'active') ||
           (phase.type === 'results' && fresh.status !== 'results') ||
           (phase.type === 'results' && phase.results === PLACEHOLDER_RESULTS)
 
