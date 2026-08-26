@@ -664,7 +664,7 @@ function ContrastRoundView({
 
   return (
     <div className="flex-1 flex flex-col">
-      <div className="flex flex-col items-center pt-2 pb-4 px-5 gap-2">
+      <div className="flex flex-col items-center pt-6 pb-4 px-5 gap-2">
         {/* leading-[3.2]: the verb label above each blank is absolutely positioned and takes up no
             line height, so a tighter leading lets it print over the line above when the sentence
             wraps. 2.6 still left it grazing the descenders of the line above on a two-line phrase. */}
@@ -2006,7 +2006,7 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
                 )}
               </AnimatePresence>
             </div>
-            {('round' in phase && phase.round.contrast_phrases) && (
+            {('round' in phase && phase.round.contrast_phrases && phase.type !== 'results') && (
               <HintToggle checked={showHints} onChange={setShowHints} />
             )}
           </div>

@@ -355,7 +355,7 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
               )}
             </AnimatePresence>
           </div>
-          <HintToggle checked={showHints} onChange={setShowHints} />
+          {!submitted && <HintToggle checked={showHints} onChange={setShowHints} />}
         </div>
       </div>
 
@@ -364,7 +364,7 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
           round view uses. A long two-gap phrase can outgrow a short phone no matter how far the
           UI scales down, and when the page scrolled instead, the Check button (fixed to the
           bottom) ended up sitting on top of the option cards. */}
-      <div className="flex-1 min-h-0 overflow-y-auto overscroll-none flex flex-col px-5 pt-1 pb-28 gap-6">
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-none flex flex-col px-5 pt-6 pb-28 gap-6">
         {!loading && phrase ? (
           <>
             {/* In a mixed session each phrase comes from a different battle, so the pair of tenses
