@@ -102,10 +102,10 @@ function GapWithLabel({ verb, value, color, revealed }: { verb: string; value: s
 
   return (
     <span className="relative inline-block align-middle mx-1">
-      {/* -top-[19px]: at -top-4 the label sat flush against the box's rounded border. The
+      {/* -top-7 (28px): at -top-4 the label sat flush against the box's rounded border. The
           sentence's leading-[3.2] is what makes this headroom available. */}
       <span
-        className="absolute left-1/2 -top-[19px] -translate-x-1/2 text-[10px] font-bold tracking-widest uppercase whitespace-nowrap"
+        className="absolute left-1/2 -top-7 -translate-x-1/2 text-[10px] font-bold tracking-widest uppercase whitespace-nowrap"
         style={{ color: revealed ? '#1D841D' : '#9CA3AF' }}
       >
         {gapVerbOnly(verb)}
@@ -375,11 +375,11 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
                 over the line above whenever a blank lands on a wrapped second line. 2.6 was not
                 quite enough headroom — on a two-line phrase the label still grazed the descenders
                 of the line above. */}
-            {/* pt-9 is reserved whether or not the label is showing, so checking the answer never
+            {/* pt-12 is reserved whether or not the label is showing, so checking the answer never
                 shifts the sentence down. The band is deep enough that "Correct Answer" clears the
                 per-blank verb labels below it: the two used to share a horizontal band, and a
                 centred verb label over a blank near the left edge printed straight over it. */}
-            <div className="relative pt-9">
+            <div className="relative pt-12">
               <AnimatePresence>
                 {submitted && (
                   <motion.span
