@@ -426,7 +426,7 @@ function TextRoundView({
   return (
     <div className="flex-1 flex flex-col">
       {/* Sentence + input — always at top, never remounts across phases */}
-      <div className="flex flex-col items-center pt-2 pb-6">
+      <div className="flex flex-col items-center pt-8 pb-6">
         <PhraseSentence
           sentence={round.phrases.sentence}
           verb={round.phrases.verb}
@@ -457,7 +457,7 @@ function TextRoundView({
                 animate={{ y: [0, -14, 0] }}
                 transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut' }}
               >
-                <Image src="/images/escribiendo/mimo.png" width={160} height={160} alt="" draggable={false} className="w-40 h-40" />
+                <Image src="/images/escribiendo/mimo.png" width={160} height={160} alt="" draggable={false} className="w-40 h-40 object-contain" />
               </motion.div>
               <div className="text-center">
                 <p className="text-base font-bold text-gray-800">Collecting answers...</p>
@@ -1989,7 +1989,7 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
               </div>
             )}
           </div>
-          <div className="flex items-center justify-between pr-1 -mt-1 pl-[1.125rem]">
+          <div className="flex items-center justify-between pr-1 mt-1 pl-[1.125rem]">
             <div className="flex-1">
               <AnimatePresence>
                 {phase.type === 'results' && (
