@@ -255,10 +255,10 @@ function RoundActionBar({
   return (
     // Outer div owns the keyboard lift (plain transform, no Motion involvement so
     // nothing competes for `transform`); inner Motion div only fades the backdrop.
-    <div className="fixed bottom-0 left-0 right-0" style={kbLift}>
+    <div className="fixed bottom-0 left-0 right-0 pointer-events-none" style={kbLift}>
     <motion.div
-      className="px-5 pb-6 pt-3"
-      animate={{ backgroundColor: hasButton ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0)' }}
+      className="px-5 pb-6 pt-3 pointer-events-auto"
+      animate={{ backgroundColor: 'rgba(255,255,255,0)' }}
       transition={{ duration: 0.25 }}
     >
       <AnimatePresence mode="wait">
@@ -426,30 +426,7 @@ function TextRoundView({
   return (
     <div className="flex-1 flex flex-col">
       {/* Sentence + input — always at top, never remounts across phases */}
-      <div className="flex flex-col items-center pt-6 pb-6">
-        {/* Fixed-height slot: the label only exists at results, and letting it push the sentence
-            down on arrival would jog the whole screen at the moment the answer is revealed.
-            h-8 with the label pinned to its top (and pt-6 above instead of pt-10) lifts the label
-            clear of the sentence without moving the sentence itself — at h-4 it sat in the same
-            band as the verb label over the blank and the two overlapped.
-            pl-[2.375rem] puts it on the same left edge as the "Your Answer" label below — the results
-            container's px-5, plus the card's 2px border and p-4 — so the two read as a pair. */}
-        <div className="w-full h-8 mb-1 pl-[2.375rem] flex items-start">
-          <AnimatePresence>
-            {revealedAnswer !== null && (
-              <motion.p
-                key="correct-label"
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="text-[10px] font-black tracking-widest uppercase"
-                style={{ color: '#1D841D' }}
-              >
-                Correct Answer
-              </motion.p>
-            )}
-          </AnimatePresence>
-        </div>
+      <div className="flex flex-col items-center pt-2 pb-6">
         <PhraseSentence
           sentence={round.phrases.sentence}
           verb={round.phrases.verb}
@@ -687,30 +664,7 @@ function ContrastRoundView({
 
   return (
     <div className="flex-1 flex flex-col">
-      <div className="flex flex-col items-center pt-1 pb-4 px-5 gap-2">
-        {/* Fixed-height slot: the label only exists at results, and letting it push the sentence
-            down on arrival would jog the whole screen at the moment the answer is revealed.
-            h-8 with the label pinned to its top (and pt-6 above instead of pt-10) lifts the label
-            clear of the sentence without moving the sentence itself — at h-4 it sat in the same
-            band as the verb labels over the blanks and a centred one printed over it.
-            pl-[1.125rem] lands it on the same left edge as the "Your Answer" label below — this
-            container is already px-5 in, so it only adds the card's 2px border and p-4. */}
-        <div className="w-full h-8 pl-[1.125rem] flex items-start">
-          <AnimatePresence>
-            {revealed && (
-              <motion.p
-                key="correct-label"
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="text-[10px] font-black tracking-widest uppercase"
-                style={{ color: '#1D841D' }}
-              >
-                Correct Answer
-              </motion.p>
-            )}
-          </AnimatePresence>
-        </div>
+      <div className="flex flex-col items-center pt-2 pb-4 px-5 gap-2">
         {/* leading-[3.2]: the verb label above each blank is absolutely positioned and takes up no
             line height, so a tighter leading lets it print over the line above when the sentence
             wraps. 2.6 still left it grazing the descenders of the line above on a two-line phrase. */}
@@ -2035,11 +1989,27 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
               </div>
             )}
           </div>
-          {('round' in phase && phase.round.contrast_phrases) && (
-            <div className="flex justify-end pr-1 -mt-1">
-              <HintToggle checked={showHints} onChange={setShowHints} />
+          <div className="flex items-center justify-between pr-1 -mt-1 pl-[1.125rem]">
+            <div className="flex-1">
+              <AnimatePresence>
+                {phase.type === 'results' && (
+                  <motion.p
+                    key="correct-label"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="text-[10px] font-black tracking-widest uppercase"
+                    style={{ color: '#1D841D' }}
+                  >
+                    Correct Answer
+                  </motion.p>
+                )}
+              </AnimatePresence>
             </div>
-          )}
+            {('round' in phase && phase.round.contrast_phrases) && (
+              <HintToggle checked={showHints} onChange={setShowHints} />
+            )}
+          </div>
         </div>
       )}
 

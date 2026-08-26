@@ -338,7 +338,23 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
           </div>
           <span className="text-xs font-bold text-gray-400">{progress + 1}/{sessionTotal}</span>
         </div>
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between pl-[1.125rem]">
+          <div className="flex-1">
+            <AnimatePresence>
+              {submitted && (
+                <motion.span
+                  key="correct-label"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="text-[10px] font-black tracking-widest uppercase"
+                  style={{ color: '#1D841D' }}
+                >
+                  Correct Answer
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </div>
           <HintToggle checked={showHints} onChange={setShowHints} />
         </div>
       </div>
@@ -374,28 +390,7 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
                 over the line above whenever a blank lands on a wrapped second line. 2.6 was not
                 quite enough headroom — on a two-line phrase the label still grazed the descenders
                 of the line above. */}
-            {/* h-8 is reserved whether or not the label is showing, so checking the answer never
-                shifts the sentence down. The band is deep enough that "Correct Answer" clears the
-                per-blank verb labels below it: the two used to share a horizontal band, and a
-                centred verb label over a blank near the left edge printed straight over it. */}
             <div className="flex flex-col items-center gap-2">
-              <div className="w-full h-8 pl-[1.125rem] flex items-start">
-                <AnimatePresence>
-                  {submitted && (
-                    <motion.span
-                      key="correct-label"
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      className="text-[10px] font-black tracking-widest uppercase"
-                      style={{ color: '#1D841D' }}
-                    >
-                      Correct Answer
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </div>
-
               <div className="flex flex-col gap-3 text-center text-base text-gray-800 leading-[3.2]">
                 {gapCount === 1 ? (
                   <p className="[text-wrap:balance]">
@@ -480,7 +475,7 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
       </div>
 
       {/* Buttons */}
-      <div className="fixed bottom-0 left-0 right-0 flex flex-col px-5 pb-6 pt-3 bg-white gap-2">
+      <div className="fixed bottom-0 left-0 right-0 flex flex-col px-5 pb-6 pt-3 gap-2">
         <AnimatePresence mode="wait">
           {!submitted ? (
             <motion.button
