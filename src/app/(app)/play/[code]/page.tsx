@@ -4,7 +4,7 @@ import { use, useState, useEffect, useRef, useCallback, type CSSProperties } fro
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'motion/react'
-import { X, ChevronRight, Check, Send } from 'lucide-react'
+import { X, ChevronRight, Check, Send, Copy } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import ContrastGap from '@/components/game/ContrastGap'
 import ContrastResultCard, { ResultBar } from '@/components/game/ContrastResultCard'
@@ -423,8 +423,10 @@ function TextRoundView({
       {/* Sentence + input — always at top, never remounts across phases */}
       <div className="flex flex-col items-center pt-10 pb-6">
         {/* Fixed-height slot: the label only exists at results, and letting it push the sentence
-            down on arrival would jog the whole screen at the moment the answer is revealed. */}
-        <div className="h-4 mb-1 flex items-center">
+            down on arrival would jog the whole screen at the moment the answer is revealed.
+            pl-[38px] puts it on the same left edge as the "Your Answer" label below — the results
+            container's px-5, plus the card's 2px border and p-4 — so the two read as a pair. */}
+        <div className="w-full h-4 mb-1 pl-[38px] flex items-center">
           <AnimatePresence>
             {revealedAnswer !== null && (
               <motion.p
@@ -499,10 +501,8 @@ function TextRoundView({
             >
               {/* What this player actually wrote — the answer key is up in the sentence now. */}
               <div className="bg-white rounded-2xl p-4 border-2 border-gray-200">
-                <p
-                  className="text-[10px] font-black tracking-widest uppercase mb-3"
-                  style={{ color: myCorrect ? '#1D841D' : '#962F45' }}
-                >
+                {/* Black, not a verdict colour — the box below already carries green or red. */}
+                <p className="text-[10px] font-black tracking-widest uppercase mb-3 text-gray-900">
                   Your Answer
                 </p>
                 <div className="flex items-start gap-4">
@@ -666,8 +666,10 @@ function ContrastRoundView({
     <div className="flex-1 flex flex-col">
       <div className="flex flex-col items-center pt-10 pb-6 px-5 gap-2">
         {/* Fixed-height slot: the label only exists at results, and letting it push the sentence
-            down on arrival would jog the whole screen at the moment the answer is revealed. */}
-        <div className="h-4 flex items-center">
+            down on arrival would jog the whole screen at the moment the answer is revealed.
+            pl-[18px] lands it on the same left edge as the "Your Answer" label below — this
+            container is already px-5 in, so it only adds the card's 2px border and p-4. */}
+        <div className="w-full h-4 pl-[18px] flex items-center">
           <AnimatePresence>
             {revealed && (
               <motion.p
@@ -976,7 +978,7 @@ function StandingRow({ standing: s, isMe }: { standing: Standing; isMe: boolean 
 }
 
 function ScoreboardView({
-  roundNumber, totalRounds, standings, isHost, currentUserId, leaving, onNext, onLeave,
+  roundNumber, totalRounds, standings, isHost, currentUserId, leaving, roomCode, onNext, onLeave,
 }: {
   roundNumber: number
   totalRounds: number
@@ -984,6 +986,8 @@ function ScoreboardView({
   isHost: boolean
   currentUserId: string
   leaving: boolean
+  /** Shown between rounds so a player who dropped out can read it back and rejoin. */
+  roomCode: string
   onNext: () => void
   /** Shared with the rest of the game so leaving always goes through one code path. */
   onLeave: () => void
@@ -991,6 +995,15 @@ function ScoreboardView({
   const roundsLeft = totalRounds - roundNumber
   const [nexting, setNexting] = useState(false)
   const [confirmingLeave, setConfirmingLeave] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  // Copies the bare code, not the BSP- prefix the label wears — that is what the join screen
+  // takes, and it is what the lobby's copy button puts on the clipboard too.
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(roomCode)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   const visibleStandings = standings.slice(0, SCOREBOARD_VISIBLE_COUNT)
   const ownStandingBelowCut =
@@ -1020,6 +1033,19 @@ function ScoreboardView({
           Round {roundNumber} · {roundsLeft} left
         </p>
         <p className="relative text-gray-900 text-3xl font-bold tracking-tight mt-0.5">SCOREBOARD</p>
+
+        {/* The room code, between rounds. Someone whose phone locked or who closed the tab has no
+            way back into a game in progress otherwise — the lobby they got it from is gone. */}
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={handleCopyCode}
+          className="relative mt-3 inline-flex items-center gap-2 pl-3 pr-2.5 py-1.5 rounded-full bg-black/10"
+        >
+          <span className="text-[13px] font-bold tracking-[0.12em] text-gray-900">BSP-{roomCode}</span>
+          {copied
+            ? <Check className="w-3.5 h-3.5 text-gray-900 stroke-[3]" />
+            : <Copy className="w-3.5 h-3.5 text-gray-900 stroke-[2.5]" />}
+        </motion.button>
       </div>
 
       <LeaveConfirmModal
@@ -2044,6 +2070,7 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
               isHost={isHost}
               currentUserId={currentUserId ?? ''}
               leaving={leaving}
+              roomCode={code}
               onNext={handleNextRound}
               onLeave={leaveRoom}
             />

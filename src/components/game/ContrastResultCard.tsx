@@ -87,15 +87,12 @@ export default function ContrastResultCard({
   if (!gap1) return null
 
   const gaps = gap2 ? [gap1, gap2] : [gap1]
-  // One header for a card that can hold two gaps, so it only reads green when every gap landed.
-  const allCorrect = gaps.every(gap => gap.userWasCorrect)
 
   return (
     <div className="bg-white rounded-2xl p-4 border-2 border-gray-200">
-      <p
-        className="text-[10px] font-black tracking-widest uppercase mb-4"
-        style={{ color: allCorrect ? '#1D841D' : '#962F45' }}
-      >
+      {/* Black, not a verdict colour: the boxes below already carry green/red per gap, and a card
+          holding two gaps can be right on one and wrong on the other. */}
+      <p className="text-[10px] font-black tracking-widest uppercase mb-4 text-gray-900">
         Your Answer
       </p>
       <div className={gaps.length === 2 ? 'grid grid-cols-2 gap-4' : ''}>
