@@ -56,8 +56,13 @@ export default function AvatarPickerModal({
             transition={{ duration: 0.15 }}
             onClick={onClose}
           />
+          {/* A sheet spanning inset-x-0 is right on a phone and absurd on a desktop: the 4-column
+              grid stretched to the whole window, blowing each 56px avatar up into a blurry tile.
+              Capped and centred past `sm`, which keeps the tiles near their mobile size. Still
+              anchored to bottom-0 rather than floated — the exit slides down by the sheet's own
+              height, so any bottom offset would leave a sliver of it on screen. */}
           <motion.div
-            className="fixed inset-x-0 bottom-0 z-[60] bg-white rounded-t-3xl max-h-[85vh] flex flex-col"
+            className="fixed inset-x-0 bottom-0 z-[60] bg-white rounded-t-3xl max-h-[85vh] flex flex-col sm:max-w-[440px] sm:mx-auto"
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             transition={{ type: 'spring', stiffness: 320, damping: 32 }}
           >
