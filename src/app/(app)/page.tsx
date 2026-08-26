@@ -120,7 +120,9 @@ export default async function HomePage() {
         </div>
 
         {/* Today's challenge card */}
-        <div className="relative mb-8">
+        {/* mt-3: the cat and the XP badge are absolutely positioned inside this box, so the whole
+            pack — card, artwork, badge — drops together and keeps its own spacing. */}
+        <div className="relative mt-3 mb-8">
           {/* Cat character — rotates position every 24 h */}
           <div className={pos.cat}>
             <Image

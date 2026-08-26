@@ -39,9 +39,22 @@ export function ResultBar({ correctCount, incorrectCount, userWasCorrect, showVe
   const highlight = userWasCorrect
     ? { side: 'left' as const, width: correctPct, color: '#1D841D', bg: 'bg-green-200', text: 'text-green-900', count: correctCount }
     : { side: 'right' as const, width: 100 - correctPct, color: '#DC2626', bg: 'bg-red-100', text: 'text-red-900', count: incorrectCount }
+  // Each side's number takes its own side's colour — the flat side used to be given the *user's*
+  // verdict colour, which drew a green number on the red half of the bar and a red one on the
+  // green half.
   const flat = userWasCorrect
-    ? { bg: 'bg-red-100', text: 'text-green-900', count: incorrectCount }
-    : { bg: 'bg-green-200', text: 'text-red-900', count: correctCount }
+    ? { bg: 'bg-red-100', text: 'text-red-900', count: incorrectCount }
+    : { bg: 'bg-green-200', text: 'text-green-900', count: correctCount }
+
+  // The highlight is a readability floor as much as a proportion. At 0% — the whole room on the
+  // other side — the pill collapsed to its own 4px of border and the number inside spilled out
+  // over the flat side, which read as a count sitting in the wrong half of the bar. And at 100%
+  // it swallowed the other side's number. Clamped so the pill always fits its own digits, and,
+  // while the other side still has a count to show, never grows over that one either.
+  const PILL_MIN = '2.25rem'
+  const pillWidth = flat.count > 0
+    ? `clamp(${PILL_MIN}, ${highlight.width}%, calc(100% - ${PILL_MIN}))`
+    : `max(${PILL_MIN}, ${highlight.width}%)`
 
   const verdict = (
     <div
@@ -65,7 +78,7 @@ export function ResultBar({ correctCount, incorrectCount, userWasCorrect, showVe
         </div>
         <div
           className={`absolute inset-y-0 rounded-full border-2 flex items-center text-xs font-bold transition-all duration-700 box-border ${highlight.bg} ${highlight.text} ${highlight.side === 'left' ? 'left-0 justify-start pl-2.5' : 'right-0 justify-end pr-2.5'}`}
-          style={{ width: `${highlight.width}%`, borderColor: highlight.color }}
+          style={{ width: pillWidth, borderColor: highlight.color }}
         >
           {highlight.count}
         </div>

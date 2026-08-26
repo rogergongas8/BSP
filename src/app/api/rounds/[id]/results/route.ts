@@ -53,10 +53,12 @@ export async function GET(
     .eq('user_id', user.id)
     .single()
 
-  // Fetch all answers for aggregate (correct/total)
+  // Fetch all answers for aggregate (correct/total). selected_1/selected_2 come along for the
+  // per-gap tallies a contraste round reports below — a no-answer row holds null in both, which
+  // reads as "got this blank wrong", exactly as it should.
   const { data: allAnswers } = await admin
     .from('round_answers')
-    .select('user_id, is_correct, points_awarded')
+    .select('user_id, is_correct, points_awarded, selected_1, selected_2')
     .eq('round_id', id)
 
   const correctCount = (allAnswers ?? []).filter(a => a.is_correct).length
@@ -173,6 +175,15 @@ export async function GET(
       option_a_1: string; option_b_1: string; correct_1: 1 | 2
       option_a_2: string | null; option_b_2: string | null; correct_2: 1 | 2 | null
     }
+    // Per-blank tallies. `correct_count` counts players who got the *whole* phrase right, so on a
+    // two-blank phrase it says nothing about either blank on its own: everyone could have nailed
+    // blank 1 and still leave correct_count at 0. The result bar under each blank is a per-blank
+    // bar, so it needs a per-blank count or it contradicts its own verdict.
+    const gap1CorrectCount = (allAnswers ?? []).filter(a => a.selected_1 === cp.correct_1).length
+    const gap2CorrectCount = cp.correct_2 === null
+      ? null
+      : (allAnswers ?? []).filter(a => a.selected_2 === cp.correct_2).length
+
     return NextResponse.json({
       ...baseResponse,
       is_contraste: true,
@@ -180,6 +191,8 @@ export async function GET(
       correct_2: cp.correct_2,
       my_selected_1: myAnswer?.selected_1 ?? null,
       my_selected_2: myAnswer?.selected_2 ?? null,
+      gap_1_correct_count: gap1CorrectCount,
+      gap_2_correct_count: gap2CorrectCount,
     })
   }
 

@@ -74,16 +74,31 @@ export async function POST(
     const nonResponders = (allPlayers ?? []).filter(p => !answeredIds.has(p.user_id))
 
     if (nonResponders.length > 0) {
-      await admin.from('round_answers').insert(
-        nonResponders.map(p => ({
-          round_id: id,
-          user_id: p.user_id,
-          answer: null,
-          is_correct: false,
-          points_awarded: 0,
-          validation_status: 'no_answer',
-        }))
-      )
+      // upsert/ignoreDuplicates rather than insert: the read above and this write are not one
+      // transaction, and 'collecting' is exactly the window where a straggler's answer lands in
+      // between. A plain insert then hit the UNIQUE(round_id, user_id) constraint and, being a
+      // single batch, rolled back *every* no-answer row — leaving the round short of rows and the
+      // results bar reporting "1 - 0" for a room of two. ON CONFLICT DO NOTHING keeps the real
+      // answer and fills in the rest.
+      const { error: backfillError } = await admin
+        .from('round_answers')
+        .upsert(
+          nonResponders.map(p => ({
+            round_id: id,
+            user_id: p.user_id,
+            answer: null,
+            is_correct: false,
+            points_awarded: 0,
+            validation_status: 'no_answer',
+          })),
+          { onConflict: 'round_id,user_id', ignoreDuplicates: true }
+        )
+
+      // The round still opens: a stuck round is worse than a tally that is short a row, and the
+      // host has no other way past this point once the timer has fired.
+      if (backfillError) {
+        console.error('[advance] no-answer backfill failed for round', id, backfillError)
+      }
     }
 
     await admin.from('rounds').update({ status: 'results' }).eq('id', id)

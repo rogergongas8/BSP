@@ -43,6 +43,10 @@ export type RoundResults = {
   correct_2?: 1 | 2 | null
   my_selected_1?: 1 | 2 | null
   my_selected_2?: 1 | 2 | null
+  /** How many players got *this* blank right — not the same as `correct_count`, which counts only
+   *  players who got every blank in the phrase right. Contraste rounds only. */
+  gap_1_correct_count?: number
+  gap_2_correct_count?: number | null
   my_validation_status: string
   /** Per-dimension breakdown of a wrong answer, computed server-side from the phrase's own
    *  type so each tense reports the checks that actually apply to it. Null when correct. */
@@ -421,12 +425,15 @@ function TextRoundView({
   return (
     <div className="flex-1 flex flex-col">
       {/* Sentence + input — always at top, never remounts across phases */}
-      <div className="flex flex-col items-center pt-10 pb-6">
+      <div className="flex flex-col items-center pt-6 pb-6">
         {/* Fixed-height slot: the label only exists at results, and letting it push the sentence
             down on arrival would jog the whole screen at the moment the answer is revealed.
+            h-8 with the label pinned to its top (and pt-6 above instead of pt-10) lifts the label
+            clear of the sentence without moving the sentence itself — at h-4 it sat in the same
+            band as the verb label over the blank and the two overlapped.
             pl-[2.375rem] puts it on the same left edge as the "Your Answer" label below — the results
             container's px-5, plus the card's 2px border and p-4 — so the two read as a pair. */}
-        <div className="w-full h-4 mb-1 pl-[2.375rem] flex items-center">
+        <div className="w-full h-8 mb-1 pl-[2.375rem] flex items-start">
           <AnimatePresence>
             {revealedAnswer !== null && (
               <motion.p
@@ -545,7 +552,7 @@ function TextRoundView({
                 <div className="mt-4">
                   <ResultBar
                     correctCount={phase.results.correct_count}
-                    incorrectCount={phase.results.total_count - phase.results.correct_count}
+                    incorrectCount={Math.max(0, phase.results.total_count - phase.results.correct_count)}
                     userWasCorrect={phase.results.is_correct}
                   />
                 </div>
@@ -662,14 +669,31 @@ function ContrastRoundView({
   const myIcon1 = mySelected1 === 1 ? icons.a : mySelected1 === 2 ? icons.b : null
   const myIcon2 = mySelected2 === 1 ? icons.a : mySelected2 === 2 ? icons.b : null
 
+  // Per-blank class tally for the bars under the card. The round's own `correct_count` counts
+  // players who got the *whole* phrase right, so on a two-blank phrase it contradicts the bar it
+  // sits under: the room can have nailed blank 1 while correct_count stays 0, and the player then
+  // read a green verdict over a "0" — with the pill collapsed to nothing and its digit adrift.
+  // `correct_count` stays as the fallback for a response that predates the per-blank counts, where
+  // on a single-blank phrase the two are the same number anyway.
+  const answeredCount = phase.type === 'results' ? phase.results.total_count : 0
+  const gap1Correct = phase.type === 'results'
+    ? phase.results.gap_1_correct_count ?? phase.results.correct_count
+    : 0
+  const gap2Correct = phase.type === 'results'
+    ? phase.results.gap_2_correct_count ?? phase.results.correct_count
+    : 0
+
   return (
     <div className="flex-1 flex flex-col">
-      <div className="flex flex-col items-center pt-10 pb-6 px-5 gap-2">
+      <div className="flex flex-col items-center pt-6 pb-6 px-5 gap-2">
         {/* Fixed-height slot: the label only exists at results, and letting it push the sentence
             down on arrival would jog the whole screen at the moment the answer is revealed.
+            h-8 with the label pinned to its top (and pt-6 above instead of pt-10) lifts the label
+            clear of the sentence without moving the sentence itself — at h-4 it sat in the same
+            band as the verb labels over the blanks and a centred one printed over it.
             pl-[1.125rem] lands it on the same left edge as the "Your Answer" label below — this
             container is already px-5 in, so it only adds the card's 2px border and p-4. */}
-        <div className="w-full h-4 pl-[1.125rem] flex items-center">
+        <div className="w-full h-8 pl-[1.125rem] flex items-start">
           <AnimatePresence>
             {revealed && (
               <motion.p
@@ -685,10 +709,10 @@ function ContrastRoundView({
             )}
           </AnimatePresence>
         </div>
-        {/* leading-[2.6]: the verb label above each blank is absolutely positioned and takes up no
+        {/* leading-[3.2]: the verb label above each blank is absolutely positioned and takes up no
             line height, so a tighter leading lets it print over the line above when the sentence
-            wraps. */}
-        <div className="flex flex-col gap-3 text-center text-base text-gray-800 leading-[2.6]">
+            wraps. 2.6 still left it grazing the descenders of the line above on a two-line phrase. */}
+        <div className="flex flex-col gap-3 text-center text-base text-gray-800 leading-[3.2]">
           <p className="[text-wrap:balance]">
             {sentenceParts[0]}
             <span className="relative inline-block align-middle mx-1">
@@ -798,17 +822,15 @@ function ContrastRoundView({
               <ContrastResultCard
                 gap1={correct1 ? {
                   answer: myWord1,
-                  // Per-gap class tallies aren't tracked server-side yet — falls back to the round's
-                  // overall correct/incorrect count until RoundResults exposes a per-gap breakdown.
-                  correctCount: phase.results.correct_count,
-                  incorrectCount: phase.results.total_count - phase.results.correct_count,
+                  correctCount: gap1Correct,
+                  incorrectCount: Math.max(0, answeredCount - gap1Correct),
                   icon: myIcon1,
                   userWasCorrect: mySelected1 === correct1,
                 } : null}
                 gap2={gapCount === 2 && correct2 && phrase.option_a_2 && phrase.option_b_2 ? {
                   answer: myWord2,
-                  correctCount: phase.results.correct_count,
-                  incorrectCount: phase.results.total_count - phase.results.correct_count,
+                  correctCount: gap2Correct,
+                  incorrectCount: Math.max(0, answeredCount - gap2Correct),
                   icon: myIcon2,
                   userWasCorrect: mySelected2 === correct2,
                 } : null}

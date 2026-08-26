@@ -103,7 +103,7 @@ function GapWithLabel({ verb, value, color, revealed }: { verb: string; value: s
   return (
     <span className="relative inline-block align-middle mx-1">
       {/* -top-[19px]: at -top-4 the label sat flush against the box's rounded border. The
-          sentence's leading-[2.6] is what makes this headroom available. */}
+          sentence's leading-[3.2] is what makes this headroom available. */}
       <span
         className="absolute left-1/2 -top-[19px] -translate-x-1/2 text-[10px] font-bold tracking-widest uppercase whitespace-nowrap"
         style={{ color: revealed ? '#1D841D' : '#9CA3AF' }}
@@ -349,7 +349,7 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
           round view uses. A long two-gap phrase can outgrow a short phone no matter how far the
           UI scales down, and when the page scrolled instead, the Check button (fixed to the
           bottom) ended up sitting on top of the option cards. */}
-      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col px-5 pt-8 pb-28 gap-8">
+      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col px-5 pt-4 pb-28 gap-8">
         {!loading && phrase ? (
           <>
             {/* In a mixed session each phrase comes from a different battle, so the pair of tenses
@@ -370,13 +370,16 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
             )}
 
             {/* Sentence with blank(s) as real input-style boxes */}
-            {/* leading-[2.6] rather than leading-relaxed: the verb label above each blank is
+            {/* leading-[3.2] rather than leading-relaxed: the verb label above each blank is
                 absolutely positioned, so it takes up no line height of its own and would print
-                over the line above whenever a blank lands on a wrapped second line. */}
-            {/* pt-5 is reserved whether or not the label is showing, so checking the answer never
-                shifts the sentence down. The label sits at the far left while the per-blank verb
-                labels are centred, so the two never meet even though both live in this band. */}
-            <div className="relative pt-5">
+                over the line above whenever a blank lands on a wrapped second line. 2.6 was not
+                quite enough headroom — on a two-line phrase the label still grazed the descenders
+                of the line above. */}
+            {/* pt-9 is reserved whether or not the label is showing, so checking the answer never
+                shifts the sentence down. The band is deep enough that "Correct Answer" clears the
+                per-blank verb labels below it: the two used to share a horizontal band, and a
+                centred verb label over a blank near the left edge printed straight over it. */}
+            <div className="relative pt-9">
               <AnimatePresence>
                 {submitted && (
                   <motion.span
@@ -392,7 +395,7 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
                 )}
               </AnimatePresence>
 
-              <div className="flex flex-col gap-6 text-center text-base text-gray-800 leading-[2.6]">
+              <div className="flex flex-col gap-6 text-center text-base text-gray-800 leading-[3.2]">
                 {gapCount === 1 ? (
                   <p className="[text-wrap:balance]">
                     {sentenceParts[0]}
