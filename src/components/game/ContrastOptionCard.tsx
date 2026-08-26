@@ -28,11 +28,12 @@ export default function ContrastOptionCard({
 }) {
   const clickable = state === 'default' || state === 'selected'
 
-  // Verdict badge, top-right of the card itself. Marks the right answer (whether or not it was
-  // picked) and the wrong one only when the player actually chose it — putting a cross on an
-  // option nobody selected would read as a second wrong answer rather than feedback.
+  // Verdict badge, top-right of the card itself — and only ever on the option this player picked.
+  // A tick on the right answer they did not choose read as praise for a card they never touched;
+  // that option is still marked as the right one by its green border and the shake below, which
+  // says "this was it" without claiming they got there.
   const verdict =
-    state === 'correct-selected' || state === 'correct-unselected' ? 'correct'
+    state === 'correct-selected' ? 'correct'
     : state === 'incorrect-selected' ? 'incorrect'
     : null
 

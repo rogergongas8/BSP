@@ -92,16 +92,22 @@ function splitSentence(sentence: string, gapCount: 1 | 2): string[] {
  * The outline stays neutral rather than green so it reads as "this is the answer", not as a verdict;
  * which option they chose is marked on the cards below.
  */
-function GapWithLabel({ verb, value, color, result }: { verb: string; value: string | null; color: string; result?: 'correct' | 'incorrect' }) {
-  const resultStyle = result
-    ? { borderColor: '#111827', backgroundColor: '#FFFFFF', color: '#111827' }
+/** One blank in the sentence. Once `revealed`, it holds the right word — not the player's pick —
+ *  in the green-bordered "correct answer" box the rest of the app uses, matching the multiplayer
+ *  round. Which option they actually chose is marked on the cards below. */
+function GapWithLabel({ verb, value, color, revealed }: { verb: string; value: string | null; color: string; revealed?: boolean }) {
+  const resultStyle = revealed
+    ? { borderColor: '#1D841D', backgroundColor: '#F3F4F6', color: '#111827' }
     : { borderColor: color, color: '#111827' }
 
   return (
     <span className="relative inline-block align-middle mx-1">
       {/* -top-[19px]: at -top-4 the label sat flush against the box's rounded border. The
           sentence's leading-[2.6] is what makes this headroom available. */}
-      <span className="absolute left-1/2 -top-[19px] -translate-x-1/2 text-[10px] font-bold tracking-widest text-gray-400 uppercase whitespace-nowrap">
+      <span
+        className="absolute left-1/2 -top-[19px] -translate-x-1/2 text-[10px] font-bold tracking-widest uppercase whitespace-nowrap"
+        style={{ color: revealed ? '#1D841D' : '#9CA3AF' }}
+      >
         {gapVerbOnly(verb)}
       </span>
       <span
@@ -363,41 +369,61 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
             {/* leading-[2.6] rather than leading-relaxed: the verb label above each blank is
                 absolutely positioned, so it takes up no line height of its own and would print
                 over the line above whenever a blank lands on a wrapped second line. */}
-            <div className="flex flex-col gap-6 text-center text-base text-gray-800 leading-[2.6]">
-              {gapCount === 1 ? (
-                <p className="[text-wrap:balance]">
-                  {sentenceParts[0]}
-                  <GapWithLabel
-                    verb={phrase.infinitive_1}
-                    value={submitted ? correctWord1 : gapValue1}
-                    color={GAP_COLORS[1].border}
-                    result={submitted ? (selected1 === phrase.correct_1 ? 'correct' : 'incorrect') : undefined}
-                  />
-                  {sentenceParts[1]}
-                </p>
-              ) : (
-                <>
+            {/* pt-5 is reserved whether or not the label is showing, so checking the answer never
+                shifts the sentence down. The label sits at the far left while the per-blank verb
+                labels are centred, so the two never meet even though both live in this band. */}
+            <div className="relative pt-5">
+              <AnimatePresence>
+                {submitted && (
+                  <motion.span
+                    key="correct-label"
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute top-0 left-0 text-[10px] font-black tracking-widest uppercase"
+                    style={{ color: '#1D841D' }}
+                  >
+                    Correct Answer
+                  </motion.span>
+                )}
+              </AnimatePresence>
+
+              <div className="flex flex-col gap-6 text-center text-base text-gray-800 leading-[2.6]">
+                {gapCount === 1 ? (
                   <p className="[text-wrap:balance]">
                     {sentenceParts[0]}
                     <GapWithLabel
                       verb={phrase.infinitive_1}
                       value={submitted ? correctWord1 : gapValue1}
                       color={GAP_COLORS[1].border}
-                      result={submitted ? (selected1 === phrase.correct_1 ? 'correct' : 'incorrect') : undefined}
+                      revealed={submitted}
                     />
                     {sentenceParts[1]}
                   </p>
-                  <p className="[text-wrap:balance]">
-                    <GapWithLabel
-                      verb={phrase.infinitive_2 ?? ''}
-                      value={submitted ? correctWord2 : gapValue2}
-                      color={GAP_COLORS[2].border}
-                      result={submitted ? (selected2 === phrase.correct_2 ? 'correct' : 'incorrect') : undefined}
-                    />
-                    {sentenceParts[2]}
-                  </p>
-                </>
-              )}
+                ) : (
+                  <>
+                    <p className="[text-wrap:balance]">
+                      {sentenceParts[0]}
+                      <GapWithLabel
+                        verb={phrase.infinitive_1}
+                        value={submitted ? correctWord1 : gapValue1}
+                        color={GAP_COLORS[1].border}
+                        revealed={submitted}
+                      />
+                      {sentenceParts[1]}
+                    </p>
+                    <p className="[text-wrap:balance]">
+                      <GapWithLabel
+                        verb={phrase.infinitive_2 ?? ''}
+                        value={submitted ? correctWord2 : gapValue2}
+                        color={GAP_COLORS[2].border}
+                        revealed={submitted}
+                      />
+                      {sentenceParts[2]}
+                    </p>
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Gaps */}
