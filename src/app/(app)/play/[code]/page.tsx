@@ -586,7 +586,7 @@ function splitContrastSentence(sentence: string, gapCount: 1 | 2): string[] {
 }
 
 function ContrastRoundView({
-  phase, secondsLeft, isHost, myStreak, onAnswer, onSkip, onNext,
+  phase, secondsLeft, isHost, myStreak, onAnswer, onSkip, onNext, showHints,
 }: {
   phase: RoundPhase
   secondsLeft: number
@@ -595,6 +595,7 @@ function ContrastRoundView({
   onAnswer: (ans: MyAnswer) => void
   onSkip: () => void
   onNext: () => void
+  showHints: boolean
 }) {
   const [selected1, setSelected1] = useState<1 | 2 | null>(null)
   const [selected2, setSelected2] = useState<1 | 2 | null>(null)
@@ -865,6 +866,7 @@ export function RoundView(props: {
   onAnswer: (ans: MyAnswer) => void
   onSkip: () => void
   onNext: () => void
+  showHints: boolean
 }) {
   if (props.phase.round.contrast_phrase_id) {
     return <ContrastRoundView {...props} />
@@ -2081,6 +2083,7 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
               onAnswer={handleAnswer}
               onSkip={handleSkip}
               onNext={handleNextFromResults}
+              showHints={showHints}
             />
           </motion.div>
         )}

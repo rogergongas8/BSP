@@ -237,6 +237,7 @@ export default function DevScoreboardPage() {
           onAnswer={() => {}}
           onSkip={() => {}}
           onNext={() => alert('Next clicked')}
+          showHints={false}
         />
       )}
       {view === 'text-results' && (
@@ -248,6 +249,7 @@ export default function DevScoreboardPage() {
           onAnswer={() => {}}
           onSkip={() => {}}
           onNext={() => alert('Next clicked')}
+          showHints={false}
         />
       )}
     </div>
