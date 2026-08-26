@@ -5,14 +5,14 @@ import { motion } from 'motion/react'
 import { Check, X } from 'lucide-react'
 
 export type ContrastCardState =
-  | 'default' | 'selected' | 'correct-selected' | 'correct-unselected' | 'incorrect-selected' | 'disabled'
+  | 'default' | 'selected' | 'correct-selected' | 'incorrect-selected' | 'disabled'
 
 const STATE_CLASSES: Record<ContrastCardState, string> = {
   'default':            'bg-white text-gray-800 border border-bsp-blue',
   'selected':           'text-white',
   'correct-selected':   'bg-[#DCFCE7] text-[#15803D] border border-[#22C55E]',
-  'correct-unselected': 'bg-white text-gray-800 border border-[#1D841D]',
   'incorrect-selected': 'bg-[#FFD4D4] text-[#962F45] border border-[#962F45]',
+  // Every option the player did not pick, once the answer is checked — including the right one.
   'disabled':           'bg-white/60 text-gray-400 border border-gray-200',
 }
 
@@ -29,9 +29,9 @@ export default function ContrastOptionCard({
   const clickable = state === 'default' || state === 'selected'
 
   // Verdict badge, top-right of the card itself — and only ever on the option this player picked.
-  // A tick on the right answer they did not choose read as praise for a card they never touched;
-  // that option is still marked as the right one by its green border and the shake below, which
-  // says "this was it" without claiming they got there.
+  // A tick on the right answer they did not choose read as praise for a card they never touched.
+  // Nothing marks the unpicked option now: the sentence above the cards is where the right answer
+  // is spelled out.
   const verdict =
     state === 'correct-selected' ? 'correct'
     : state === 'incorrect-selected' ? 'incorrect'
@@ -59,8 +59,6 @@ export default function ContrastOptionCard({
         type="button"
         onClick={clickable ? onClick : undefined}
         whileTap={clickable ? { scale: 0.96 } : undefined}
-        animate={state === 'correct-unselected' ? { x: [0, -4, 4, -4, 0] } : { x: 0 }}
-        transition={state === 'correct-unselected' ? { duration: 0.4 } : undefined}
         style={state === 'selected' ? { backgroundColor: accentColor, borderColor: accentColor, borderWidth: 1, borderStyle: 'solid' } : undefined}
         className={`w-full aspect-square max-h-[110px] rounded-2xl px-3 py-3 text-center text-sm font-bold leading-tight break-words shadow-sm transition-colors flex items-center justify-center ${STATE_CLASSES[state]} ${clickable ? 'cursor-pointer' : 'cursor-default'}`}
       >

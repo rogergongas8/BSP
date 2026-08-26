@@ -4,8 +4,12 @@ import ContrastOptionCard, { type ContrastCardState } from './ContrastOptionCard
 
 function cardState(opt: 1 | 2, selected: 1 | 2 | null, correct: 1 | 2 | null, submitted: boolean): ContrastCardState {
   if (!submitted || correct === null) return selected === opt ? 'selected' : 'default'
-  if (opt === correct) return selected === opt ? 'correct-selected' : 'correct-unselected'
-  return selected === opt ? 'incorrect-selected' : 'disabled'
+  // Once checked, only the option this player picked is coloured — green if it was right, red if
+  // not. Anything they did not touch greys out, whether or not it happened to be the answer: the
+  // sentence above already reads correctly, under its own "Correct Answer" label, so highlighting
+  // the unpicked option here only competed with it.
+  if (selected !== opt) return 'disabled'
+  return opt === correct ? 'correct-selected' : 'incorrect-selected'
 }
 
 export default function ContrastGap({

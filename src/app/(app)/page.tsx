@@ -77,6 +77,10 @@ export default async function HomePage() {
   const CIRCUMFERENCE = 119.38
   const dashOffset = CIRCUMFERENCE * (1 - progressPct)
 
+  // The badge doubles as the challenge's status: the XP still on offer while there is work left,
+  // and a plain "Done!" once it has been earned — the XP figure stops being news at that point.
+  const challengeDone = challengeTarget > 0 && challengeProgress >= challengeTarget
+
   // Cat artwork rotates through its three poses on the same daily clock as the challenge,
   // so the card's illustration changes with the challenge it belongs to.
   const pos = CAT_POSITIONS[today % CAT_POSITIONS.length]
@@ -127,9 +131,17 @@ export default async function HomePage() {
             />
           </div>
 
-          {/* XP badge — follows the cat */}
-          <div className={`${pos.xp} bg-bsp-orange rounded-full px-2 py-2 shadow-md z-10`}>
-            <span className="text-black text-xs">+ {challenge?.xp_reward ?? 50} XP</span>
+          {/* XP badge — follows the cat. Green on completion, matching the progress ring beside it
+              once that closes. px-3 and nowrap so the badge sits comfortably around either string:
+              it is rotated and pinned to the card's right edge, where a wrapped line reads as
+              broken rather than tight. */}
+          <div
+            className={`${pos.xp} rounded-full px-3 py-2 shadow-md z-10`}
+            style={{ backgroundColor: challengeDone ? '#4CAF50' : 'var(--bsp-orange)' }}
+          >
+            <span className={`text-black text-xs whitespace-nowrap ${challengeDone ? 'font-bold' : ''}`}>
+              {challengeDone ? 'Done!' : `+ ${challenge?.xp_reward ?? 50} XP`}
+            </span>
           </div>
 
           <div className="bg-white/15 rounded-3xl px-4 py-3 flex items-center gap-3">
