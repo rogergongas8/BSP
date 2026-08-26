@@ -6,6 +6,7 @@
 
 import { useState } from 'react'
 import { FinishedView, RoundView, type Round, type RoundPhase } from '../play/[code]/page'
+import type { StatusRow } from '@/lib/game-logic'
 
 // Covers all three movement states (climbed / dropped / held) and overflows the top-5 cut, so
 // the preview exercises both the arrows and the pinned "your position" row.
@@ -81,11 +82,80 @@ const VARIANTS = [
   { label: 'Both wrong', selected1: 2 as const, selected2: 1 as const, streak: 0 },
 ]
 
+// ─── Escribiendo (written) round ──────────────────────────────────────────────
+// A Pretérito Perfecto phrase on purpose: it is the worst case for the results card, since it
+// reports four status rows next to the answer box.
+
+const FAKE_TEXT_ROUND: Round = {
+  id: 'round-2',
+  room_id: 'room-1',
+  round_number: 4,
+  status: 'results',
+  started_at: new Date().toISOString(),
+  duration_seconds: 30,
+  phrase_id: 'phrase-2',
+  contrast_phrase_id: null,
+  phrases: {
+    id: 'phrase-2',
+    verb: 'divertirse, nosotros',
+    sentence: 'Esta semana ___ mucho en la playa.',
+    },
+  contrast_phrases: null,
+}
+
+const TEXT_CORRECT_ANSWER = 'nos hemos divertido'
+
+function fakeTextResults(
+  myAnswer: string | null,
+  isCorrect: boolean,
+  statusRows: StatusRow[] | null,
+): RoundPhase & { type: 'results' } {
+  return {
+    type: 'results',
+    round: FAKE_TEXT_ROUND,
+    myAnswer: { kind: 'text', value: myAnswer ?? '' },
+    results: {
+      is_contraste: false,
+      correct_answer: TEXT_CORRECT_ANSWER,
+      my_answer: myAnswer,
+      my_validation_status: isCorrect ? 'correct' : myAnswer === null ? 'no_answer' : 'wrong_ending',
+      status_rows: statusRows,
+      my_points: isCorrect ? 118 : 0,
+      is_correct: isCorrect,
+      correct_count: 4,
+      total_count: 6,
+      my_rank: 3,
+      total_players: 6,
+      points_behind: 24,
+      player_ahead_name: 'Roger',
+      standings: FAKE_STANDINGS,
+      round_number: 4,
+    },
+  }
+}
+
+const TEXT_VARIANTS = [
+  { label: 'Correct', answer: TEXT_CORRECT_ANSWER, isCorrect: true, rows: null, streak: 0 },
+  { label: 'Correct + streak', answer: TEXT_CORRECT_ANSWER, isCorrect: true, rows: null, streak: 4 },
+  {
+    label: 'Wrong', answer: 'nos hemos divertidos', isCorrect: false, streak: 0,
+    rows: [
+      { label: 'Structure', ok: true },
+      { label: 'Auxiliary', ok: true },
+      { label: 'Person/Number', ok: true },
+      { label: 'Participle', ok: false },
+    ] satisfies StatusRow[],
+  },
+  { label: 'No answer', answer: null, isCorrect: false, rows: null, streak: 0 },
+]
+
 export default function DevScoreboardPage() {
-  const [view, setView] = useState<'finished' | 'contrast-results'>('contrast-results')
+  const [view, setView] = useState<'finished' | 'contrast-results' | 'text-results'>('text-results')
   const [variantIdx, setVariantIdx] = useState(0)
+  const [textVariantIdx, setTextVariantIdx] = useState(0)
   const [controlsOpen, setControlsOpen] = useState(true)
   const variant = VARIANTS[variantIdx]
+  const textVariant = TEXT_VARIANTS[textVariantIdx]
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col">
@@ -107,6 +177,12 @@ export default function DevScoreboardPage() {
                 Contrast results
               </button>
               <button
+                onClick={() => setView('text-results')}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold ${view === 'text-results' ? 'bg-white text-black' : 'bg-gray-700 text-white'}`}
+              >
+                Text results
+              </button>
+              <button
                 onClick={() => setView('finished')}
                 className={`px-2.5 py-1 rounded-lg text-[11px] font-bold ${view === 'finished' ? 'bg-white text-black' : 'bg-gray-700 text-white'}`}
               >
@@ -120,6 +196,19 @@ export default function DevScoreboardPage() {
                     key={v.label}
                     onClick={() => setVariantIdx(i)}
                     className={`px-2.5 py-1 rounded-lg text-[11px] font-bold ${i === variantIdx ? 'bg-amber-400 text-black' : 'bg-gray-700 text-white'}`}
+                  >
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {view === 'text-results' && (
+              <div className="flex gap-1.5 flex-wrap">
+                {TEXT_VARIANTS.map((v, i) => (
+                  <button
+                    key={v.label}
+                    onClick={() => setTextVariantIdx(i)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold ${i === textVariantIdx ? 'bg-amber-400 text-black' : 'bg-gray-700 text-white'}`}
                   >
                     {v.label}
                   </button>
@@ -145,6 +234,17 @@ export default function DevScoreboardPage() {
           secondsLeft={0}
           isHost={true}
           myStreak={variant.streak}
+          onAnswer={() => {}}
+          onSkip={() => {}}
+          onNext={() => alert('Next clicked')}
+        />
+      )}
+      {view === 'text-results' && (
+        <RoundView
+          phase={fakeTextResults(textVariant.answer, textVariant.isCorrect, textVariant.rows)}
+          secondsLeft={0}
+          isHost={true}
+          myStreak={textVariant.streak}
           onAnswer={() => {}}
           onSkip={() => {}}
           onNext={() => alert('Next clicked')}

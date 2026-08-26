@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { BadgeModal } from '@/components/game/badge-modal'
 import { LevelUpModal } from '@/components/game/level-up-modal'
 import { HostEndedModal } from '@/components/game/host-ended-modal'
@@ -14,6 +15,12 @@ type QueueItem =
   | { type: 'challenge'; text: string; xp: number }
 
 export default function NotificationQueue() {
+  // This component lives in the (app) layout, which survives every client-side navigation inside
+  // the group — so a mount-only effect reads sessionStorage exactly once per hard load. The host
+  // leaving a game writes its flag and then router.push('/'), a soft navigation: the flag sat
+  // unread until the next full reload and the modal never appeared. Re-checking on `pathname`
+  // catches every arrival, and since both keys are removed on read a repeat pass is a no-op.
+  const pathname = usePathname()
   const [queue, setQueue] = useState<QueueItem[]>([])
   const [current, setCurrent] = useState<QueueItem | null>(null)
   const [hostEndedGame, setHostEndedGame] = useState(false)
@@ -60,7 +67,7 @@ export default function NotificationQueue() {
       sessionStorage.removeItem('bsp_host_ended_game')
       setHostEndedGame(true)
     }
-  }, [])
+  }, [pathname])
 
   const handleClose = () => {
     if (queue.length > 0) {

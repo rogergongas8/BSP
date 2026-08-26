@@ -360,20 +360,35 @@ function TextRoundView({
 
   const round = phase.round
   const hasSubmitted = phase.type === 'collecting' || phase.type === 'results'
-  const displayValue = hasSubmitted && phase.myAnswer.kind === 'text' ? phase.myAnswer.value : typedInput
+  const myCorrect = phase.type === 'results' && phase.results.my_validation_status === 'correct'
 
-  // Input colors — blue during active+collecting, red/green at results
+  // Once the round is revealed the sentence at the top reads correctly: the blank holds the answer
+  // key, not what this player typed. Their own attempt moves down to the "Your Answer" card, which
+  // is where the verdict colours and the tick/cross live. Null when /results could not be read
+  // (PLACEHOLDER_RESULTS carries no answer key) — the old behaviour is kept in that case rather
+  // than blanking the sentence.
+  const revealedAnswer = phase.type === 'results' ? phase.results.correct_answer ?? null : null
+
+  const submittedValue = hasSubmitted && phase.myAnswer.kind === 'text' ? phase.myAnswer.value : typedInput
+  const displayValue = revealedAnswer ?? submittedValue
+
+  // Input colors — blue while playing. At results the box is the answer key, so it takes the same
+  // green-bordered treatment the results cards use for a correct answer.
   let verbColor = '#3B82F6'
   let inputBorderColor = '#3B82F6'
   let inputBg = '#FFFFFF'
   let inputTextColor = '#3B82F6'
 
-  if (phase.type === 'results') {
-    const correct = phase.results.my_validation_status === 'correct'
-    verbColor = correct ? '#22C55E' : '#EF4444'
-    inputBorderColor = correct ? '#22C55E' : '#EF4444'
-    inputBg = correct ? '#F0FDF4' : '#FEF2F2'
-    inputTextColor = correct ? '#16A34A' : '#DC2626'
+  if (revealedAnswer !== null) {
+    verbColor = '#1D841D'
+    inputBorderColor = '#1D841D'
+    inputBg = '#F3F4F6'
+    inputTextColor = '#111827'
+  } else if (phase.type === 'results') {
+    verbColor = myCorrect ? '#22C55E' : '#EF4444'
+    inputBorderColor = myCorrect ? '#22C55E' : '#EF4444'
+    inputBg = myCorrect ? '#F0FDF4' : '#FEF2F2'
+    inputTextColor = myCorrect ? '#16A34A' : '#DC2626'
   }
 
   // Time's up: lock in whatever was typed so far — the answer isn't lost just because Submit wasn't tapped.
@@ -394,12 +409,37 @@ function TextRoundView({
 
   const statusRows = phase.type === 'results' ? (phase.results.status_rows ?? null) : null
 
+  // Server-recorded answer first — it is what was actually scored. The locally held one covers a
+  // results payload that arrived without it (a failed /results read).
+  const myAnswerText =
+    phase.type === 'results'
+      ? (phase.results.my_answer ?? (phase.myAnswer.kind === 'text' ? phase.myAnswer.value : ''))
+      : ''
+
   if (!round.phrases) return null
 
   return (
     <div className="flex-1 flex flex-col">
       {/* Sentence + input — always at top, never remounts across phases */}
       <div className="flex flex-col items-center pt-10 pb-6">
+        {/* Fixed-height slot: the label only exists at results, and letting it push the sentence
+            down on arrival would jog the whole screen at the moment the answer is revealed. */}
+        <div className="h-4 mb-1 flex items-center">
+          <AnimatePresence>
+            {revealedAnswer !== null && (
+              <motion.p
+                key="correct-label"
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="text-[10px] font-black tracking-widest uppercase"
+                style={{ color: '#1D841D' }}
+              >
+                Correct Answer
+              </motion.p>
+            )}
+          </AnimatePresence>
+        </div>
         <PhraseSentence
           sentence={round.phrases.sentence}
           verb={round.phrases.verb}
@@ -457,17 +497,36 @@ function TextRoundView({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.35 }}
             >
-              {/* Correct answer card */}
+              {/* What this player actually wrote — the answer key is up in the sentence now. */}
               <div className="bg-white rounded-2xl p-4 border-2 border-gray-200">
-                <p className="text-[10px] font-black tracking-widest uppercase mb-3" style={{ color: '#1D841D' }}>
-                  Correct Answer
+                <p
+                  className="text-[10px] font-black tracking-widest uppercase mb-3"
+                  style={{ color: myCorrect ? '#1D841D' : '#962F45' }}
+                >
+                  Your Answer
                 </p>
                 <div className="flex items-start gap-4">
-                  <div
-                    className="flex-1 rounded-xl py-3 px-4 text-center text-base font-semibold bg-gray-100 text-gray-900 border-2"
-                    style={{ borderColor: '#1D841D' }}
-                  >
-                    {phase.results.correct_answer}
+                  <div className="flex-1 flex items-center gap-2.5">
+                    <div
+                      className="flex-1 rounded-xl py-3 px-4 text-center text-base font-semibold border-2"
+                      style={{
+                        borderColor: myCorrect ? '#22C55E' : '#EF4444',
+                        backgroundColor: myCorrect ? '#F0FDF4' : '#FEF2F2',
+                        color: myCorrect ? '#16A34A' : '#DC2626',
+                      }}
+                    >
+                      {myAnswerText || 'No answer'}
+                    </div>
+                    {/* Same verdict pill the contraste result bar uses, so both modes mark a
+                        right/wrong answer the same way. */}
+                    <div
+                      className="w-6 h-6 shrink-0 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: myCorrect ? '#22C55E' : '#962F45' }}
+                    >
+                      {myCorrect
+                        ? <Check className="w-3.5 h-3.5 text-white stroke-[3.5]" />
+                        : <X className="w-3.5 h-3.5 text-white stroke-[3.5]" />}
+                    </div>
                   </div>
                   {statusRows && statusRows.length > 0 && (
                     <div className="flex flex-col gap-1.5 text-xs font-semibold shrink-0">
