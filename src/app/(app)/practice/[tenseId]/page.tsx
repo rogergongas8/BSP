@@ -102,19 +102,18 @@ function GapWithLabel({ verb, value, color, revealed }: { verb: string; value: s
 
   return (
     <span className="relative inline-block align-middle mx-1">
-      {/* -top-7 (28px): at -top-4 the label sat flush against the box's rounded border. The
-          sentence's leading-[3.2] is what makes this headroom available. */}
+      {/* -top-5 (20px): moved closer to the gap box to associate them visually. */}
       <span
-        className="absolute left-1/2 -top-7 -translate-x-1/2 text-[10px] font-bold tracking-widest uppercase whitespace-nowrap"
+        className="absolute left-1/2 -top-5 -translate-x-1/2 text-[10px] font-bold tracking-widest uppercase whitespace-nowrap"
         style={{ color: revealed ? '#1D841D' : '#9CA3AF' }}
       >
         {gapVerbOnly(verb)}
       </span>
       <span
-        className="inline-flex min-w-[4.375rem] min-h-[2.25rem] px-3 items-center justify-center rounded-lg border text-center font-medium whitespace-nowrap leading-none"
+        className="inline-flex min-w-[4.375rem] min-h-[2.25rem] px-3 items-center justify-center rounded-lg border-2 text-center font-bold whitespace-nowrap leading-none"
         style={resultStyle}
       >
-        {value}
+        {value || '\u200B'}
       </span>
     </span>
   )

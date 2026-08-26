@@ -719,7 +719,7 @@ function ContrastRoundView({
             {sentenceParts[0]}
             <span className="relative inline-block align-middle mx-1">
               <span
-                className="absolute left-1/2 -top-7 -translate-x-1/2 text-[10px] font-black tracking-widest uppercase whitespace-nowrap"
+                className="absolute left-1/2 -top-5 -translate-x-1/2 text-[10px] font-bold tracking-widest uppercase whitespace-nowrap"
                 style={{ color: revealed ? '#1D841D' : '#9CA3AF' }}
               >
                 {gapVerbOnly(phrase.infinitive_1)}
@@ -728,7 +728,7 @@ function ContrastRoundView({
                 className="inline-flex min-w-[4.375rem] min-h-[2.25rem] px-3 items-center justify-center rounded-lg border-2 text-center font-bold whitespace-nowrap leading-none"
                 style={revealed ? revealStyle : { borderColor: GAP_COLORS[1].border, color: '#111827' }}
               >
-                {gapWord1}
+                {gapWord1 || '\u200B'}
               </span>
             </span>
             {sentenceParts[1]}
@@ -737,7 +737,7 @@ function ContrastRoundView({
             <p className="[text-wrap:balance]">
               <span className="relative inline-block align-middle mx-1">
                 <span
-                  className="absolute left-1/2 -top-7 -translate-x-1/2 text-[10px] font-black tracking-widest uppercase whitespace-nowrap"
+                  className="absolute left-1/2 -top-5 -translate-x-1/2 text-[10px] font-bold tracking-widest uppercase whitespace-nowrap"
                   style={{ color: revealed && correct2 !== null ? '#1D841D' : '#9CA3AF' }}
                 >
                   {gapVerbOnly(phrase.infinitive_2 ?? '')}
@@ -746,7 +746,7 @@ function ContrastRoundView({
                   className="inline-flex min-w-[4.375rem] min-h-[2.25rem] px-3 items-center justify-center rounded-lg border-2 text-center font-bold whitespace-nowrap leading-none"
                   style={revealed && correct2 !== null ? revealStyle : { borderColor: GAP_COLORS[2].border, color: '#111827' }}
                 >
-                  {gapWord2}
+                  {gapWord2 || '\u200B'}
                 </span>
               </span>
               {sentenceParts[2]}
