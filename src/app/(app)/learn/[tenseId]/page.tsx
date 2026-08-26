@@ -918,7 +918,7 @@ export default function LessonPage({ params }: { params: Promise<{ tenseId: stri
 
   if (!lesson) {
     return (
-      <div className="min-h-dvh flex flex-col items-center justify-center gap-3 px-6 text-center">
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 px-6 text-center">
         <p className="text-gray-500 text-sm">La teoría de este tiempo todavía no está disponible.</p>
         <button onClick={() => router.back()} className="text-sm font-bold text-bsp-blue">Volver</button>
       </div>
@@ -960,7 +960,7 @@ export default function LessonPage({ params }: { params: Promise<{ tenseId: stri
   return (
     <>
       <OverscrollColor top="#2F54BA" bottom="#ffffff" />
-      <div className="h-dvh flex flex-col bg-white overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col bg-white overflow-hidden">
         {/* Header */}
         <div className="shrink-0 bg-bsp-blue px-6 pt-10 pb-6 rounded-b-3xl">
           <div className="flex items-center justify-between mb-2">

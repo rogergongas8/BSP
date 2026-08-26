@@ -38,8 +38,8 @@ export default function ActivityCard({
     buttonColor === 'orange'
       ? 'bg-[#FDBB6E] text-black shadow-[0_4px_12px_#FF87164D] py-2.5'
       : buttonColor === 'gradient'
-      ? 'text-white shadow-[0_4px_12px_#F553794D] py-[11px]'
-      : 'bg-bsp-blue text-white shadow-[0_4px_12px_#2F54BA4D] py-[11px]'
+      ? 'text-white shadow-[0_4px_12px_#F553794D] py-[0.6875rem]'
+      : 'bg-bsp-blue text-white shadow-[0_4px_12px_#2F54BA4D] py-[0.6875rem]'
 
   const gradientStyle = buttonColor === 'gradient' ? { background: 'linear-gradient(135deg, #FF8716 0%, #F55379 100%)' } : {}
 

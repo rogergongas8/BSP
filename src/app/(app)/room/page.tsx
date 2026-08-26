@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getLevelInfo, catImagePath } from '@/lib/levels'
 import { resolveAvatarPath } from '@/lib/avatars'
 import OverscrollColor from '@/components/overscroll-color'
+import { useRemScale } from '@/hooks/use-rem-scale'
 
 const ORANGE = '#FF8716'
 const ORANGE_DARK = '#F55379'
@@ -21,6 +22,9 @@ const PURPLE_DARK = '#4A5BB5'
 type CreateMode = 'options' | 'escribiendo' | 'lio'
 
 export default function RoomPage() {
+  // The two create-cards size themselves from plain numbers (Motion animates them, so they have
+  // to stay numbers rather than rem strings) — `k` is what keeps them on the fluid root's ruler.
+  const k = useRemScale()
   const router = useRouter()
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [createMode, setCreateMode] = useState<CreateMode>('options')
@@ -81,12 +85,12 @@ export default function RoomPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col flex-1">
       <OverscrollColor top={ORANGE} bottom="#F3F4F6" />
 
       {/* ── Orange header ── */}
       <div className="relative px-5 pt-8 pb-12 overflow-hidden" style={{ backgroundColor: ORANGE }}>
-        <Image src="/images/multiplayer/bg-star.png" alt="" width={220} height={220} className="absolute -top-6 -right-6 opacity-25 pointer-events-none select-none" draggable={false} />
+        <Image src="/images/multiplayer/bg-star.png" alt="" width={220} height={220} className="absolute -top-6 -right-6 w-[13.75rem] h-auto opacity-25 pointer-events-none select-none" draggable={false} />
         <div className="relative flex items-center justify-between mb-3">
           <div className="relative w-9 h-9 shrink-0">
             <Image src={avatar} alt="Avatar" fill sizes="36px" className="object-contain" />
@@ -185,15 +189,15 @@ export default function RoomPage() {
               {/* ESCRIBIENDO CARD */}
               <div
                 onClick={() => setCreateMode(createMode === 'escribiendo' ? 'options' : 'escribiendo')}
-                className="w-full relative bg-white rounded-[24px] border-2 border-gray-100 shadow-[0_4px_0_rgba(0,0,0,0.04)] flex flex-col items-center overflow-visible cursor-pointer"
-                style={{ paddingTop: 44, paddingBottom: 16, marginTop: 16 }}
+                className="w-full relative bg-white rounded-[1.5rem] border-2 border-gray-100 shadow-[0_4px_0_rgba(0,0,0,0.04)] flex flex-col items-center overflow-visible cursor-pointer"
+                style={{ paddingTop: 44 * k, paddingBottom: 16 * k, marginTop: 16 * k }}
               >
                 {/* Image */}
                 <motion.div
                   className="absolute z-10"
                   animate={createMode === 'escribiendo'
-                    ? { top: -20, left: 16, x: 0, width: 70, height: 70 }
-                    : { top: -20, left: '50%', x: '-50%', width: 70, height: 70 }
+                    ? { top: -20 * k, left: 16 * k, x: 0, width: 70 * k, height: 70 * k }
+                    : { top: -20 * k, left: '50%', x: '-50%', width: 70 * k, height: 70 * k }
                   }
                   initial={false}
                   transition={{ type: 'spring', stiffness: 250, damping: 40 }}
@@ -236,15 +240,15 @@ export default function RoomPage() {
               {/* LÍO CARD */}
               <div
                 onClick={() => setCreateMode(createMode === 'lio' ? 'options' : 'lio')}
-                className="w-full relative rounded-[24px] border-[3px] border-black/20 shadow-[0_4px_0_rgba(0,0,0,0.15)] flex flex-col items-center overflow-visible cursor-pointer"
-                style={{ backgroundColor: '#4A5BB5', paddingTop: 44, paddingBottom: 16, marginTop: 16 }}
+                className="w-full relative rounded-[1.5rem] border-[3px] border-black/20 shadow-[0_4px_0_rgba(0,0,0,0.15)] flex flex-col items-center overflow-visible cursor-pointer"
+                style={{ backgroundColor: '#4A5BB5', paddingTop: 44 * k, paddingBottom: 16 * k, marginTop: 16 * k }}
               >
                 {/* Image */}
                 <motion.div
                   className="absolute z-10"
                   animate={createMode === 'lio'
-                    ? { top: -20, left: 16, x: 0, width: 70, height: 70 }
-                    : { top: -20, left: '50%', x: '-50%', width: 70, height: 70 }
+                    ? { top: -20 * k, left: 16 * k, x: 0, width: 70 * k, height: 70 * k }
+                    : { top: -20 * k, left: '50%', x: '-50%', width: 70 * k, height: 70 * k }
                   }
                   initial={false}
                   transition={{ type: 'spring', stiffness: 250, damping: 40 }}

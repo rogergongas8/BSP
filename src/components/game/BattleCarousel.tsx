@@ -5,6 +5,7 @@ import { useState, useRef, useCallback, useEffect, memo } from 'react'
 import Image from 'next/image'
 import { motion, AnimatePresence, useMotionValue, useAnimation, useTransform, type MotionValue } from 'motion/react'
 import { ChevronRight } from 'lucide-react'
+import { useRemScale } from '@/hooks/use-rem-scale'
 
 export type BattleItem = {
   id: string
@@ -52,7 +53,7 @@ export const BATTLES: BattleItem[] = [
 
 const GAP = 24
 
-const BattleCard = memo(({ i, xValue, centerOffset, onClick, onPlay, isDragging, contained, cardW, itemW }: {
+const BattleCard = memo(({ i, xValue, centerOffset, onClick, onPlay, isDragging, contained, cardW, itemW, k }: {
   i: number
   xValue: MotionValue<number>
   centerOffset: number
@@ -62,6 +63,8 @@ const BattleCard = memo(({ i, xValue, centerOffset, onClick, onPlay, isDragging,
   contained: boolean
   cardW: number
   itemW: number
+  /** Fluid-root multiplier — see useRemScale. */
+  k: number
 }) => {
   const itemX = i * itemW
   // Snap sub-pixel rest values (spring settle jitter, odd-width centerOffset rounding) to exactly 0 —
@@ -73,8 +76,8 @@ const BattleCard = memo(({ i, xValue, centerOffset, onClick, onPlay, isDragging,
   })
   const scale = useTransform(distance, [0, itemW], [1, 0.82], { clamp: true })
   const opacity = useTransform(distance, [0, itemW], [1, 0.65], { clamp: true })
-  const catBottom = useTransform(distance, [0, itemW], [35, 15], { clamp: true })
-  const height = useTransform(distance, [0, itemW], contained ? [210, 160] : [200, 155], { clamp: true })
+  const catBottom = useTransform(distance, [0, itemW], [35 * k, 15 * k], { clamp: true })
+  const height = useTransform(distance, [0, itemW], contained ? [210 * k, 160 * k] : [200 * k, 155 * k], { clamp: true })
   const buttonOpacity = useTransform(distance, [0, 40], [1, 0], { clamp: true })
   const zIndex = useTransform(distance, (d) => Math.max(1, 40 - Math.floor(d / 10)))
   const battle = BATTLES[i as 0 | 1 | 2]
@@ -90,7 +93,7 @@ const BattleCard = memo(({ i, xValue, centerOffset, onClick, onPlay, isDragging,
   return (
     <motion.div
       className="absolute flex-shrink-0 cursor-pointer flex flex-col justify-end"
-      style={{ width: cardW, left: centerOffset + itemX, scale, opacity, zIndex, bottom: 8, top: 0 }}
+      style={{ width: cardW, left: centerOffset + itemX, scale, opacity, zIndex, bottom: 8 * k, top: 0 }}
       onClick={handleClick}
     >
       <motion.div
@@ -102,7 +105,7 @@ const BattleCard = memo(({ i, xValue, centerOffset, onClick, onPlay, isDragging,
         onPointerLeave={() => setIsPressed(false)}
         onPointerCancel={() => setIsPressed(false)} 
       >
-        <motion.div className="absolute top-1/2 left-1/2 rounded-[28px]" style={{ width: cardW, height, x: -cardW / 2, y: '-50%' }}>
+        <motion.div className="absolute top-1/2 left-1/2 rounded-[1.75rem]" style={{ width: cardW, height, x: -cardW / 2, y: '-50%' }}>
           <img src={battle.bgFullSvg} alt="" className="absolute inset-[-6px] w-[calc(100%+12px)] h-[calc(100%+12px)] object-fill pointer-events-none" />
 
           <motion.div className={`absolute ${contained ? 'bottom-2' : '-bottom-3'} left-1/2 -translate-x-1/2 w-fit flex justify-center`} style={{ opacity: buttonOpacity }}>
@@ -118,7 +121,7 @@ const BattleCard = memo(({ i, xValue, centerOffset, onClick, onPlay, isDragging,
           </motion.div>
         </motion.div>
 
-        <motion.div className="absolute left-1/2 -translate-x-1/2 pointer-events-none z-10" style={{ width: contained ? 190 : 230, height: contained ? 190 : 230, bottom: catBottom }}>
+        <motion.div className="absolute left-1/2 -translate-x-1/2 pointer-events-none z-10" style={{ width: (contained ? 190 : 230) * k, height: (contained ? 190 : 230) * k, bottom: catBottom }}>
           <Image src={battle.image} alt={battle.catName} fill className="object-contain drop-shadow-lg" draggable={false} priority />
         </motion.div>
       </motion.div>
@@ -128,7 +131,11 @@ const BattleCard = memo(({ i, xValue, centerOffset, onClick, onPlay, isDragging,
 BattleCard.displayName = 'BattleCard'
 
 export default function BattleCarousel({ onPlay, contained = false }: { onPlay: (href: string) => void; contained?: boolean }) {
-  const cardW = contained ? 150 : 180
+  // Every measurement below is in device pixels, so the fluid root never reaches it — `k` is
+  // what puts the carousel back in step with the rest of the screen. It is 1 on the 430px
+  // reference device, so the design there is untouched.
+  const k = useRemScale()
+  const cardW = (contained ? 150 : 180) * k
   const itemW = cardW + GAP
   const [renderIndex, setRenderIndex] = useState(1)
   const x = useMotionValue(-itemW)
@@ -143,6 +150,17 @@ export default function BattleCarousel({ onPlay, contained = false }: { onPlay: 
     window.addEventListener('resize', update)
     return () => window.removeEventListener('resize', update)
   }, [cardW])
+
+  // `k` resolves after mount (and again on every resize), which changes itemW under a track whose
+  // x was set from the old value — without this the carousel sits a fraction of a card off centre
+  // on any screen narrower than the 430px reference. Guarded on itemW actually changing so it
+  // never interrupts an in-flight snap animation.
+  const itemWRef = useRef(itemW)
+  useEffect(() => {
+    if (itemWRef.current === itemW) return
+    itemWRef.current = itemW
+    x.set(-renderIndex * itemW)
+  }, [itemW, renderIndex, x])
 
   useEffect(() => {
     return x.on('change', (latest) => {
@@ -168,7 +186,7 @@ export default function BattleCarousel({ onPlay, contained = false }: { onPlay: 
 
   return (
     <>
-      <div ref={containerRef} className="relative flex justify-center items-center" style={{ height: contained ? 220 : 260, overflow: contained ? 'hidden' : 'visible' }}>
+      <div ref={containerRef} className="relative flex justify-center items-center" style={{ height: (contained ? 220 : 260) * k, overflow: contained ? 'hidden' : 'visible' }}>
         <motion.div
           className="absolute top-0 left-0 w-full h-full cursor-grab active:cursor-grabbing select-none"
           style={{ x }}
@@ -180,7 +198,7 @@ export default function BattleCarousel({ onPlay, contained = false }: { onPlay: 
           dragElastic={0.1}
         >
           {([0, 1, 2] as const).map((i) => (
-            <BattleCard key={i} i={i} xValue={x} centerOffset={centerOffset} onClick={() => snapTo(i)} onPlay={onPlay} isDragging={isDragging} contained={contained} cardW={cardW} itemW={itemW} />
+            <BattleCard key={i} i={i} xValue={x} centerOffset={centerOffset} onClick={() => snapTo(i)} onPlay={onPlay} isDragging={isDragging} contained={contained} cardW={cardW} itemW={itemW} k={k} />
           ))}
         </motion.div>
       </div>

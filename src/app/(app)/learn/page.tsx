@@ -173,7 +173,7 @@ function TenseReviewCard({ tense, open, onToggle }: { tense: TenseReview; open: 
                           title="Ver teoría"
                           className="shrink-0 w-10 h-10 flex items-center justify-center rounded-lg bg-bsp-orange text-white"
                         >
-                          <BookOpen className="w-[18px] h-[18px]" />
+                          <BookOpen className="w-[1.125rem] h-[1.125rem]" />
                         </Link>
                       )}
                     </div>
@@ -341,7 +341,7 @@ export default function LearnLandingPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-dvh">
+    <div className="flex flex-col flex-1">
       <OverscrollColor top="#2F54BA" bottom="#ffffff" />
 
       {/* Header */}
@@ -373,7 +373,7 @@ export default function LearnLandingPage() {
       </div>
 
       {/* Content */}
-      <div className="bg-white flex-1 pt-4 pb-24 px-5 sm:px-[26%] flex flex-col gap-8">
+      <div className="bg-white flex-1 pt-4 pb-2 px-5 sm:px-[26%] flex flex-col gap-8">
 
         {/* Stat pills */}
         <div className="flex gap-3 -mt-14">

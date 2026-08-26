@@ -137,7 +137,7 @@ export function DailyChallengeModal({ open, onClose, text, xp }: DailyChallengeM
 
           {/* Card */}
           <motion.div
-            className="relative z-10 w-full max-w-[320px]"
+            className="relative z-10 w-full max-w-[20rem]"
             initial={{ scale: 0.75, opacity: 0, y: 40 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.85, opacity: 0, y: 20 }}
@@ -163,7 +163,7 @@ export function DailyChallengeModal({ open, onClose, text, xp }: DailyChallengeM
               />
             </motion.div>
 
-            <div className="relative overflow-hidden rounded-[28px] bg-bsp-blue px-5 pt-9 pb-6 shadow-2xl">
+            <div className="relative overflow-hidden rounded-[1.75rem] bg-bsp-blue px-5 pt-9 pb-6 shadow-2xl">
               {/* Pill */}
               <motion.div
                 className="mx-auto flex w-fit items-center gap-2 rounded-full border border-white/30 bg-white/20 px-4 py-2 backdrop-blur-md"
@@ -179,7 +179,7 @@ export function DailyChallengeModal({ open, onClose, text, xp }: DailyChallengeM
 
               {/* Ring + challenge text */}
               <div className="mt-6 flex items-center gap-4">
-                <div className="relative h-[104px] w-[104px] shrink-0">
+                <div className="relative h-[6.5rem] w-[6.5rem] shrink-0">
                   <svg viewBox="0 0 128 128" className="h-full w-full -rotate-90">
                     <circle
                       cx="64" cy="64" r={RING_R}
@@ -201,7 +201,7 @@ export function DailyChallengeModal({ open, onClose, text, xp }: DailyChallengeM
                   </svg>
                 </div>
 
-                <p className="flex-1 text-[17px] font-bold leading-snug text-white">
+                <p className="flex-1 text-[1.0625rem] font-bold leading-snug text-white">
                   {text}
                 </p>
               </div>

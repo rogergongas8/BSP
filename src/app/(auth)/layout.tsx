@@ -73,7 +73,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           width={310}
           height={66}
           priority
-          className="w-[124px] h-auto mb-8"
+          className="w-[7.75rem] h-auto mb-8"
         />
 
         {cat && (

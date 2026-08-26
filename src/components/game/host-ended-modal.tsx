@@ -27,7 +27,7 @@ export function HostEndedModal({ open, onClose }: { open: boolean; onClose: () =
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
           <motion.div
-            className="relative w-full max-w-[320px] rounded-3xl bg-white shadow-2xl px-6 pt-6 pb-7 flex flex-col items-center gap-4"
+            className="relative w-full max-w-[20rem] rounded-3xl bg-white shadow-2xl px-6 pt-6 pb-7 flex flex-col items-center gap-4"
             initial={{ scale: 0.85, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 12 }}
@@ -45,7 +45,7 @@ export function HostEndedModal({ open, onClose }: { open: boolean; onClose: () =
               alt=""
               width={180}
               height={176}
-              className="object-contain mt-2"
+              className="w-[11.25rem] h-auto object-contain mt-2"
             />
 
             <p className="text-center text-sm text-gray-700">Looks like the host has ended the game</p>

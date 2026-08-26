@@ -151,12 +151,24 @@ export async function POST(request: NextRequest) {
       .gte('completed_at', todayStart.toISOString())
 
     if (isChallengeComplete(challenge, todaySessions ?? [])) {
-      // Unique (user_id, completion_date) makes this a no-op if today was already recorded
-      const { error: completionError } = await admin
+      // ON CONFLICT DO NOTHING, not a bare insert. This row is what marks the challenge as
+      // already paid out for the day, so every further session finished after the first one
+      // collided with the unique (user_id, completion_date) and logged a 23505 in Postgres —
+      // an expected outcome raised as an error, which is only noise.
+      //
+      // The insert is still what decides who pays: `.select()` comes back empty when the row
+      // was already there, so the XP is awarded exactly once even if two sessions land at the
+      // same instant. An empty result and a real failure are different things here, hence both
+      // checks below.
+      const { data: claimed, error: completionError } = await admin
         .from('daily_challenge_completions')
-        .insert({ user_id: user.id, completion_date: today })
+        .upsert(
+          { user_id: user.id, completion_date: today },
+          { onConflict: 'user_id,completion_date', ignoreDuplicates: true },
+        )
+        .select('id')
 
-      if (!completionError) {
+      if (!completionError && (claimed?.length ?? 0) > 0) {
         const { data: challengeProfile } = await admin
           .from('profiles')
           .select('daily_challenges_completed, daily_challenge_streak, last_daily_challenge_date')

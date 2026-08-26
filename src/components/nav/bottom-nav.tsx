@@ -4,23 +4,37 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { motion, LayoutGroup } from 'motion/react'
 
+// `sizeClass` rather than a pixel number: the bar itself is sized in rem, so the icons have to
+// shrink with it or they crowd the bubble on a narrow phone.
 const NAV_ITEMS = [
-  { icon: '/images/nav/review.svg', iconActive: '/images/nav/review-hover.svg', label: 'Learn', href: '/learn', size: 28 },
-  { icon: '/images/nav/home.svg', iconActive: '/images/nav/home-hover.svg', label: 'Home', href: '/', size: 28 },
-  { icon: '/images/nav/profile-v2.svg', iconActive: '/images/nav/profile-hover-v2.svg', label: 'Profile', href: '/profile', size: 28 },
+  { icon: '/images/nav/review.svg', iconActive: '/images/nav/review-hover.svg', label: 'Learn', href: '/learn', sizeClass: 'w-7 h-7' },
+  { icon: '/images/nav/home.svg', iconActive: '/images/nav/home-hover.svg', label: 'Home', href: '/', sizeClass: 'w-7 h-7' },
+  { icon: '/images/nav/profile-v2.svg', iconActive: '/images/nav/profile-hover-v2.svg', label: 'Profile', href: '/profile', sizeClass: 'w-7 h-7' },
 ]
 
 const HIDE_NAV_PATHS = ['/escribiendo', '/practice', '/room', '/play', '/learn/']
+
+/**
+ * Whether the floating nav is on screen for a route.
+ *
+ * Exported because the app layout has to reserve the bar's height and used to decide that from
+ * its own separate list, which had drifted out of sync with this one: /practice, /room and their
+ * subroutes hide the nav but were still getting `pb-28`, so every one of those screens carried a
+ * dead 112px of padding — a phantom scroll on a screen whose content otherwise fit exactly.
+ */
+export function isBottomNavVisible(pathname: string) {
+  return !HIDE_NAV_PATHS.some(p => pathname.startsWith(p))
+}
 
 export default function BottomNav() {
   const pathname = usePathname()
   const router = useRouter()
 
-  if (HIDE_NAV_PATHS.some(p => pathname.startsWith(p))) return null
+  if (!isBottomNavVisible(pathname)) return null
 
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-      <div className="relative h-[54px] w-[261px] bg-[#567BCA]/70 backdrop-blur-md rounded-full shadow-[0_8px_32px_#2F54BA55,inset_0_0_0_1px_rgba(255,255,255,0.2)]">
+      <div className="relative h-[3.375rem] w-[16.3125rem] bg-[#567BCA]/70 backdrop-blur-md rounded-full shadow-[0_8px_32px_#2F54BA55,inset_0_0_0_1px_rgba(255,255,255,0.2)]">
         <LayoutGroup>
           <div className="relative grid grid-cols-3 h-full z-10 px-[3px]">
             {NAV_ITEMS.map((item) => {
@@ -46,7 +60,7 @@ export default function BottomNav() {
                   )}
 
                   {/* Iconos con cross-fade */}
-                  <div className="relative z-10" style={{ width: item.size, height: item.size }}>
+                  <div className={`relative z-10 ${item.sizeClass}`}>
                     <Image
                       src={item.icon}
                       alt={item.label}

@@ -55,7 +55,7 @@ export default function EscribiendoPage() {
   }, [phase, router])
 
   return (
-    <div className="flex flex-col min-h-dvh">
+    <div className="flex flex-col flex-1">
       {/* inputMode="none" claims focus (and the activation chain) without popping the native
           keyboard — it only opens once we hand focus to the real, visible input on the practice
           screen once the phrase is ready to show. */}

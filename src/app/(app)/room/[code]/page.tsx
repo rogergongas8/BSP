@@ -210,12 +210,12 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col flex-1">
       <OverscrollColor top={ORANGE} bottom="#F3F4F6" />
 
       {/* ── Orange header ── */}
       <div className="relative px-5 pt-8 pb-12 overflow-hidden" style={{ backgroundColor: ORANGE }}>
-        <Image src="/images/multiplayer/bg-star.png" alt="" width={220} height={220} className="absolute -top-6 -right-6 opacity-25 pointer-events-none select-none" draggable={false} />
+        <Image src="/images/multiplayer/bg-star.png" alt="" width={220} height={220} className="absolute -top-6 -right-6 w-[13.75rem] h-auto opacity-25 pointer-events-none select-none" draggable={false} />
         <div className="relative flex items-center justify-between mb-3">
           <div className="relative w-9 h-9 shrink-0">
             <Image src={avatar} alt="Avatar" fill sizes="36px" className="object-contain" />

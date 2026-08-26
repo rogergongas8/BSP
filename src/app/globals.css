@@ -150,14 +150,50 @@
   * {
     @apply border-border outline-ring/50;
   }
+
+  /*
+   * Fluid root size — the single lever that makes the whole app scale with the screen.
+   *
+   * Every spacing, radius and type utility Tailwind emits is expressed in `rem`, so moving the
+   * root size moves the entire layout proportionally instead of only the text. The design was
+   * drawn for a 430px-wide iPhone (15 Pro Max), which is the anchor: 430 x 0.0372 = 16px, the
+   * browser default, so nothing changes on that device or anything wider. Below it the whole UI
+   * shrinks by the same ratio as the screen — a 375px iPhone renders at 13.95px root (87%), an
+   * SE-class 320px screen bottoms out at the 13px floor rather than shrinking into illegibility.
+   *
+   * The `2.35vh` term is a second, weaker axis for short viewports. Width alone does not describe
+   * an SE-class phone: its Safari viewport is ~553px tall, and the contraste screen (a sentence
+   * plus two stacked columns of option cards) still overflowed it after the width scaling. 2.35vh
+   * reaches 16px at 680px of viewport height, so it is inert on every phone taller than that —
+   * including the 430x833 reference — and only takes over on genuinely short screens. Drop the
+   * `min(...)` wrapper if you'd rather the app scale on width alone.
+   *
+   * Anything that must NOT shrink (form controls, which iOS zooms into below 16px) opts out with
+   * an explicit px size — see the `input` rule below.
+   */
+  html {
+    @apply font-sans;
+    font-size: clamp(13px, min(3.72vw, 2.35vh), 16px);
+  }
+
   body {
     @apply bg-background text-foreground font-sans;
     font-weight: 600;
-    font-size: 12px;
+    /* rem, not 12px: the base size has to ride the fluid root like everything else. */
+    font-size: 0.75rem;
     line-height: 1;
     letter-spacing: 0;
   }
-  html {
-    @apply font-sans;
+
+  /*
+   * iOS Safari zooms the viewport whenever a focused form control computes under 16px. With a
+   * fluid root, `text-base` on a 375px screen is 13.95px — enough to trigger it on every PIN
+   * field and room-code box. Pinning controls to a real 16px is the standard defence; they are
+   * the one part of the UI that deliberately does not scale down.
+   */
+  input,
+  textarea,
+  select {
+    font-size: max(16px, 1em);
   }
 }

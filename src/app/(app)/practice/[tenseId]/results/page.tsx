@@ -30,8 +30,10 @@ function CircleProgress({ pct, color, xp }: { pct: number; color: string; xp: nu
   }, [pct, C])
 
   return (
-    <div className="relative flex items-center justify-center" style={{ width: 180, height: 180 }}>
-      <svg width="180" height="180" className="-rotate-90">
+    <div className="relative flex items-center justify-center w-[11.25rem] h-[11.25rem]">
+      {/* viewBox rather than width/height attributes: the ring is the biggest single element on
+          this screen, and in px it stayed desktop-sized while everything around it scaled. */}
+      <svg viewBox="0 0 180 180" className="w-full h-full -rotate-90">
         <circle cx="90" cy="90" r={R} fill="none" stroke="#E5E7EB" strokeWidth="13" />
         <circle
           ref={pathRef}
@@ -131,7 +133,7 @@ export default function ContrastResultsPage({ params }: { params: Promise<{ tens
       ]
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="flex-1 flex flex-col bg-gray-50">
 
       {/* Blue header */}
       <div className="relative overflow-hidden" style={{ backgroundColor: meta.color, paddingBottom: 32 }}>

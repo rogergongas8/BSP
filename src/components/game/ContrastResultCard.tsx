@@ -99,7 +99,7 @@ export default function ContrastResultCard({
         {gaps.map((gap, i) => (
           <div key={i} className="flex flex-col items-center gap-5 rounded-2xl pt-5 pb-3 px-3">
             {/* Icon floats directly over the answer box's top border — no backing circle. */}
-            <div className="relative w-full max-w-[140px] flex flex-col items-center">
+            <div className="relative w-full max-w-[8.75rem] flex flex-col items-center">
               {gap.icon && (
                 <div className="absolute -top-4 z-10 w-8 h-8">
                   <Image src={gap.icon} alt="" width={32} height={32} className="w-full h-full object-contain" />

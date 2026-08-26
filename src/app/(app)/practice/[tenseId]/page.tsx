@@ -17,7 +17,7 @@ const SESSION_TOTAL = 10
 function PlaceholderComingSoon({ battle }: { battle: BattleItem }) {
   const router = useRouter()
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="flex flex-col flex-1 bg-gray-50">
       <OverscrollColor top="#2F54BA" bottom="#ffffff" />
 
       {/* Header */}
@@ -111,7 +111,7 @@ function GapWithLabel({ verb, value, color, revealed }: { verb: string; value: s
         {gapVerbOnly(verb)}
       </span>
       <span
-        className="inline-flex min-w-[70px] min-h-[36px] px-3 items-center justify-center rounded-lg border text-center font-medium whitespace-nowrap"
+        className="inline-flex min-w-[4.375rem] min-h-[2.25rem] px-3 items-center justify-center rounded-lg border text-center font-medium whitespace-nowrap"
         style={resultStyle}
       >
         {value}
@@ -318,7 +318,7 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
   const correctWord2 = phrase ? (phrase.correct_2 === 1 ? phrase.option_a_2 : phrase.option_b_2) : null
 
   return (
-    <div className="min-h-screen bg-white flex flex-col pb-0">
+    <div className="h-dvh overflow-hidden bg-white flex flex-col pb-0">
       <OverscrollColor top="#ffffff" bottom="#ffffff" />
 
       {/* Header */}
@@ -345,7 +345,11 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
       </div>
 
       {/* Game */}
-      <div className="flex-1 flex flex-col px-5 pt-8 pb-28 gap-8">
+      {/* Scrolls inside itself rather than scrolling the page — the same shape the multiplayer
+          round view uses. A long two-gap phrase can outgrow a short phone no matter how far the
+          UI scales down, and when the page scrolled instead, the Check button (fixed to the
+          bottom) ended up sitting on top of the option cards. */}
+      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col px-5 pt-8 pb-28 gap-8">
         {!loading && phrase ? (
           <>
             {/* In a mixed session each phrase comes from a different battle, so the pair of tenses
@@ -467,7 +471,7 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
             </div>
           </>
         ) : (
-          <div className="h-[200px]" />
+          <div className="h-[12.5rem]" />
         )}
       </div>
 

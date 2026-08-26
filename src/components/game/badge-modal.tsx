@@ -157,7 +157,7 @@ export function BadgeModal({ open, onClose, achievement }: BadgeModalProps) {
 
           {/* Card */}
           <motion.div
-            className="relative z-10 w-full max-w-[320px] overflow-visible rounded-3xl shadow-2xl"
+            className="relative z-10 w-full max-w-[20rem] overflow-visible rounded-3xl shadow-2xl"
             initial={{ scale: 0.75, opacity: 0, y: 40 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.85, opacity: 0, y: 20 }}
@@ -229,7 +229,7 @@ export function BadgeModal({ open, onClose, achievement }: BadgeModalProps) {
               {/* Bottom-left cat */}
               {achievement.cats[1] && (
                 <motion.div
-                  className="absolute -bottom-[34px] left-[86px] z-20"
+                  className="absolute -bottom-[34px] left-[5.375rem] z-20"
                   initial={{ opacity: 0, x: -20, scale: 0.6 }}
                   animate={{ opacity: 1, x: 0, scale: 1 }}
                   transition={{ type: 'spring', damping: 14, stiffness: 240, delay: 0.15 }}
@@ -242,13 +242,13 @@ export function BadgeModal({ open, onClose, achievement }: BadgeModalProps) {
               {/* Bottom-right cat */}
               {achievement.cats[2] && (
                 <motion.div
-                  className="absolute -bottom-[43px] right-[79px] z-0"
+                  className="absolute -bottom-[43px] right-[4.9375rem] z-0"
                   initial={{ opacity: 0, x: 20, scale: 0.6 }}
                   animate={{ opacity: 1, x: 0, scale: 1 }}
                   transition={{ type: 'spring', damping: 14, stiffness: 240, delay: 0.2 }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={achievement.cats[2]} alt="mascot" className="h-[70px] w-[70px] object-contain" />
+                  <img src={achievement.cats[2]} alt="mascot" className="h-[4.375rem] w-[4.375rem] object-contain" />
                 </motion.div>
               )}
             </div>

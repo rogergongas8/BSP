@@ -15,9 +15,9 @@ import {
 } from '@/lib/daily-challenges'
 
 const CAT_POSITIONS = [
-  { cat: 'absolute -top-5 right-4 w-[60px] h-[60px] z-20', xp: 'absolute top-7 right-4 z-10' },
-  { cat: 'absolute -top-5 -right-1 w-[38px] h-[38px] z-20 rotate-[20deg]', xp: 'absolute top-2 -right-3 z-10 rotate-[20deg]' },
-  { cat: 'absolute -bottom-3 right-1 w-[52px] h-[52px] z-20', xp: 'absolute -top-2 -right-1 z-10 rotate-[20deg]' },
+  { cat: 'absolute -top-5 right-4 w-[3.75rem] h-[3.75rem] z-20', xp: 'absolute top-7 right-4 z-10' },
+  { cat: 'absolute -top-5 -right-1 w-[2.375rem] h-[2.375rem] z-20 rotate-[20deg]', xp: 'absolute top-2 -right-3 z-10 rotate-[20deg]' },
+  { cat: 'absolute -bottom-3 right-1 w-[3.25rem] h-[3.25rem] z-20', xp: 'absolute -top-2 -right-1 z-10 rotate-[20deg]' },
 ] as const
 
 export default async function HomePage() {

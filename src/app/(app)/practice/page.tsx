@@ -50,7 +50,7 @@ export default function LioDeTiemposPage() {
   }, [phase, router])
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col flex-1">
       <OverscrollColor top="#2F54BA" bottom="#ffffff" />
 
       {/* ── Blue header ── */}

@@ -38,6 +38,10 @@ export default function ContrastOptionCard({
     : null
 
   return (
+    // The option cards are the tallest thing on the contraste screen: two of them stack in each
+    // gap column, so their height alone decides whether the question fits. `13.2vh` is exactly
+    // 6.875rem on the 430x833 reference — the cap only bites on a shorter viewport, where the
+    // fixed square was pushing the sentence under the Check button.
     <div className="relative pt-4">
       {iconSrc && (
         <div className="absolute -top-1 left-1/2 -translate-x-1/2 z-10 w-8 h-8">
@@ -60,7 +64,7 @@ export default function ContrastOptionCard({
         onClick={clickable ? onClick : undefined}
         whileTap={clickable ? { scale: 0.96 } : undefined}
         style={state === 'selected' ? { backgroundColor: accentColor, borderColor: accentColor, borderWidth: 1, borderStyle: 'solid' } : undefined}
-        className={`w-full aspect-square max-h-[110px] rounded-2xl px-3 py-3 text-center text-sm font-bold leading-tight break-words shadow-sm transition-colors flex items-center justify-center ${STATE_CLASSES[state]} ${clickable ? 'cursor-pointer' : 'cursor-default'}`}
+        className={`w-full aspect-square max-h-[min(6.875rem,13.2vh)] rounded-2xl px-3 py-3 text-center text-sm font-bold leading-tight break-words shadow-sm transition-colors flex items-center justify-center ${STATE_CLASSES[state]} ${clickable ? 'cursor-pointer' : 'cursor-default'}`}
       >
         {label}
       </motion.button>

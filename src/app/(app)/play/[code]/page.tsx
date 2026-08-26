@@ -133,7 +133,7 @@ function CountdownCircle({ seconds, total }: { seconds: number; total: number })
 
   return (
     <div className="relative w-14 h-14 flex items-center justify-center">
-      <svg width="56" height="56" className="-rotate-90">
+      <svg viewBox="0 0 56 56" className="w-full h-full -rotate-90">
         <circle cx="28" cy="28" r={r} fill="none" stroke="#E5E7EB" strokeWidth="4" />
         <circle
           cx="28" cy="28" r={r}
@@ -424,9 +424,9 @@ function TextRoundView({
       <div className="flex flex-col items-center pt-10 pb-6">
         {/* Fixed-height slot: the label only exists at results, and letting it push the sentence
             down on arrival would jog the whole screen at the moment the answer is revealed.
-            pl-[38px] puts it on the same left edge as the "Your Answer" label below — the results
+            pl-[2.375rem] puts it on the same left edge as the "Your Answer" label below — the results
             container's px-5, plus the card's 2px border and p-4 — so the two read as a pair. */}
-        <div className="w-full h-4 mb-1 pl-[38px] flex items-center">
+        <div className="w-full h-4 mb-1 pl-[2.375rem] flex items-center">
           <AnimatePresence>
             {revealedAnswer !== null && (
               <motion.p
@@ -472,7 +472,7 @@ function TextRoundView({
                 animate={{ y: [0, -14, 0] }}
                 transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut' }}
               >
-                <Image src="/images/escribiendo/mimo.png" width={160} height={160} alt="" draggable={false} />
+                <Image src="/images/escribiendo/mimo.png" width={160} height={160} alt="" draggable={false} className="w-40 h-40" />
               </motion.div>
               <div className="text-center">
                 <p className="text-base font-bold text-gray-800">Collecting answers...</p>
@@ -482,7 +482,7 @@ function TextRoundView({
                 {/* Same warning the contraste round already carries: the host needs to know that
                     skipping closes the question for everyone, not just for themselves. */}
                 {isHost && (
-                  <p className="text-xs text-gray-400 mt-3 max-w-[260px] mx-auto leading-snug">
+                  <p className="text-xs text-gray-400 mt-3 max-w-[16.25rem] mx-auto leading-snug">
                     All players will move on to the next question now, even if not everyone has answered yet.
                   </p>
                 )}
@@ -667,9 +667,9 @@ function ContrastRoundView({
       <div className="flex flex-col items-center pt-10 pb-6 px-5 gap-2">
         {/* Fixed-height slot: the label only exists at results, and letting it push the sentence
             down on arrival would jog the whole screen at the moment the answer is revealed.
-            pl-[18px] lands it on the same left edge as the "Your Answer" label below — this
+            pl-[1.125rem] lands it on the same left edge as the "Your Answer" label below — this
             container is already px-5 in, so it only adds the card's 2px border and p-4. */}
-        <div className="w-full h-4 pl-[18px] flex items-center">
+        <div className="w-full h-4 pl-[1.125rem] flex items-center">
           <AnimatePresence>
             {revealed && (
               <motion.p
@@ -699,7 +699,7 @@ function ContrastRoundView({
                 {gapVerbOnly(phrase.infinitive_1)}
               </span>
               <span
-                className="inline-flex min-w-[70px] min-h-[36px] px-3 items-center justify-center rounded-lg border-2 text-center font-bold whitespace-nowrap"
+                className="inline-flex min-w-[4.375rem] min-h-[2.25rem] px-3 items-center justify-center rounded-lg border-2 text-center font-bold whitespace-nowrap"
                 style={revealed ? revealStyle : { borderColor: GAP_COLORS[1].border, color: '#111827' }}
               >
                 {gapWord1}
@@ -717,7 +717,7 @@ function ContrastRoundView({
                   {gapVerbOnly(phrase.infinitive_2 ?? '')}
                 </span>
                 <span
-                  className="inline-flex min-w-[70px] min-h-[36px] px-3 items-center justify-center rounded-lg border-2 text-center font-bold whitespace-nowrap"
+                  className="inline-flex min-w-[4.375rem] min-h-[2.25rem] px-3 items-center justify-center rounded-lg border-2 text-center font-bold whitespace-nowrap"
                   style={revealed && correct2 !== null ? revealStyle : { borderColor: GAP_COLORS[2].border, color: '#111827' }}
                 >
                   {gapWord2}
@@ -778,7 +778,7 @@ function ContrastRoundView({
                 <p className="text-base font-bold text-gray-800">Collecting answers...</p>
                 <p className="text-sm text-gray-400 mt-1 font-medium">{phase.answeredCount}/{phase.totalCount}</p>
                 {isHost && (
-                  <p className="text-xs text-gray-400 mt-3 max-w-[260px] mx-auto leading-snug">
+                  <p className="text-xs text-gray-400 mt-3 max-w-[16.25rem] mx-auto leading-snug">
                     All players will move on to the next question now, even if not everyone has answered yet.
                   </p>
                 )}
@@ -872,7 +872,7 @@ function LeaveConfirmModal({
         >
           <div className="absolute inset-0 bg-black/50" onClick={onStay} />
           <motion.div
-            className="relative w-full max-w-[300px] bg-white rounded-3xl overflow-hidden"
+            className="relative w-full max-w-[18.75rem] bg-white rounded-3xl overflow-hidden"
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
@@ -945,13 +945,13 @@ function StandingRow({ standing: s, isMe }: { standing: Standing; isMe: boolean 
       </div>
 
       {/* Avatar */}
-      <div className="relative w-[42px] h-[42px] shrink-0">
+      <div className="relative w-[2.625rem] h-[2.625rem] shrink-0">
         <Image src={s.avatar} alt={s.username} fill sizes="42px" className="object-contain p-0.5" />
       </div>
 
       {/* Username + streak */}
       <div className="flex-1 min-w-0 flex items-center gap-1.5">
-        <span className="font-bold text-[15px] text-gray-900 truncate">
+        <span className="font-bold text-[0.9375rem] text-gray-900 truncate">
           {s.username}
           {isMe && <span className="text-gray-400 font-normal text-xs ml-1">(tú)</span>}
         </span>
@@ -1041,7 +1041,7 @@ function ScoreboardView({
           onClick={handleCopyCode}
           className="relative mt-3 inline-flex items-center gap-2 pl-3 pr-2.5 py-1.5 rounded-full bg-black/10"
         >
-          <span className="text-[13px] font-bold tracking-[0.12em] text-gray-900">BSP-{roomCode}</span>
+          <span className="text-[0.8125rem] font-bold tracking-[0.12em] text-gray-900">BSP-{roomCode}</span>
           {copied
             ? <Check className="w-3.5 h-3.5 text-gray-900 stroke-[3]" />
             : <Copy className="w-3.5 h-3.5 text-gray-900 stroke-[2.5]" />}
@@ -1064,7 +1064,7 @@ function ScoreboardView({
       </div>
 
       {/* Standings list */}
-      <div className="flex-1 px-4 pt-3 flex flex-col overflow-y-auto" style={{ paddingBottom: isHost ? 96 : 24 }}>
+      <div className="flex-1 px-4 pt-3 flex flex-col overflow-y-auto" style={{ paddingBottom: isHost ? '6rem' : '1.5rem' }}>
         {visibleStandings.map((s, index) => (
           <div key={s.user_id}>
             <StandingRow standing={s} isMe={s.user_id === currentUserId} />
@@ -1144,7 +1144,9 @@ export function FinishedView({
   const top3 = standings.slice(0, 3)
   const podium = [top3[1], top3[0], top3[2]].filter(Boolean)
 
-  const BAR_HEIGHTS = [210, 280, 150]
+  // rem, not px: at 16px root these are the original 210/280/150, and they shrink with the
+  // fluid root on narrower phones instead of pinning the podium at a desktop-sized height.
+  const BAR_HEIGHTS = ['13.125rem', '17.5rem', '9.375rem']
   const BAR_GRADIENTS = [
     'linear-gradient(180deg, #818CF8 0%, #4F46E5 100%)',
     'linear-gradient(180deg, #FFA94D 0%, #E8720C 100%)',
@@ -1163,7 +1165,7 @@ export function FinishedView({
   }).join(', ')})`
 
   return (
-    <div className="h-dvh flex flex-col relative overflow-hidden" style={{ backgroundColor: '#FDF0E2' }}>
+    <div className="flex-1 min-h-0 flex flex-col relative overflow-hidden" style={{ backgroundColor: '#FDF0E2' }}>
       {/* Sunburst — bursts out from behind the podium on reveal, spilling past the screen edges.
           Sits at z-0, below the header (z-10, solid orange) — the header's own wave/star art
           covers it up top, the rays only show in the cream body beneath the wave curve. */}
@@ -1190,7 +1192,7 @@ export function FinishedView({
         <Image
           src="/images/multiplayer/bg-star.png"
           alt="" width={180} height={180}
-          className="absolute -top-2 right-2 opacity-25 pointer-events-none select-none"
+          className="absolute -top-2 right-2 w-[11.25rem] h-auto opacity-25 pointer-events-none select-none"
           draggable={false}
         />
         {/* Non-hosts can't trigger finish (that also finalizes XP/stats, host-only) — this X is a quicker way out than the CTA below. */}
@@ -1239,18 +1241,15 @@ export function FinishedView({
               {podium.map((s, i) => {
                 if (!s) return <div key={i} className="w-24" />
                 const isFirst = s.rank === 1
-                const avatarSize = isFirst ? 56 : 44
+                const avatarSizeClass = isFirst ? 'w-14 h-14' : 'w-11 h-11'
                 return (
-                  <div key={s.user_id} className="flex flex-col items-center gap-1 flex-1 max-w-[120px]">
-                    <div
-                      className="relative shrink-0 rounded-full bg-white shadow-md overflow-hidden"
-                      style={{ width: avatarSize, height: avatarSize }}
-                    >
+                  <div key={s.user_id} className="flex flex-col items-center gap-1 flex-1 max-w-[7.5rem]">
+                    <div className={`relative shrink-0 rounded-full bg-white shadow-md overflow-hidden ${avatarSizeClass}`}>
                       <Image
                         src={s.avatar}
                         alt={s.username}
                         fill
-                        sizes={`${avatarSize}px`}
+                        sizes="56px"
                         className="object-contain p-1"
                       />
                     </div>
@@ -1943,7 +1942,7 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
       : null
 
   return (
-    <div className="flex flex-col min-h-screen bg-white">
+    <div className="flex flex-col flex-1 bg-white">
       {/* Toast — a non-host player left; the round keeps going without them */}
       <AnimatePresence>
         {leftPlayerToast && (
@@ -1967,7 +1966,7 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
                   className="object-contain"
                 />
               </div>
-              <p className="text-[13px] text-gray-800 leading-tight">
+              <p className="text-[0.8125rem] text-gray-800 leading-tight">
                 <span className="font-black">{leftPlayerToast.username}</span> has left the game
               </p>
               <button onClick={() => setLeftPlayerToast(null)} className="shrink-0 ml-1">

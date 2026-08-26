@@ -236,6 +236,9 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
       : isPretPerfect
         ? 190
         : 240
+  // The number above stays the intrinsic hint next/image needs; the drawn size is the same
+  // figure in rem, so the mascot scales with the screen instead of crowding a small phone.
+  const successImageRem = `${successImageSize / 16}rem`
 
   const prefetchRef = useRef<Phrase | null>(null)
   const redoQueueRef = useRef<Phrase[] | null>(null)
@@ -496,7 +499,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
         </div>
       </motion.div>
 
-      <div className="min-h-screen bg-white flex flex-col pb-0">
+      <div className="flex-1 bg-white flex flex-col pb-0">
 
         {/* Header */}
         <div className="flex items-center gap-3 px-5 pt-10 pb-4">
@@ -550,7 +553,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
                   showHint={showHint}
                 />
               ) : (
-                <div className="h-[80px]" />
+                <div className="h-[5rem]" />
               )}
             </motion.div>
 
@@ -567,7 +570,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
                     <Image
                       src={`/images/${meta.imageDir}/Mistake ${mistakeIndex + 1} - ${charName}.png`}
                       width={120} height={120} alt=""
-                      className="shrink-0"
+                      className="shrink-0 w-[7.5rem] h-auto"
                     />
                     <div className="flex-1">
                       {showHint && hint ? (
@@ -604,6 +607,7 @@ export default function PracticePage({ params }: { params: Promise<{ tenseId: st
                       width={successImageSize}
                       height={successImageSize}
                       alt=""
+                      style={{ width: successImageRem, height: 'auto' }}
                       className={`drop-shadow-lg ${isImperfectoSuccess ? '-mt-8' : 'mt-8'}`}
                       priority
                     />

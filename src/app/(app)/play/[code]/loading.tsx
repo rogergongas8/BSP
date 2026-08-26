@@ -1,6 +1,6 @@
 export default function PlayLoading() {
   return (
-    <div className="flex flex-col min-h-screen bg-white items-center justify-center">
+    <div className="flex flex-col flex-1 bg-white items-center justify-center">
       <div className="flex gap-4">
         {[1, 2, 3].map(n => (
           <div

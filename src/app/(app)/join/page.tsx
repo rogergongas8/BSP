@@ -113,7 +113,7 @@ export default function JoinPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col flex-1">
       <OverscrollColor top={ORANGE} bottom="#F3F4F6" />
       {/* ── Orange header ── */}
       <div className="relative px-5 pt-8 pb-12 overflow-hidden" style={{ backgroundColor: ORANGE }}>

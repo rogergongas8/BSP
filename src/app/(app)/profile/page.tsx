@@ -207,7 +207,7 @@ export default async function ProfilePage() {
       </div>
 
       {/* Scrollable content */}
-      <div className="bg-gray-100 px-4 sm:px-[26%] pt-4 pb-28 flex flex-col gap-4">
+      <div className="bg-gray-100 px-4 sm:px-[26%] pt-4 pb-2 flex flex-col gap-4">
 
         {/* Practice Time */}
         <div className="bg-white rounded-2xl p-5">

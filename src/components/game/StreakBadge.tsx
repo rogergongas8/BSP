@@ -16,7 +16,7 @@ export default function StreakBadge({ streak }: { streak: number }) {
         alt=""
         width={132}
         height={83}
-        className="absolute -right-1 top-1/2 -translate-y-[63%] object-contain shrink-0 pointer-events-none"
+        className="absolute -right-1 top-1/2 w-[8.25rem] h-auto -translate-y-[63%] object-contain shrink-0 pointer-events-none"
       />
     </div>
   )
