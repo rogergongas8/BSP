@@ -185,7 +185,7 @@ function PhraseSentence({
   const boxWidth = Math.max(80, Math.max(value.length, 8) * 10 + 36)
 
   return (
-    <div className="flex flex-wrap items-end justify-center gap-x-2 gap-y-3 px-4">
+    <div className="flex flex-wrap items-end justify-center gap-x-2 gap-y-3 px-8">
       {beforeWords.map((w, i) => (
         <span key={`b${i}`} className="text-gray-700 font-medium text-sm">{w}</span>
       ))}
@@ -664,7 +664,7 @@ function ContrastRoundView({
 
   return (
     <div className="flex-1 flex flex-col">
-      <div className="flex flex-col items-center pt-6 pb-4 px-5 gap-2">
+      <div className="flex flex-col items-center pt-6 pb-4 px-8 gap-2">
         {/* leading-[3.2]: the verb label above each blank is absolutely positioned and takes up no
             line height, so a tighter leading lets it print over the line above when the sentence
             wraps. 2.6 still left it grazing the descenders of the line above on a two-line phrase. */}
