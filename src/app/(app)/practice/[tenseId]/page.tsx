@@ -111,7 +111,7 @@ function GapWithLabel({ verb, value, color, revealed }: { verb: string; value: s
         {gapVerbOnly(verb)}
       </span>
       <span
-        className="inline-flex min-w-[4.375rem] min-h-[2.25rem] px-3 items-center justify-center rounded-lg border text-center font-medium whitespace-nowrap"
+        className="inline-flex min-w-[4.375rem] min-h-[2.25rem] px-3 items-center justify-center rounded-lg border text-center font-medium whitespace-nowrap leading-none"
         style={resultStyle}
       >
         {value}
@@ -322,7 +322,7 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
       <OverscrollColor top="#ffffff" bottom="#ffffff" />
 
       {/* Header */}
-      <div className="flex flex-col gap-5 px-5 pt-10 pb-4">
+      <div className="flex flex-col gap-3 px-5 pt-8 pb-1">
         <div className="flex items-center gap-3">
           <motion.div whileTap={{ scale: 0.88 }} className="p-2 -m-2">
             <Link href="/practice">
@@ -349,7 +349,7 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
           round view uses. A long two-gap phrase can outgrow a short phone no matter how far the
           UI scales down, and when the page scrolled instead, the Check button (fixed to the
           bottom) ended up sitting on top of the option cards. */}
-      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col px-5 pt-4 pb-28 gap-8">
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-none flex flex-col px-5 pt-1 pb-28 gap-6">
         {!loading && phrase ? (
           <>
             {/* In a mixed session each phrase comes from a different battle, so the pair of tenses
@@ -375,27 +375,29 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
                 over the line above whenever a blank lands on a wrapped second line. 2.6 was not
                 quite enough headroom — on a two-line phrase the label still grazed the descenders
                 of the line above. */}
-            {/* pt-12 is reserved whether or not the label is showing, so checking the answer never
+            {/* h-8 is reserved whether or not the label is showing, so checking the answer never
                 shifts the sentence down. The band is deep enough that "Correct Answer" clears the
                 per-blank verb labels below it: the two used to share a horizontal band, and a
                 centred verb label over a blank near the left edge printed straight over it. */}
-            <div className="relative pt-12">
-              <AnimatePresence>
-                {submitted && (
-                  <motion.span
-                    key="correct-label"
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute top-0 left-0 text-[10px] font-black tracking-widest uppercase"
-                    style={{ color: '#1D841D' }}
-                  >
-                    Correct Answer
-                  </motion.span>
-                )}
-              </AnimatePresence>
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-full h-8 pl-[1.125rem] flex items-start">
+                <AnimatePresence>
+                  {submitted && (
+                    <motion.span
+                      key="correct-label"
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="text-[10px] font-black tracking-widest uppercase"
+                      style={{ color: '#1D841D' }}
+                    >
+                      Correct Answer
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </div>
 
-              <div className="flex flex-col gap-6 text-center text-base text-gray-800 leading-[3.2]">
+              <div className="flex flex-col gap-3 text-center text-base text-gray-800 leading-[3.2]">
                 {gapCount === 1 ? (
                   <p className="[text-wrap:balance]">
                     {sentenceParts[0]}

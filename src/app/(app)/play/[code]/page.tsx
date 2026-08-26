@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'motion/react'
 import { X, ChevronRight, Check, Send, Copy } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import ContrastGap from '@/components/game/ContrastGap'
+import HintToggle from '@/components/game/HintToggle'
 import ContrastResultCard, { ResultBar } from '@/components/game/ContrastResultCard'
 import StreakBadge from '@/components/game/StreakBadge'
 import { CONTRAST_ICON, GAP_COLORS, gapVerbOnly, phraseGapCount, type ContrastPhrasePublic } from '@/lib/contrast-game-logic'
@@ -465,7 +466,7 @@ function TextRoundView({
       </div>
 
       {/* Content below — animates in/out without touching the sentence above */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto overscroll-none">
         <AnimatePresence mode="wait">
           {phase.type === 'collecting' && (
             <motion.div
@@ -685,7 +686,7 @@ function ContrastRoundView({
 
   return (
     <div className="flex-1 flex flex-col">
-      <div className="flex flex-col items-center pt-6 pb-6 px-5 gap-2">
+      <div className="flex flex-col items-center pt-1 pb-4 px-5 gap-2">
         {/* Fixed-height slot: the label only exists at results, and letting it push the sentence
             down on arrival would jog the whole screen at the moment the answer is revealed.
             h-8 with the label pinned to its top (and pt-6 above instead of pt-10) lifts the label
@@ -723,7 +724,7 @@ function ContrastRoundView({
                 {gapVerbOnly(phrase.infinitive_1)}
               </span>
               <span
-                className="inline-flex min-w-[4.375rem] min-h-[2.25rem] px-3 items-center justify-center rounded-lg border-2 text-center font-bold whitespace-nowrap"
+                className="inline-flex min-w-[4.375rem] min-h-[2.25rem] px-3 items-center justify-center rounded-lg border-2 text-center font-bold whitespace-nowrap leading-none"
                 style={revealed ? revealStyle : { borderColor: GAP_COLORS[1].border, color: '#111827' }}
               >
                 {gapWord1}
@@ -741,7 +742,7 @@ function ContrastRoundView({
                   {gapVerbOnly(phrase.infinitive_2 ?? '')}
                 </span>
                 <span
-                  className="inline-flex min-w-[4.375rem] min-h-[2.25rem] px-3 items-center justify-center rounded-lg border-2 text-center font-bold whitespace-nowrap"
+                  className="inline-flex min-w-[4.375rem] min-h-[2.25rem] px-3 items-center justify-center rounded-lg border-2 text-center font-bold whitespace-nowrap leading-none"
                   style={revealed && correct2 !== null ? revealStyle : { borderColor: GAP_COLORS[2].border, color: '#111827' }}
                 >
                   {gapWord2}
@@ -753,7 +754,7 @@ function ContrastRoundView({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 pb-36">
+      <div className="flex-1 overflow-y-auto overscroll-none px-5 pb-36">
         {phase.type === 'active' && (
           <div className={gapCount === 2 ? 'grid grid-cols-2 gap-4' : ''}>
             <ContrastGap
@@ -763,7 +764,7 @@ function ContrastRoundView({
               correctOption={null}
               selected={selected1}
               submitted={false}
-              showHints={false}
+              showHints={showHints}
               iconA={icons.a}
               iconB={icons.b}
               bgColor={gapCount === 2 ? GAP_COLORS[1].bg : 'transparent'}
@@ -776,7 +777,7 @@ function ContrastRoundView({
                 correctOption={null}
                 selected={selected2}
                 submitted={false}
-                showHints={false}
+                showHints={showHints}
                 iconA={icons.a}
                 iconB={icons.b}
                 bgColor={GAP_COLORS[2].bg}
@@ -1337,6 +1338,7 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [totalRounds, setTotalRounds] = useState(8)
   const [secondsLeft, setSecondsLeft] = useState(30)
+  const [showHints, setShowHints] = useState(false)
   const [leftPlayerToast, setLeftPlayerToast] = useState<{ username: string; avatar: string } | null>(null)
   const [myStreak, setMyStreak] = useState(0)
   const [confirmingLeave, setConfirmingLeave] = useState(false)
@@ -2010,23 +2012,30 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
 
       {/* Header */}
       {showGameHeader && (
-        <div className="flex items-center gap-3 px-4 pt-4 pb-3">
-          <motion.button whileTap={{ scale: 0.9 }} onClick={() => setConfirmingLeave(true)}>
-            <X className="w-5 h-5 text-gray-400 stroke-[2.5]" />
-          </motion.button>
+        <div className="flex flex-col px-4 pt-4 pb-1 gap-2">
+          <div className="flex items-center gap-3">
+            <motion.button whileTap={{ scale: 0.9 }} onClick={() => setConfirmingLeave(true)}>
+              <X className="w-5 h-5 text-gray-400 stroke-[2.5]" />
+            </motion.button>
 
-          <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-blue-500 rounded-full transition-all duration-500"
-              style={{ width: `${((currentRoundNumber - 1) / totalRounds) * 100}%` }}
-            />
+            <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-blue-500 rounded-full transition-all duration-500"
+                style={{ width: `${((currentRoundNumber - 1) / totalRounds) * 100}%` }}
+              />
+            </div>
+
+            {(phase.type === 'active' || phase.type === 'collecting') ? (
+              <CountdownCircle seconds={secondsLeft} total={phase.round.duration_seconds} />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
+                <span className="text-white text-xs font-black">{currentRoundNumber}</span>
+              </div>
+            )}
           </div>
-
-          {(phase.type === 'active' || phase.type === 'collecting') ? (
-            <CountdownCircle seconds={secondsLeft} total={phase.round.duration_seconds} />
-          ) : (
-            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
-              <span className="text-white text-xs font-black">{currentRoundNumber}</span>
+          {('round' in phase && phase.round.contrast_phrases) && (
+            <div className="flex justify-end pr-1 -mt-1">
+              <HintToggle checked={showHints} onChange={setShowHints} />
             </div>
           )}
         </div>

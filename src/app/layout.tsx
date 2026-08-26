@@ -11,8 +11,21 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-  title: "BSP",
-  description: "Learn Spanish with BSP",
+  metadataBase: new URL("https://www.miaustico.com"),
+  title: {
+    template: "%s | Miaustico BSP",
+    default: "Miaustico BSP - Aprende Español",
+  },
+  description: "Plataforma de aprendizaje de español interactivo. Practica y mejora tu nivel de español.",
+  keywords: ["miaustico", "bsp", "aprender español", "learn spanish", "spanish app"],
+  openGraph: {
+    title: "Miaustico BSP",
+    description: "Plataforma de aprendizaje de español.",
+    url: "https://www.miaustico.com",
+    siteName: "Miaustico",
+    locale: "es_ES",
+    type: "website",
+  },
 };
 
 export const viewport: Viewport = {
