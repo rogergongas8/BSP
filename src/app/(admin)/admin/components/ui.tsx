@@ -96,30 +96,50 @@ type Column<T> = {
   render: (row: T) => React.ReactNode
 }
 
-/** Compact data table. Scrolls horizontally rather than letting the page overflow. */
+/**
+ * Opaque stand-in for the panel's own `bg-slate-900/60` over the `#0B1020` page. The sticky
+ * header cannot be translucent — rows would scroll visibly underneath it — and there is no
+ * ancestor to inherit an opaque colour from, so the blend is resolved here.
+ */
+const HEADER_BG = '#0D1426'
+
+/**
+ * Compact data table. Scrolls horizontally rather than letting the page overflow, and
+ * vertically once it outgrows `maxHeight` so a table that keeps gaining rows (usuarios,
+ * salas) stays a fixed block on the page instead of pushing everything below it away.
+ * Short tables never reach the cap, so nothing is boxed unnecessarily.
+ */
 export function DataTable<T>({
   columns,
   rows,
   rowKey,
   empty = 'Sin datos.',
+  maxHeight = 420,
 }: {
   columns: Column<T>[]
   rows: T[]
   rowKey: (row: T) => string
   empty?: string
+  maxHeight?: number
 }) {
   if (rows.length === 0) return <p className="text-sm text-slate-500">{empty}</p>
 
   return (
-    <div className="-mx-5 overflow-x-auto px-5">
+    <div className="-mx-5 overflow-auto px-5" style={{ maxHeight }}>
       <table className="w-full min-w-[560px] border-collapse text-sm">
         <thead>
-          <tr className="border-b border-slate-800">
+          <tr>
             {columns.map(col => (
               <th
                 key={col.key}
+                style={{ backgroundColor: HEADER_BG }}
                 className={cn(
-                  'pb-2 text-[11px] font-semibold tracking-wide text-slate-500 uppercase',
+                  // The bottom rule is a shadow, not a border: a border on a sticky cell
+                  // scrolls out of view with the header's own box in WebKit.
+                  'sticky top-0 z-10 pt-0.5 pb-2 text-[11px] font-semibold tracking-wide text-slate-500 uppercase',
+                  // slate-800 spelled out: Tailwind v4 only emits a theme variable when a
+                  // utility consumes it, and an arbitrary value does not count as a use.
+                  'shadow-[inset_0_-1px_0_#1e293b]',
                   col.align === 'right' ? 'text-right' : 'text-left'
                 )}
               >

@@ -20,11 +20,18 @@ export const CHART_COLORS = {
 const GRID = '#2A3350'
 const AXIS_TEXT = '#7C89AE'
 
+/**
+ * Round the axis up to the next readable value. The ladder is deliberately fine-grained:
+ * a coarse 1/2/5/10 ladder turns a peak of 240 into an axis of 500, which squashes every
+ * series into the bottom half of the plot and reads as a broken chart.
+ */
+const AXIS_STEPS = [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]
+
 function niceMax(value: number): number {
   if (value <= 0) return 1
   const magnitude = 10 ** Math.floor(Math.log10(value))
   const scaled = value / magnitude
-  const step = scaled <= 1 ? 1 : scaled <= 2 ? 2 : scaled <= 5 ? 5 : 10
+  const step = AXIS_STEPS.find(s => scaled <= s + 1e-9) ?? 10
   return step * magnitude
 }
 
@@ -55,7 +62,10 @@ export function LineChart({
   const x = (i: number) => (n <= 1 ? PAD.left + plotW / 2 : PAD.left + (i / (n - 1)) * plotW)
   const y = (v: number) => PAD.top + plotH - (v / max) * plotH
 
-  const ticks = [0, 0.25, 0.5, 0.75, 1].map(f => Math.round(max * f))
+  // Rounding can collapse fractions into the same integer on a small axis (max = 1 gives
+  // 0,0,1,1,1) — duplicate React keys and gridlines drawn on top of each other.
+  const ticks = [...new Set([0, 0.25, 0.5, 0.75, 1].map(f => Math.round(max * f)))]
+  const labelStride = Math.max(1, Math.ceil(n / Math.floor(plotW / 34)))
 
   return (
     <div className="w-full overflow-x-auto">
@@ -69,11 +79,15 @@ export function LineChart({
           </g>
         ))}
 
-        {labels.map((label, i) => (
-          <text key={label} x={x(i)} y={H - 8} textAnchor="middle" fontSize="10" fill={AXIS_TEXT}>
-            {label}
-          </text>
-        ))}
+        {labels.map((label, i) =>
+          // Thin the axis out once the labels would collide: ~34px is the widest a
+          // "17 ago" sits comfortably, and a long course would otherwise smear them.
+          i % labelStride === 0 ? (
+            <text key={i} x={x(i)} y={H - 8} textAnchor="middle" fontSize="10" fill={AXIS_TEXT}>
+              {label}
+            </text>
+          ) : null
+        )}
 
         {series.map(s => (
           <g key={s.label}>

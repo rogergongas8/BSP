@@ -61,6 +61,7 @@ export default async function AdminPage() {
   const itemTrend    = stats.timeline.map(d => d.items)
   const userTrend    = stats.timeline.map(d => d.activeUsers)
   const minuteTrend  = stats.timeline.map(d => d.minutes)
+  const dayLabels    = stats.timeline.map(d => fmtDate(`${d.date}T12:00:00`))
 
   const topXp   = stats.users.filter(u => u.totalXp > 0).slice(0, 3)
   const topWins = [...stats.users].filter(u => u.gamesWon > 0).sort((a, b) => b.gamesWon - a.gamesWon).slice(0, 3)
@@ -115,19 +116,32 @@ export default async function AdminPage() {
 
       <div className="flex flex-col gap-6">
         {/* ── Actividad temporal ── */}
+        {/*
+          Two charts rather than one: respuestas and minutos run in the hundreds while
+          sesiones and usuarios stay in single or double digits, so on a shared axis the
+          latter two flatline along the baseline and read as missing data.
+        */}
         <Panel
           title="Actividad por día"
           subtitle={`Desde el inicio del curso, ${stats.timeline.length} días`}
         >
           <LineChart
-            labels={stats.timeline.map(d => fmtDate(`${d.date}T12:00:00`))}
+            labels={dayLabels}
             series={[
-              { label: 'Sesiones',   color: CHART_COLORS.blue,   values: sessionTrend },
               { label: 'Respuestas', color: CHART_COLORS.violet, values: itemTrend },
-              { label: 'Usuarios',   color: CHART_COLORS.green,  values: userTrend },
               { label: 'Minutos',    color: CHART_COLORS.amber,  values: minuteTrend },
             ]}
           />
+          <div className="mt-6">
+            <LineChart
+              height={180}
+              labels={dayLabels}
+              series={[
+                { label: 'Sesiones', color: CHART_COLORS.blue,  values: sessionTrend },
+                { label: 'Usuarios', color: CHART_COLORS.green, values: userTrend },
+              ]}
+            />
+          </div>
         </Panel>
 
         <Panel title="Mapa de actividad" subtitle="Respuestas por día — cada columna es una semana">
@@ -421,8 +435,10 @@ export default async function AdminPage() {
             </div>
           ) : null}
 
+          {/* No longer truncated to the first 20: the table scrolls, so the full history
+              stays reachable without the page growing with it. */}
           <DataTable
-            rows={stats.rooms.slice(0, 20)}
+            rows={stats.rooms}
             rowKey={r => r.code}
             columns={[
               { key: 'code',    header: 'Código',     render: r => <span className="font-mono text-slate-200">{r.code}</span> },

@@ -186,6 +186,28 @@ function pct(part: number, whole: number): number {
   return whole > 0 ? Math.round((part / whole) * 100) : 0
 }
 
+/**
+ * PostgREST caps every select at 1000 rows (`db-max-rows`) and truncates *silently* — no
+ * error, no flag on the response. The phrase catalogue is already past that, which quietly
+ * dropped a whole conjugation type from the difficulty tables and left the rest with wrong
+ * denominators, and `round_answers` has just crossed it too. So every unbounded read below
+ * is paged to exhaustion instead of trusting a single request.
+ */
+const PAGE_SIZE = 1000
+
+type PagedQuery<T> = (from: number, to: number) => PromiseLike<{ data: T[] | null }>
+
+async function fetchAll<T>(page: PagedQuery<T>): Promise<T[]> {
+  const rows: T[] = []
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data } = await page(from, from + PAGE_SIZE - 1)
+    if (!data || data.length === 0) break
+    rows.push(...data)
+    if (data.length < PAGE_SIZE) break
+  }
+  return rows
+}
+
 export async function getAdminStats(): Promise<AdminStats> {
   const admin = createAdminClient()
 
@@ -193,35 +215,23 @@ export async function getAdminStats(): Promise<AdminStats> {
   const since = `${COURSE_START}T00:00:00.000Z`
 
   const [
-    profilesRes, sessionsRes, playTimeRes, roomsRes, roomPlayersRes,
-    roundsRes, answersRes, achievementsRes, phraseMistakesRes, contrastMistakesRes,
-    phraseCatalogRes,
+    profiles, sessions, playTime, rooms, roomPlayers,
+    rounds, answers, achievements, phraseMistakes, contrastMistakes,
+    phraseCatalog,
   ] = await Promise.all([
-    admin.from('profiles').select('id, username, total_xp, streak, activities_completed, games_won, top3_finishes, daily_challenges_completed, created_at, last_activity_date'),
-    admin.from('practice_sessions').select('user_id, tense, total, correct, first_try, with_hints, skipped, half_correct, duration_seconds, completed_at').gte('completed_at', since),
-    admin.from('play_time_logs').select('user_id, seconds, source, logged_at').gte('logged_at', since),
-    admin.from('rooms').select('id, code, game_type, game_mode, status, created_at').gte('created_at', since),
-    admin.from('room_players').select('room_id, user_id'),
-    admin.from('rounds').select('id, room_id, round_number, phrase_id, contrast_phrase_id'),
-    admin.from('round_answers').select('round_id, user_id, is_correct, response_time_ms, points_awarded, validation_status, submitted_at').gte('submitted_at', since),
-    admin.from('user_achievements').select('achievement_id, user_id'),
-    admin.from('phrase_mistakes').select('phrase_id, tense, resolved_at, created_at').gte('created_at', since),
-    admin.from('contrast_mistakes').select('contrast_phrase_id, battle_id, resolved_at, created_at').gte('created_at', since),
+    fetchAll((f, t) => admin.from('profiles').select('id, username, total_xp, streak, activities_completed, games_won, top3_finishes, daily_challenges_completed, created_at, last_activity_date').order('id').range(f, t)),
+    fetchAll((f, t) => admin.from('practice_sessions').select('user_id, tense, total, correct, first_try, with_hints, skipped, half_correct, duration_seconds, completed_at').gte('completed_at', since).order('id').range(f, t)),
+    fetchAll((f, t) => admin.from('play_time_logs').select('user_id, seconds, source, logged_at').gte('logged_at', since).order('id').range(f, t)),
+    fetchAll((f, t) => admin.from('rooms').select('id, code, game_type, game_mode, status, created_at').gte('created_at', since).order('id').range(f, t)),
+    fetchAll((f, t) => admin.from('room_players').select('room_id, user_id').order('id').range(f, t)),
+    fetchAll((f, t) => admin.from('rounds').select('id, room_id, round_number, phrase_id, contrast_phrase_id').order('id').range(f, t)),
+    fetchAll((f, t) => admin.from('round_answers').select('round_id, user_id, is_correct, response_time_ms, points_awarded, validation_status, submitted_at').gte('submitted_at', since).order('id').range(f, t)),
+    fetchAll((f, t) => admin.from('user_achievements').select('achievement_id, user_id').order('id').range(f, t)),
+    fetchAll((f, t) => admin.from('phrase_mistakes').select('phrase_id, tense, resolved_at, created_at').gte('created_at', since).order('id').range(f, t)),
+    fetchAll((f, t) => admin.from('contrast_mistakes').select('contrast_phrase_id, battle_id, resolved_at, created_at').gte('created_at', since).order('id').range(f, t)),
     // Full catalogue: needed to normalise mistakes-per-type by how many phrases exist of each.
-    admin.from('phrases').select('id, verb, person, type, tense'),
+    fetchAll((f, t) => admin.from('phrases').select('id, verb, person, type, tense').order('id').range(f, t)),
   ])
-
-  const profiles = profilesRes.data ?? []
-  const sessions = sessionsRes.data ?? []
-  const playTime = playTimeRes.data ?? []
-  const rooms = roomsRes.data ?? []
-  const roomPlayers = roomPlayersRes.data ?? []
-  const rounds = roundsRes.data ?? []
-  const answers = answersRes.data ?? []
-  const achievements = achievementsRes.data ?? []
-  const phraseMistakes = phraseMistakesRes.data ?? []
-  const contrastMistakes = contrastMistakesRes.data ?? []
-  const phraseCatalog = phraseCatalogRes.data ?? []
 
   // ── Per-user rollups ────────────────────────────────────────────────────────
   const sessionsByUser = new Map<string, typeof sessions>()
@@ -323,7 +333,7 @@ export async function getAdminStats(): Promise<AdminStats> {
     }
   })
 
-  // ── Hour-of-day histogram, from multiplayer answers (the finest timestamp there is) ──
+  // ── Hour-of-day histogram, from session completion times ────────────────────
   const hourCounts = new Array(24).fill(0) as number[]
   for (const s of sessions) hourCounts[new Date(s.completed_at).getHours()] += 1
   const hourly = hourCounts.map((answersCount, hour) => ({ hour, answers: answersCount }))
@@ -423,17 +433,17 @@ export async function getAdminStats(): Promise<AdminStats> {
   const phraseIds = [...new Set(phraseMistakes.map(m => m.phrase_id))]
   const contrastIds = [...new Set(contrastMistakes.map(m => m.contrast_phrase_id))]
 
-  const [phraseTextsRes, contrastTextsRes] = await Promise.all([
+  const [phraseTexts, contrastTexts] = await Promise.all([
     phraseIds.length > 0
-      ? admin.from('phrases').select('id, sentence, tense').in('id', phraseIds)
-      : Promise.resolve({ data: [] as { id: string; sentence: string; tense: string }[] }),
+      ? fetchAll((f, t) => admin.from('phrases').select('id, sentence, tense').in('id', phraseIds).order('id').range(f, t))
+      : Promise.resolve([]),
     contrastIds.length > 0
-      ? admin.from('contrast_phrases').select('id, sentence, battle_id').in('id', contrastIds)
-      : Promise.resolve({ data: [] as { id: string; sentence: string; battle_id: string }[] }),
+      ? fetchAll((f, t) => admin.from('contrast_phrases').select('id, sentence, battle_id').in('id', contrastIds).order('id').range(f, t))
+      : Promise.resolve([]),
   ])
 
-  const phraseText = new Map((phraseTextsRes.data ?? []).map(p => [p.id, p]))
-  const contrastText = new Map((contrastTextsRes.data ?? []).map(p => [p.id, p]))
+  const phraseText = new Map(phraseTexts.map(p => [p.id, p]))
+  const contrastText = new Map(contrastTexts.map(p => [p.id, p]))
 
   const mistakeAcc = new Map<string, MistakeRow>()
   const bumpMistake = (key: string, sentence: string, mode: string, resolved: boolean) => {
@@ -491,7 +501,9 @@ export async function getAdminStats(): Promise<AdminStats> {
     half_correct:         'Media correcta',
     aux_invalid:          'Auxiliar incorrecto',
     aux_wrong_person:     'Auxiliar, persona incorrecta',
-    part_stem_invalid:    'Participio incorrecto',
+    part_stem_invalid:    'Participio, raíz incorrecta',
+    part_irreg_invalid:   'Participio irregular incorrecto',
+    part_ending_invalid:  'Participio, terminación incorrecta',
   }
 
   const failureCounts = new Map<string, number>()
