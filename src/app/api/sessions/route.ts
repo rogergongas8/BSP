@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
 
   const { data: profile } = await admin
     .from('profiles')
-    .select('total_xp, streak, last_activity_date')
+    .select('total_xp, streak, last_activity_date, activities_completed')
     .eq('id', user.id)
     .single()
 
@@ -108,7 +108,9 @@ export async function POST(request: NextRequest) {
     newStreak = 1
   }
 
-  const currentActivities = (profile as unknown as { activities_completed?: number })?.activities_completed ?? 0
+  // Every finished session counts, unlike the streak above: this is a lifetime activity
+  // total, not a per-day flag.
+  const currentActivities = profile?.activities_completed ?? 0
 
   await admin
     .from('profiles')
@@ -116,7 +118,7 @@ export async function POST(request: NextRequest) {
       total_xp:             newXp,
       streak:               newStreak,
       last_activity_date:   today,
-      activities_completed: lastDate === today ? currentActivities : currentActivities + 1,
+      activities_completed: currentActivities + 1,
     })
     .eq('id', user.id)
 

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, type RefObject } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'motion/react'
-import { ChevronDown, ChevronRight, RotateCw, BookOpen } from 'lucide-react'
+import { ChevronDown, ChevronRight, RotateCw, BookOpen, CircleCheck } from 'lucide-react'
 import { TENSE_META, subcategoryFor } from '@/lib/game-logic'
 import { createClient } from '@/lib/supabase/client'
 import { getLevelInfo, catImagePath } from '@/lib/levels'
@@ -243,6 +243,100 @@ function ComboReviewCard({ combo, open, onToggle }: { combo: ComboReview; open: 
   )
 }
 
+type ModeMistakeStats = { total: number; cleared: number; pct: number }
+type MistakeStats = { escribiendo: ModeMistakeStats; lio: ModeMistakeStats }
+
+const EMPTY_MODE_STATS: ModeMistakeStats = { total: 0, cleared: 0, pct: 0 }
+
+// Singleplayer only — Battle never records phrase/contrast mistakes, so it has no row here.
+const MISTAKE_STAT_MODES = [
+  { key: 'escribiendo', label: 'Escribiendo...', icon: '/images/profile/escribiendo.png', bar: 'bg-bsp-blue' },
+  { key: 'lio',         label: 'Lío de tiempos', icon: '/images/profile/lio.png',         bar: 'bg-rose-500' },
+] as const
+
+// Both modes as one figure. Summed from the raw counts rather than averaging the two
+// percentages: a mode with 2 mistakes must not weigh the same as one with 200.
+function combinedStats(stats: MistakeStats): ModeMistakeStats {
+  const total   = stats.escribiendo.total   + stats.lio.total
+  const cleared = stats.escribiendo.cleared + stats.lio.cleared
+  return { total, cleared, pct: total === 0 ? 0 : Math.round((cleared / total) * 100) }
+}
+
+// `highlight` marks the combined total: no mode icon, and a border instead of the flat fill
+// so it reads as a summary of the rows above rather than a third mode.
+function ModeStatsRow({ label, icon, bar, stats, highlight = false }: {
+  label: string
+  icon?: string
+  bar: string
+  stats: ModeMistakeStats
+  highlight?: boolean
+}) {
+  return (
+    <div className={`flex flex-col gap-2 rounded-2xl px-3.5 py-3 ${highlight ? 'border border-gray-200' : 'bg-gray-50'}`}>
+      <div className="flex items-center gap-2">
+        {icon
+          ? <Image src={icon} alt="" width={20} height={20} className="object-contain shrink-0" />
+          : <CircleCheck className="w-5 h-5 text-gray-400 shrink-0" />}
+        <span className="flex-1 text-sm font-bold text-gray-900">{label}</span>
+        <span className="text-sm font-black text-gray-900">{stats.pct}%</span>
+      </div>
+      <div className="h-1.5 w-full rounded-full bg-gray-200 overflow-hidden">
+        <div className={`h-full rounded-full ${bar}`} style={{ width: `${stats.pct}%` }} />
+      </div>
+      <div className="flex items-center gap-3 text-[11px] text-gray-500">
+        <span><span className="font-bold text-gray-700">{stats.total}</span> total mistakes</span>
+        <span className="text-gray-300">·</span>
+        <span><span className="font-bold text-gray-700">{stats.cleared}</span> cleared</span>
+      </div>
+    </div>
+  )
+}
+
+function MistakesClearedPanel({ stats, open, onToggle }: {
+  stats: MistakeStats | null
+  open: boolean
+  onToggle: () => void
+}) {
+  // Same figure drives the collapsed button and the "Both modes" row below, so they can
+  // never disagree.
+  const combined = stats ? combinedStats(stats) : EMPTY_MODE_STATS
+
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+      <button onClick={onToggle} className="w-full flex items-center gap-2.5 px-3.5 py-3">
+        <CircleCheck className="w-4 h-4 text-gray-400 shrink-0" />
+        <span className="flex-1 text-left text-sm font-semibold text-gray-600">Mistakes cleared</span>
+        {stats && <span className="text-xs text-gray-400">{combined.pct}%</span>}
+        <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="overflow-hidden"
+          >
+            <div className="px-3.5 pb-3.5 flex flex-col gap-2">
+              {MISTAKE_STAT_MODES.map(mode => (
+                <ModeStatsRow
+                  key={mode.key}
+                  label={mode.label}
+                  icon={mode.icon}
+                  bar={mode.bar}
+                  stats={stats?.[mode.key] ?? EMPTY_MODE_STATS}
+                />
+              ))}
+              <ModeStatsRow label="Total" bar="bg-gray-700" stats={combined} highlight />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 const OPEN_REVIEW_CARD_KEY = 'bsp:review:openCard'
 
 export default function LearnLandingPage() {
@@ -316,6 +410,16 @@ export default function LearnLandingPage() {
     fetch('/api/mistakes')
       .then(r => r.json())
       .then((json: { data?: MistakeRow[] }) => setEscribiendoReview(groupMistakes(json.data ?? [])))
+      .catch(() => {})
+  }, [])
+
+  const [mistakeStats, setMistakeStats] = useState<MistakeStats | null>(null)
+  const [statsOpen, setStatsOpen] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/mistakes/stats')
+      .then(r => r.json())
+      .then((json: { data?: MistakeStats }) => setMistakeStats(json.data ?? null))
       .catch(() => {})
   }, [])
 
@@ -498,6 +602,13 @@ export default function LearnLandingPage() {
             )}
           </div>
         </div>
+
+        {/* Mistakes cleared — cumulative clear rate per singleplayer mode, plus both combined */}
+        <MistakesClearedPanel
+          stats={mistakeStats}
+          open={statsOpen}
+          onToggle={() => setStatsOpen(v => !v)}
+        />
       </div>
     </div>
   )

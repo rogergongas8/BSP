@@ -292,6 +292,11 @@ function ContrastGame({ battleId }: { battleId: ContrastBattleId | 'mixed' }) {
     setStats(newStats)
 
     if (next >= sessionTotal) {
+      // A redo is clearing existing mistakes, not a new activity: it never reaches /results,
+      // so no practice_sessions row is written and no XP, streak or activity count moves.
+      // Escribiendo already worked this way; Lío was still falling through to results and
+      // being counted as a fresh session.
+      if (isRedo) { router.push('/learn'); return }
       const start = sessionStart.current ?? Date.now()
       const duration = Math.round((Date.now() - start) / 1000)
       const p = new URLSearchParams({

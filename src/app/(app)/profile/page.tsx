@@ -21,6 +21,10 @@ const TENSE_STYLES = {
   ind: { barColor: 'bg-orange-400', textColor: 'text-orange-400' },
 }
 
+function activityLabel(count: number) {
+  return `${count} ${count === 1 ? 'activity' : 'activities'}`
+}
+
 export default async function ProfilePage() {
   const supabase = await createClient()
 
@@ -57,22 +61,28 @@ export default async function ProfilePage() {
     ...playTimeLogs.map(p => ({ seconds: p.seconds, at: p.logged_at })),
   ]
 
-  function tenseAccuracy(tense: string) {
+  // Accuracy and activity count come from the same set of rows on purpose: `activities` is
+  // how many of the sessions behind that accuracy the user actually finished. Mixed "redo"
+  // sessions are stored under their own tense id, so they count towards neither — same
+  // denominator for both figures.
+  function tenseStats(tense: string) {
     const rows = sessions.filter(s => s.tense === tense)
-    if (rows.length === 0) return null
     const correct = rows.reduce((sum, r) => sum + r.correct, 0)
     const total   = rows.reduce((sum, r) => sum + r.total,   0)
-    return total > 0 ? Math.round((correct / total) * 100) : null
+    return {
+      accuracy: total > 0 ? Math.round((correct / total) * 100) : null,
+      activities: rows.length,
+    }
   }
 
-  const accIndefinido  = tenseAccuracy('indefinido')
-  const accImperfecto  = tenseAccuracy('imperfecto')
-  const accPerfecto    = tenseAccuracy('pretérito-perfecto')
+  const statsIndefinido  = tenseStats('indefinido')
+  const statsImperfecto  = tenseStats('imperfecto')
+  const statsPerfecto    = tenseStats('pretérito-perfecto')
 
   // Lío de tiempos sessions are saved in the same table, keyed by battle_id instead of tense.
-  const accJaviZas     = tenseAccuracy('javi-zas')
-  const accMimoZas     = tenseAccuracy('mimo-zas')
-  const accJaviMimoZas = tenseAccuracy('javi-mimo-zas')
+  const statsJaviZas     = tenseStats('javi-zas')
+  const statsMimoZas     = tenseStats('mimo-zas')
+  const statsJaviMimoZas = tenseStats('javi-mimo-zas')
 
   const ESCRIBIENDO_TENSE_IDS = ['indefinido', 'imperfecto', 'pretérito-perfecto']
   const LIO_BATTLE_IDS = ['javi-zas', 'mimo-zas', 'javi-mimo-zas']
@@ -132,15 +142,15 @@ export default async function ProfilePage() {
   const hasPracticeData = weekTotalSeconds > 0
 
   const ESCRIBIENDO_TENSES = [
-    { id: 'pp',  name: 'Pretérito Perfecto', accuracy: accPerfecto,   ...TENSE_STYLES.pp,  icon: ZAS  },
-    { id: 'imp', name: 'Imperfecto',         accuracy: accImperfecto, ...TENSE_STYLES.imp, icon: MIMO },
-    { id: 'ind', name: 'Indefinido',         accuracy: accIndefinido, ...TENSE_STYLES.ind, icon: JAVI },
+    { id: 'pp',  name: 'Pretérito Perfecto', ...statsPerfecto,   ...TENSE_STYLES.pp,  icon: ZAS  },
+    { id: 'imp', name: 'Imperfecto',         ...statsImperfecto, ...TENSE_STYLES.imp, icon: MIMO },
+    { id: 'ind', name: 'Indefinido',         ...statsIndefinido, ...TENSE_STYLES.ind, icon: JAVI },
   ]
 
   const LIO_COMBINATIONS = [
-    { id: 'pp_ind',     name: 'Pretérito Perfecto - Indefinido',      accuracy: accJaviZas,     ...TENSE_STYLES.pp,  icons: [ZAS, JAVI]       },
-    { id: 'ind_imp',    name: 'Indefinido - Imperfecto',              accuracy: accMimoZas,     ...TENSE_STYLES.pp,  icons: [JAVI, MIMO]      },
-    { id: 'pp_ind_imp', name: 'P.Perfecto - Indefinido - Imperfecto', accuracy: accJaviMimoZas, ...TENSE_STYLES.ind, icons: [ZAS, JAVI, MIMO] },
+    { id: 'pp_ind',     name: 'Pretérito Perfecto - Indefinido',      ...statsJaviZas,     ...TENSE_STYLES.pp,  icons: [ZAS, JAVI]       },
+    { id: 'ind_imp',    name: 'Indefinido - Imperfecto',              ...statsMimoZas,     ...TENSE_STYLES.pp,  icons: [JAVI, MIMO]      },
+    { id: 'pp_ind_imp', name: 'P.Perfecto - Indefinido - Imperfecto', ...statsJaviMimoZas, ...TENSE_STYLES.ind, icons: [ZAS, JAVI, MIMO] },
   ]
 
   return (
@@ -309,7 +319,9 @@ export default async function ProfilePage() {
                   <Image src={t.icon} alt={t.name} width={28} height={28} className="object-contain" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-gray-700 text-xs font-medium mb-1">{t.name}</p>
+                  <p className="text-gray-700 text-xs font-medium mb-1 truncate">
+                    {t.name} <span className="text-gray-400 font-normal">· {activityLabel(t.activities)}</span>
+                  </p>
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-3 bg-white rounded-full overflow-hidden">
                       <div className={`h-full ${t.barColor} rounded-full`} style={{ width: `${t.accuracy ?? 0}%` }} />
@@ -339,7 +351,9 @@ export default async function ProfilePage() {
                   ))}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-gray-700 text-xs font-medium mb-1">{c.name}</p>
+                  <p className="text-gray-700 text-xs font-medium mb-1 truncate">
+                    {c.name} <span className="text-gray-400 font-normal">· {activityLabel(c.activities)}</span>
+                  </p>
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-3 bg-white rounded-full overflow-hidden">
                       <div className={`h-full ${c.barColor} rounded-full`} style={{ width: `${c.accuracy ?? 0}%` }} />
