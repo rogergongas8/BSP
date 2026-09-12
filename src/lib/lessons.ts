@@ -7,21 +7,30 @@ export type LessonBlock =
   | { type: 'table'; rows: [string, string][]; note?: string; character?: string }
   | { type: 'note'; text: string; variant?: 'boxed'; character?: string }
   | { type: 'rule-cards'; items: { suffix: string; result: string; examples: [string, string][] }[] }
-  | { type: 'pill-pairs'; items: [string, string][]; color: PillColor }
+  | { type: 'pill-pairs'; items: [string, string][]; color: PillColor; style?: 'solid' | 'outline' | 'mixed'; columns?: 2 | 3 }
   | { type: 'word-pills'; groups: { words: string[]; color: PillColor }[] }
   | { type: 'correction-pairs'; items: [wrong: string, correct: string][] }
   | { type: 'stem-formula'; stems: [string, string][]; endings: string[] }
   | { type: 'infinitive-table'; headers: [string, string]; rows: [string, string][] }
-  | { type: 'trio-table'; headers: [string, string, string]; rows: [string, string, string][] }
-  | { type: 'boxed-pairs'; rows: [string, string][]; highlightIndex?: number; accent?: 'orange' | 'green' }
-  | { type: 'example-words'; color: PillColor; words: string[] }
+  | { type: 'trio-table'; headers: [string, string, string]; rows: [string, string, string | { text: string; underline: string }][] }
+  | { type: 'boxed-pairs'; rows: [string, string | { text: string; underline: string }][]; highlightIndex?: number | number[]; accent?: 'orange' | 'green' }
+  | { type: 'stem-cloud'; stems: [string, string][] }
+  | { type: 'example-words'; color: PillColor; boxColor?: PillColor; words: (string | { text: string; underline: string })[] }
   | {
       type: 'dual-conjugation'
       style?: 'solid' | 'pastel'
-      groups: { label: string; color: PillColor; rows: [string, string][]; highlightIndex?: number }[]
+      groups: { label: string; color: PillColor; rows: [string, string][]; highlightIndex?: number | number[] }[]
     }
   | { type: 'accent-table'; rows: [string, string][]; color: PillColor; underline: string }
   | { type: 'stem-cards'; items: [string, string][] }
+  | { type: 'subject-stem-cards'; color: PillColor; cards: { subjects: string[]; stem: string | { text: string; underline: string } }[] }
+  | {
+      type: 'vowel-change-table'
+      groups: {
+        change: [string, string]
+        rows: [string, string, string, string][]
+      }[]
+    }
   | {
       type: 'uses-list'
       items: { icon: 'repeat' | 'file' | 'cloud'; image?: string; title: string; desc: string; examples: string[] }[]
@@ -47,6 +56,12 @@ export type LessonBlock =
       cards: { label: string; color: 'blue' | 'blueLight' | 'red'; text: string; example: string; icon?: string }[]
     }
   | {
+      type: 'summary-group'
+      title: string
+      boxed?: boolean
+      blocks: LessonBlock[]
+    }
+  | {
       type: 'time-unit-card'
       variant: 'perfecto' | 'indefinido'
       desc?: string
@@ -58,6 +73,10 @@ export type LessonBlock =
       exampleBold?: string
     }
   | { type: 'ejemplo-lines'; items: { underline: string; rest: string }[] }
+  | {
+      type: 'example-columns'
+      columns: string[][]
+    }
   | {
       type: 'consequence-grid'
       items: { variant: 'perfecto' | 'indefinido'; quote: string; icon: string; caption: string }[]
@@ -248,28 +267,29 @@ export const LESSONS: Record<string, Lesson> = {
         title: 'Stem: vowel change in "él/ella/ellos/ellas"',
         subtitle: 'Some -ir verbs have a vowel change in the stem, but only in **él/ella** and **ellos/ellas** forms.',
         blocks: [
-          { type: 'pill-pairs', color: 'lavender', items: [['e', 'i']] },
           {
-            type: 'trio-table',
-            headers: ['INFINITIVE', 'STEM', 'ÉL/ELLA · ELLOS/ELLAS'],
-            rows: [
-              ['repetir', 'repit-', 'repitió / repitieron'],
-              ['sentir', 'sint-', 'sintió / sintieron'],
-              ['seguir', 'sigu-', 'siguió / siguieron'],
-              ['preferir', 'prefir-', 'prefirió / prefirieron'],
-              ['mentir', 'mint-', 'mintió / mintieron'],
-              ['competir', 'compit-', 'compitió / compitieron'],
-              ['elegir', 'elig-', 'eligió / eligieron'],
-              ['medir', 'mid-', 'midió / midieron'],
-            ],
-          },
-          { type: 'pill-pairs', color: 'lavender', items: [['o', 'u']] },
-          {
-            type: 'trio-table',
-            headers: ['INFINITIVE', 'STEM', 'ÉL/ELLA · ELLOS/ELLAS'],
-            rows: [
-              ['dormir', 'durm-', 'durmió / durmieron'],
-              ['morir', 'mur-', 'murió / murieron'],
+            type: 'vowel-change-table',
+            groups: [
+              {
+                change: ['e', 'i'],
+                rows: [
+                  ['repetir', 'repit-', 'repitió', 'repitieron'],
+                  ['sentir', 'sint-', 'sintió', 'sintieron'],
+                  ['seguir', 'sigu-', 'siguió', 'siguieron'],
+                  ['preferir', 'prefir-', 'prefirió', 'prefirieron'],
+                  ['mentir', 'mint-', 'mintió', 'mintieron'],
+                  ['competir', 'compit-', 'compitió', 'compitieron'],
+                  ['elegir', 'elig-', 'eligió', 'eligieron'],
+                  ['medir', 'mid-', 'midió', 'midieron'],
+                ],
+              },
+              {
+                change: ['o', 'u'],
+                rows: [
+                  ['dormir', 'durm-', 'durmió', 'durmieron'],
+                  ['morir', 'mur-', 'murió', 'murieron'],
+                ],
+              },
             ],
           },
         ],
@@ -323,15 +343,27 @@ export const LESSONS: Record<string, Lesson> = {
             style: 'pastel',
             groups: [
               {
-                label: '-AR', color: 'lavender', highlightIndex: 2,
+                label: '-AR', color: 'lavender', highlightIndex: [0, 2],
                 rows: [['yo', '-é'], ['tú', '-aste'], ['él/ella', '-ó'], ['nosotros', '-amos'], ['vosotros', '-asteis'], ['ellos/ellas', '-aron']],
               },
               {
-                label: '-ER/-IR', color: 'orange', highlightIndex: 2,
+                label: '-ER/-IR', color: 'orange', highlightIndex: [0, 2],
                 rows: [['yo', '-í'], ['tú', '-iste'], ['él/ella', '-ió'], ['nosotros', '-imos'], ['vosotros', '-isteis'], ['ellos/ellas', '-ieron']],
               },
             ],
           },
+          {
+            type: 'note',
+            text: 'Notice: **there are accents here**, unlike semi-irregular indefinido forms.',
+          },
+          {
+            type: 'example-columns',
+            columns: [
+              ['hablé', 'hablaste', 'habló', 'hablamos', 'hablasteis', 'hablaron'],
+              ['comí', 'comiste', 'comió', 'comimos', 'comisteis', 'comieron'],
+              ['viví', 'viviste', 'vivió', 'vivimos', 'vivisteis', 'vivieron']
+            ]
+          }
         ],
       },
     ],
@@ -341,24 +373,65 @@ export const LESSONS: Record<string, Lesson> = {
         title: 'The stem',
         blocks: [
           {
-            type: 'stem-cards',
-            items: [['hablar', 'habl-'], ['comer', 'com-'], ['vivir', 'viv-']],
+            type: 'summary-group',
+            title: 'THE MAIN BIT: INFINITIVE - AR/ER/IR',
+            blocks: [
+              {
+                type: 'stem-cards',
+                items: [['hablar', 'habl-'], ['comer', 'com-'], ['vivir', 'viv-']],
+              }
+            ]
           },
-          { type: 'pill-pairs', color: 'lavender', items: [['e', 'i']] },
           {
-            type: 'pill-pairs',
-            color: 'lavender',
-            items: [
-              ['sentir', 'sint-'], ['medir', 'mid-'], ['competir', 'compit-'], ['elegir', 'elig-'],
-              ['mentir', 'mint-'], ['preferir', 'prefir-'], ['seguir', 'sigu-'], ['repetir', 'repit-'],
-            ],
+            type: 'summary-group',
+            title: 'VOWEL CHANGE IN "ÉL/ELLA/ELLOS/ELLAS"',
+            boxed: true,
+            blocks: [
+              {
+                type: 'pill-pairs',
+                color: 'lavender',
+                style: 'solid',
+                items: [['e', 'i']],
+              },
+              {
+                type: 'pill-pairs',
+                color: 'lavender',
+                style: 'outline',
+                columns: 2,
+                items: [
+                  ['sentir', 'sint-'], ['medir', 'mid-'], ['competir', 'compit-'], ['elegir', 'elig-'],
+                  ['mentir', 'mint-'], ['preferir', 'prefir-'], ['seguir', 'sigu-'], ['repetir', 'repit-'],
+                ],
+              },
+              {
+                type: 'pill-pairs',
+                color: 'lavender',
+                style: 'solid',
+                items: [['o', 'u']],
+              },
+              {
+                type: 'pill-pairs',
+                color: 'lavender',
+                style: 'outline',
+                columns: 2,
+                items: [['dormir', 'durm-'], ['morir', 'mur-']],
+              },
+            ]
           },
-          { type: 'pill-pairs', color: 'lavender', items: [['o', 'u']] },
           {
-            type: 'pill-pairs',
-            color: 'lavender',
-            items: [['dormir', 'durm-'], ['morir', 'mur-']],
-          },
+            type: 'summary-group',
+            title: 'SPELLING CHANGE IN "YO"',
+            boxed: true,
+            blocks: [
+              {
+                type: 'pill-pairs',
+                color: 'green',
+                style: 'solid',
+                columns: 3,
+                items: [['c', 'qu'], ['g', 'gu'], ['z', 'c']],
+              }
+            ]
+          }
         ],
       },
       {
@@ -370,11 +443,11 @@ export const LESSONS: Record<string, Lesson> = {
             style: 'pastel',
             groups: [
               {
-                label: '-AR', color: 'lavender', highlightIndex: 2,
+                label: '-AR', color: 'lavender', highlightIndex: [0, 2],
                 rows: [['yo', '-é'], ['tú', '-aste'], ['él/ella', '-ó'], ['nosotros', '-amos'], ['vosotros', '-asteis'], ['ellos/ellas', '-aron']],
               },
               {
-                label: '-ER/-IR', color: 'orange', highlightIndex: 2,
+                label: '-ER/-IR', color: 'orange', highlightIndex: [0, 2],
                 rows: [['yo', '-í'], ['tú', '-iste'], ['él/ella', '-ió'], ['nosotros', '-imos'], ['vosotros', '-isteis'], ['ellos/ellas', '-ieron']],
               },
             ],
@@ -542,7 +615,15 @@ export const LESSONS: Record<string, Lesson> = {
           {
             type: 'example-words',
             color: 'orange',
-            words: ['tuve', 'tuviste', 'tuvo', 'tuvimos', 'tuvisteis', 'tuvieron'],
+            boxColor: 'lavender',
+            words: [
+              { text: 'tuve', underline: 'e' },
+              { text: 'tuviste', underline: 'iste' },
+              { text: 'tuvo', underline: 'o' },
+              { text: 'tuvimos', underline: 'imos' },
+              { text: 'tuvisteis', underline: 'isteis' },
+              { text: 'tuvieron', underline: 'ieron' },
+            ],
           },
         ],
       },
@@ -566,15 +647,15 @@ export const LESSONS: Record<string, Lesson> = {
           },
           {
             type: 'note',
-            character: '/images/teoria/Point - Zas.png',
+            character: '/images/teoria/indefinido-semi-irreg/Point - Zas.png',
             text: "Remember the two stems highlighted in Section 2? They both end in \"j\". With **j-stems**, ellos/ellas uses **-eron** instead of -ieron.",
           },
           {
             type: 'trio-table',
             headers: ['INFINITIVE', 'STEM', 'ELLOS/ELLAS'],
             rows: [
-              ['decir', 'dij-', 'dijeron'],
-              ['traer', 'traj-', 'trajeron'],
+              ['decir', 'dij-', { text: 'dijeron', underline: 'jeron' }],
+              ['traer', 'traj-', { text: 'trajeron', underline: 'jeron' }],
             ],
           },
         ],
@@ -591,10 +672,82 @@ export const LESSONS: Record<string, Lesson> = {
             rows: [
               ['yo', 'hice'],
               ['tú', 'hiciste'],
-              ['él/ella', 'hizo'],
+              ['él/ella', { text: 'hizo', underline: 'z' }],
               ['nosotros', 'hicimos'],
               ['vosotros', 'hicisteis'],
               ['ellos/ellas', 'hicieron'],
+            ],
+          },
+        ],
+      },
+    ],
+    summarySteps: [
+      {
+        number: '1',
+        title: 'Different stems',
+        blocks: [
+          {
+            type: 'stem-cloud',
+            stems: [
+              ['tener', 'tuv-'],
+              ['querer', 'quis-'],
+              ['estar', 'estuv-'],
+              ['venir', 'vin-'],
+              ['poder', 'pud-'],
+              ['hacer', 'hic-'],
+              ['poner', 'pus-'],
+              ['decir', 'dij-'],
+              ['saber', 'sup-'],
+              ['traer', 'traj-'],
+            ],
+          },
+        ],
+      },
+      {
+        number: '2',
+        title: 'Shared endings',
+        blocks: [
+          {
+            type: 'boxed-pairs',
+            accent: 'orange',
+            rows: [
+              ['yo', '-e'],
+              ['tú', '-iste'],
+              ['él/ella', '-o'],
+              ['nosotros', '-imos'],
+              ['vosotros', '-isteis'],
+              ['ellos/ellas', '-ieron/-eron'],
+            ],
+          },
+        ],
+      },
+      {
+        number: '3',
+        title: 'Shared endings: j-stem',
+        blocks: [
+          {
+            type: 'trio-table',
+            headers: ['INFINITIVE', 'STEM', 'ELLOS/ELLAS'],
+            rows: [
+              ['decir', 'dij-', { text: 'dijeron', underline: 'jeron' }],
+              ['traer', 'traj-', { text: 'trajeron', underline: 'jeron' }],
+              ['conducir', 'conduj-', { text: 'condujeron', underline: 'jeron' }],
+              ['producir', 'produj-', { text: 'produjeron', underline: 'jeron' }],
+            ],
+          },
+        ],
+      },
+      {
+        number: '4',
+        title: 'Spelling detail: hacer',
+        badgeColor: 'green',
+        blocks: [
+          {
+            type: 'subject-stem-cards',
+            color: 'green',
+            cards: [
+              { subjects: ['yo', 'tú', 'nosotros', 'vosotros', 'ellos/ellas'], stem: 'hic-' },
+              { subjects: ['él/ella'], stem: { text: 'hiz-', underline: 'z' } },
             ],
           },
         ],
