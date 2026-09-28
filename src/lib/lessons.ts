@@ -2,18 +2,18 @@ export type PillColor = 'orange' | 'green' | 'pink' | 'wine' | 'lavender'
 
 export type LessonBlock =
   | { type: 'formula'; parts: { tag: string; label: string; color: 'blue' | 'orange' }[]; compareEn?: [string, string]; character?: string }
-  | { type: 'example'; es: string; en: string; highlights: { word: string; color: 'blue' | 'orange' }[] }
+  | { type: 'example'; pairs: [string, string][]; highlights: { word: string; color: 'blue' | 'orange' }[] }
   | { type: 'examples'; color: PillColor; items: { text: string; highlights: string[] }[] }
   | { type: 'table'; rows: [string, string][]; note?: string; character?: string }
   | { type: 'note'; text: string; variant?: 'boxed'; character?: string }
   | { type: 'rule-cards'; items: { suffix: string; result: string; examples: [string, string][] }[] }
-  | { type: 'pill-pairs'; items: [string, string][]; color: PillColor; style?: 'solid' | 'outline' | 'mixed'; columns?: 2 | 3 }
+  | { type: 'pill-pairs'; items: [string, string][]; color: PillColor; style?: 'solid' | 'outline' | 'mixed'; columns?: 2 | 3; boxed?: boolean; boxedStyle?: 'default' | 'left-border'; note?: string }
   | { type: 'word-pills'; groups: { words: string[]; color: PillColor }[] }
-  | { type: 'correction-pairs'; items: [wrong: string, correct: string][] }
+  | { type: 'correction-pairs'; items: [wrong: string, correct: string][]; columns?: number }
   | { type: 'stem-formula'; stems: [string, string][]; endings: string[] }
   | { type: 'infinitive-table'; headers: [string, string]; rows: [string, string][] }
   | { type: 'trio-table'; headers: [string, string, string]; rows: [string, string, string | { text: string; underline: string }][] }
-  | { type: 'boxed-pairs'; rows: [string, string | { text: string; underline: string }][]; highlightIndex?: number | number[]; accent?: 'orange' | 'green' }
+  | { type: 'boxed-pairs'; rows: [string, string | { text: string; underline: string }][]; highlightIndex?: number | number[]; accent?: 'orange' | 'green' | 'pink' | 'blue'; note?: string; character?: string }
   | { type: 'stem-cloud'; stems: [string, string][] }
   | { type: 'example-words'; color: PillColor; boxColor?: PillColor; words: (string | { text: string; underline: string })[] }
   | {
@@ -127,7 +127,7 @@ export const LESSONS: Record<string, Lesson> = {
       {
         number: '1',
         title: 'A two-part tense',
-        subtitle: 'Pretérito perfecto has two parts:',
+        subtitle: 'Pretérito perfecto has **two parts**:',
         blocks: [
           {
             type: 'formula',
@@ -140,8 +140,13 @@ export const LESSONS: Record<string, Lesson> = {
           },
           {
             type: 'example',
-            es: 'Esta semana (yo) he comido mucho.',
-            en: 'This week, I have eaten a lot.',
+            pairs: [
+              ['Esta semana', 'This week,'],
+              ['(yo)', 'I'],
+              ['he', 'have'],
+              ['comido', 'eaten'],
+              ['mucho.', 'a lot.'],
+            ],
             highlights: [
               { word: 'he', color: 'blue' },
               { word: 'comido', color: 'orange' },
@@ -154,11 +159,12 @@ export const LESSONS: Record<string, Lesson> = {
       {
         number: '2',
         title: 'Conjugating the auxiliary: haber',
-        subtitle: 'Haber changes to match the subject.',
+        subtitle: '*Haber* changes to **match the subject**.',
         section: 'haber',
         blocks: [
           {
-            type: 'table',
+            type: 'boxed-pairs',
+            accent: 'blue',
             character: '/images/teoria/Review - Javi Tostado.png',
             rows: [
               ['yo', 'he'],
@@ -172,7 +178,7 @@ export const LESSONS: Record<string, Lesson> = {
           },
           {
             type: 'note',
-            text: 'Notice how the auxiliar "have" matches the subject in English as well: I have eaten // She has eaten.',
+            text: 'Notice how the auxiliar "have" matches the subject in English as well: I **have** eaten // She **has** eaten.',
           },
           {
             type: 'note',
@@ -183,7 +189,7 @@ export const LESSONS: Record<string, Lesson> = {
       {
         number: '3.1',
         title: 'The participle: regular verbs',
-        subtitle: 'After conjugating haber, we need the participle. To make it, replace the infinitive ending:',
+        subtitle: 'After conjugating *haber*, we need the participle. To make it, **replace** the **infinitive ending** with the **participle ending**:',
         section: 'participio',
         blocks: [
           {
@@ -195,19 +201,21 @@ export const LESSONS: Record<string, Lesson> = {
           },
           {
             type: 'note',
-            text: 'English uses -ed for regular participles (talk → talked). Spanish keeps the d and adds a final o, so it sounds more español-ish.',
+            text: 'English uses **-ed** for regular participles (talk → talked). Spanish keeps the __d__ and adds a final __o__, so it sounds more español-ish.',
           },
         ],
       },
       {
         number: '3.2',
         title: 'The participle: irregular verbs',
-        subtitle: "Some don't follow the rule and have to be memorised. Here are some of the most common ones:",
+        subtitle: "Some participles don't follow the rule and have to be **memorised**. Here are some of the most common ones:",
         section: 'participio',
         blocks: [
           {
             type: 'pill-pairs',
             color: 'orange',
+            columns: 2,
+            boxed: true,
             items: [
               ['hacer', 'hecho'],
               ['decir', 'dicho'],
@@ -224,17 +232,15 @@ export const LESSONS: Record<string, Lesson> = {
       {
         number: '4',
         title: 'Small spelling detail: -ído',
-        subtitle: 'Some regular participles have an accent in -ído.',
+        subtitle: 'Some regular participles have an **accent** in **-ído**.',
         badgeColor: 'green',
         blocks: [
           {
-            type: 'note',
-            variant: 'boxed',
-            text: 'When the stem ends in a vowel and the participle uses -ido, we add an accent to show how the word is pronounced.',
-          },
-          {
             type: 'pill-pairs',
             color: 'green',
+            style: 'solid',
+            boxedStyle: 'left-border',
+            note: 'When the [[stem]] ends in a vowel and the participle uses **-ido**, we add an accent to show how the word is pronounced.',
             items: [
               ['leer', 'leído'],
               ['oír', 'oído'],
@@ -463,7 +469,7 @@ export const LESSONS: Record<string, Lesson> = {
     steps: [
       {
         number: '1',
-        title: '3 fully irregular verbs',
+        title: '3 irregular verbs',
         subtitle: "Good news! There aren't many fully irregular verbs!",
         blocks: [
           {
@@ -475,14 +481,15 @@ export const LESSONS: Record<string, Lesson> = {
       {
         number: '2',
         title: 'The twins: ser/ir',
-        subtitle: 'Good news again! Ser and ir share the same forms. Context tells you which verb it is.',
+        subtitle: 'Good news again! *Ser* and *ir* share the **same forms**. Context tells you which verb it is.',
         blocks: [
           {
             type: 'word-pills',
             groups: [{ words: ['ser', 'ir'], color: 'pink' }],
           },
           {
-            type: 'table',
+            type: 'boxed-pairs',
+            accent: 'pink',
             rows: [
               ['yo', 'fui'],
               ['tú', 'fuiste'],
@@ -512,7 +519,8 @@ export const LESSONS: Record<string, Lesson> = {
             groups: [{ words: ['dar'], color: 'pink' }],
           },
           {
-            type: 'table',
+            type: 'boxed-pairs',
+            accent: 'pink',
             rows: [
               ['yo', 'di'],
               ['tú', 'diste'],
@@ -535,7 +543,7 @@ export const LESSONS: Record<string, Lesson> = {
       {
         number: '4',
         title: 'Spelling detail: no accents',
-        subtitle: "Monosyllabic indefinido forms don't take accents.",
+        subtitle: "Monosyllabic indefinido forms **don't take accents**.",
         badgeColor: 'green',
         blocks: [
           {
@@ -547,6 +555,101 @@ export const LESSONS: Record<string, Lesson> = {
               ['vió', 'vio'],
               ['fuí', 'fui'],
               ['fué', 'fue'],
+            ],
+          },
+        ],
+      },
+    ],
+    summarySteps: [
+      {
+        number: '1',
+        title: '3 fully irregular verbs',
+        blocks: [
+          {
+            type: 'summary-group',
+            title: '',
+            boxed: true,
+            blocks: [
+              {
+                type: 'word-pills',
+                groups: [{ words: ['ser', 'ir'], color: 'pink' }, { words: ['dar'], color: 'pink' }],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        number: '2',
+        title: 'The twins: ser/ir',
+        blocks: [
+          {
+            type: 'summary-group',
+            title: '',
+            boxed: false,
+            blocks: [
+              {
+                type: 'boxed-pairs',
+                accent: 'pink',
+                rows: [
+                  ['yo', 'fui'],
+                  ['tú', 'fuiste'],
+                  ['él/ella', 'fue'],
+                  ['nosotros', 'fuimos'],
+                  ['vosotros', 'fuisteis'],
+                  ['ellos/ellas', 'fueron'],
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        number: '3',
+        title: 'The traitor: dar',
+        blocks: [
+          {
+            type: 'summary-group',
+            title: '',
+            boxed: false,
+            blocks: [
+              {
+                type: 'boxed-pairs',
+                accent: 'pink',
+                rows: [
+                  ['yo', { text: 'di', underline: 'i' }],
+                  ['tú', { text: 'diste', underline: 'iste' }],
+                  ['él/ella', { text: 'dio', underline: 'io' }],
+                  ['nosotros', { text: 'dimos', underline: 'imos' }],
+                  ['vosotros', { text: 'disteis', underline: 'isteis' }],
+                  ['ellos/ellas', { text: 'dieron', underline: 'ieron' }],
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        number: '4',
+        title: 'Spelling detail: no accent',
+        badgeColor: 'green',
+        blocks: [
+          {
+            type: 'summary-group',
+            title: '',
+            boxed: false,
+            blocks: [
+              {
+                type: 'correction-pairs',
+                columns: 3,
+                items: [
+                  ['dí', 'di'],
+                  ['ví', 'vi'],
+                  ['fuí', 'fui'],
+                  ['dió', 'dio'],
+                  ['vió', 'vio'],
+                  ['fué', 'fue'],
+                ],
+              },
             ],
           },
         ],

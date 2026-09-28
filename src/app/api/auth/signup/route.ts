@@ -4,6 +4,7 @@ import { clientIp, enforceRateLimit, signupLimiter } from '@/lib/rate-limit'
 import { z } from 'zod'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
+import { pinToPassword } from '@/lib/pin'
 import { USERNAME_PROBLEM_MESSAGE, usernameToSlug, validateUsername } from '@/lib/username'
 
 const SignupSchema = z.object({
@@ -41,11 +42,16 @@ export async function POST(request: NextRequest) {
 
   // Availability is checked on the slug, not the raw text: "José" and "Jose" resolve to the same
   // login address, so allowing both would create an account nobody can sign in to.
-  const { data: existing } = await admin
+  const { data: existing, error: lookupError } = await admin
     .from('profiles')
     .select('username')
     .eq('username_slug', slug)
     .maybeSingle()
+
+  if (lookupError) {
+    console.error('[signup] username lookup failed:', lookupError.code, lookupError.message)
+    return NextResponse.json({ error: 'Could not create account' }, { status: 500 })
+  }
 
   if (existing) {
     return NextResponse.json({ error: 'Username already taken' }, { status: 409 })
@@ -54,11 +60,12 @@ export async function POST(request: NextRequest) {
   // Create user — email_confirm: true skips confirmation email
   const { data: created, error: createError } = await admin.auth.admin.createUser({
     email,
-    password: pin,
+    password: pinToPassword(pin),
     email_confirm: true,
   })
 
   if (createError || !created.user) {
+    console.error('[signup] createUser failed:', createError?.status, createError?.code, createError?.message)
     return NextResponse.json({ error: 'Could not create account' }, { status: 500 })
   }
 
@@ -71,8 +78,9 @@ export async function POST(request: NextRequest) {
 
   // Sign in the new user so the session cookie is set
   const supabase = await createClient()
-  const { error: signInError } = await supabase.auth.signInWithPassword({ email, password: pin })
+  const { error: signInError } = await supabase.auth.signInWithPassword({ email, password: pinToPassword(pin) })
   if (signInError) {
+    console.error('[signup] post-signup sign-in failed:', signInError.status, signInError.code, signInError.message)
     return NextResponse.json({ error: 'Account created but sign-in failed' }, { status: 500 })
   }
 

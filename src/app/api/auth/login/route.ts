@@ -4,6 +4,7 @@ import { clientIp, enforceRateLimit, loginIpLimiter, loginLimiter } from '@/lib/
 import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 import { usernameToSlug } from '@/lib/username'
+import { pinToPassword } from '@/lib/pin'
 
 const LoginSchema = z.object({
   username: z.string().min(1).max(60),
@@ -34,7 +35,12 @@ export async function POST(request: NextRequest) {
   if (accountLimitError) return accountLimitError
 
   const supabase = await createClient()
-  const { error: authError } = await supabase.auth.signInWithPassword({ email, password: pin })
+  let { error: authError } = await supabase.auth.signInWithPassword({ email, password: pinToPassword(pin) })
+
+  // Accounts created before pinToPassword() existed stored the bare PIN as their password.
+  if (authError) {
+    ;({ error: authError } = await supabase.auth.signInWithPassword({ email, password: pin }))
+  }
 
   if (authError) {
     return NextResponse.json({ error: 'Usuario o PIN incorrecto.' }, { status: 401 })

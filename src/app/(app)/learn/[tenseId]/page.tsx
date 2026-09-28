@@ -17,7 +17,7 @@ const TAG_STYLES: Record<'blue' | 'orange', { bg: string; text: string; solid: s
 const PILL_STYLES: Record<PillColor, { border: string; arrow: string; text: string; solid: string; tint: string }> = {
   orange: { border: 'border-orange-200', arrow: 'text-orange-400', text: 'text-orange-700', solid: '#FF8716', tint: '#FFF4E8' },
   green:  { border: 'border-green-200',  arrow: 'text-green-400',  text: 'text-green-700',  solid: '#22C55E', tint: '#F0FDF4' },
-  pink:   { border: 'border-pink-200',   arrow: 'text-pink-400',   text: 'text-pink-700',   solid: '#EC4881', tint: '#FEF1F5' },
+  pink:   { border: 'border-pink-200',   arrow: 'text-pink-400',   text: 'text-pink-700',   solid: '#F55379', tint: '#FEF1F5' },
   wine:   { border: 'border-rose-300',   arrow: 'text-rose-500',   text: 'text-rose-800',   solid: '#9F1239', tint: '#FDF2F5' },
   lavender: { border: 'border-indigo-200', arrow: 'text-indigo-400', text: 'text-indigo-700', solid: '#6366F1', tint: '#EEF0FE' },
 }
@@ -32,7 +32,7 @@ const PASTEL_HEADER: Record<PillColor, { bg: string; text: string }> = {
 
 function highlight(
   text: string,
-  highlights: { word: string; color: 'blue' | 'orange' | 'pink' }[],
+  highlights: { word: string; color: 'blue' | 'orange' | 'pink' | PillColor }[],
   fallbackColor?: string,
 ) {
   const words = text.split(/(\s+)/)
@@ -40,7 +40,14 @@ function highlight(
     const clean = w.replace(/[().,¡!]/g, '')
     const match = highlights.find(h => h.word.toLowerCase() === clean.toLowerCase())
     if (!match) return <span key={i}>{w}</span>
-    const color = match.color === 'pink' ? (fallbackColor ?? '#DB2777') : TAG_STYLES[match.color].text
+    let color = ''
+    if (match.color === 'blue' || match.color === 'orange') {
+      color = TAG_STYLES[match.color].text
+    } else if (match.color === 'pink') {
+      color = fallbackColor ?? '#F55379'
+    } else {
+      color = PILL_STYLES[match.color as PillColor]?.text || fallbackColor || '#000'
+    }
     return (
       <span key={i} className="font-bold" style={{ color }}>
         {w}
@@ -49,10 +56,17 @@ function highlight(
   })
 }
 
+
 function renderBold(text: string) {
-  return text.split(/(\*\*.+?\*\*|\*.+?\*)/g).map((part, i) => {
+  return text.split(/(\*\*.+?\*\*|\*.+?\*|__.+?__|\[\[.+?\]\])/g).map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**')) {
       return <strong key={i} className="font-semibold text-gray-800">{part.slice(2, -2)}</strong>
+    }
+    if (part.startsWith('__') && part.endsWith('__')) {
+      return <strong key={i} className="font-semibold text-orange-500">{part.slice(2, -2)}</strong>
+    }
+    if (part.startsWith('[[') && part.endsWith(']]')) {
+      return <strong key={i} className="font-semibold text-green-700">{part.slice(2, -2)}</strong>
     }
     if (part.startsWith('*') && part.endsWith('*')) {
       return <em key={i} className="italic">{part.slice(1, -1)}</em>
@@ -79,7 +93,7 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
     case 'summary-group':
       return (
         <div className="flex flex-col gap-3.5 mt-3 mb-1">
-          <span className="text-xs font-bold uppercase tracking-wider text-gray-900 ml-1">{block.title}</span>
+          {block.title && <span className="text-xs font-bold uppercase tracking-wider text-gray-900 ml-1">{block.title}</span>}
           <div className={block.boxed ? "rounded-[20px] bg-white shadow-[0_4px_14px_rgba(0,0,0,0.04)] p-4 flex flex-col gap-4" : "flex flex-col gap-4"}>
             {block.blocks.map((b, i) => <LessonBlockView key={i} block={b} compact={true} />)}
           </div>
@@ -177,15 +191,15 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
       )
     case 'formula':
       return (
-        <div className="rounded-2xl border border-gray-100 bg-white px-4 py-3.5 flex flex-col gap-3.5">
-          <div className="flex items-center justify-between gap-2.5">
-            <div className="flex items-center gap-2.5">
+        <div className="flex flex-col gap-5 mt-2">
+          <div className="relative rounded-[20px] border border-gray-100 bg-white px-4 py-6 shadow-[0_4px_14px_rgba(0,0,0,0.04)] flex flex-col items-center">
+            <div className="flex items-center gap-4">
               {block.parts.map((p, i) => (
-                <div key={p.tag} className="flex items-center gap-2.5">
-                  {i > 0 && <span className="text-gray-300 font-bold">+</span>}
+                <div key={p.tag} className="flex items-center gap-4">
+                  {i > 0 && <span className="text-gray-900 font-light text-xl">+</span>}
                   <div className="flex flex-col items-center gap-1.5">
                     <span
-                      className="px-3 py-1.5 rounded-xl text-sm font-bold text-white"
+                      className="px-4 py-2 rounded-[14px] text-[15px] font-bold text-white shadow-sm"
                       style={{ backgroundColor: TAG_STYLES[p.color].solid }}
                     >
                       {p.tag}
@@ -196,31 +210,53 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
               ))}
             </div>
             {block.character && !compact && (
-              <Image
-                src={block.character} alt="" width={44} height={44}
-                className="object-contain shrink-0"
+              <img
+                src={block.character} alt=""
+                className="absolute -bottom-2 right-2 w-[55px] object-contain shrink-0"
               />
             )}
           </div>
           {block.compareEn && (
-            <div className="flex items-center gap-2.5 border-t border-gray-100 pt-3 text-xs text-gray-400">
+            <div className="flex items-center gap-2.5 text-[11px] text-gray-500 font-medium px-2">
               <span>Just like in English:</span>
-              <span className="px-2 py-0.5 rounded-lg border border-blue-200 text-blue-600 font-bold">{block.compareEn[0]}</span>
-              <span className="text-gray-300">+</span>
-              <span className="text-gray-600 font-semibold">{block.compareEn[1]}</span>
+              <div className="flex items-center gap-2 ml-1">
+                {block.compareEn.map((en, i) => {
+                  const color = block.parts[i]?.color || 'blue'
+                  return (
+                    <div key={en} className="flex items-center gap-2">
+                      {i > 0 && <span className="text-gray-400">+</span>}
+                      <span className="px-3 py-1 rounded-[10px] border bg-white shadow-sm" style={{ borderColor: TAG_STYLES[color].solid, color: TAG_STYLES[color].solid }}>
+                        {en}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           )}
         </div>
       )
     case 'example':
       return (
-        <div className="flex flex-col gap-2.5">
-          <span className="w-fit flex items-center gap-1.5 rounded-full border border-blue-200 text-blue-600 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide">
-            <MessageSquareText className="w-3 h-3" /> Ejemplo
-          </span>
-          <div className="rounded-2xl bg-white border border-gray-100 px-4 py-3.5 flex flex-col gap-1.5">
-            <p className="text-sm font-medium text-gray-800">{highlight(block.es, block.highlights)}</p>
-            <p className="text-xs text-gray-400">{highlight(block.en, block.highlights)}</p>
+        <div className="relative mt-7 mb-2">
+          <div className="absolute -top-3 left-4">
+            <span className="flex items-center gap-1.5 rounded-full border border-[#91A5D8] bg-white px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#3E5C9F]">
+              <FileText className="w-3 h-3" /> Ejemplo
+            </span>
+          </div>
+          <div className="rounded-[20px] border border-[#D2D6E1] bg-[#EEF0F5] px-5 pt-7 pb-5 shadow-sm overflow-x-auto">
+            <div className="flex items-start justify-between w-full">
+              {block.pairs.map(([es, en], i) => (
+                <div key={i} className="flex flex-col gap-1.5">
+                  <span className="text-[13px] font-medium text-gray-700 whitespace-nowrap">
+                    {highlight(es, block.highlights)}
+                  </span>
+                  <span className="text-xs text-gray-500 whitespace-nowrap">
+                    {highlight(en, block.highlights)}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )
@@ -258,38 +294,58 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
         <div className="relative px-1 mt-3 mb-2">
           {block.character ? (
             <>
-              <p className="text-[11px] text-gray-700 leading-relaxed pr-[70px]">{renderBold(block.text)}</p>
+              <p className="text-[11px] text-gray-600 font-light leading-relaxed pr-[70px]">{renderBold(block.text)}</p>
               <img src={block.character} className="absolute -top-16 right-0 w-[95px] z-10 object-contain pointer-events-none" />
             </>
           ) : (
             <>
               <Lightbulb className="absolute left-1 top-0.5 w-4 h-4 text-orange-500" />
-              <p className="text-[11px] text-gray-700 leading-relaxed pl-6">{renderBold(block.text)}</p>
+              <p className="text-[11px] text-gray-600 font-light leading-relaxed pl-6">{renderBold(block.text)}</p>
             </>
           )}
         </div>
       )
     case 'rule-cards':
       return (
-        <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden">
+        <div className="rounded-[20px] bg-white p-6 shadow-sm flex flex-col gap-8">
           {block.items.map((item, i) => (
-            <div key={item.suffix} className={`px-4 py-3.5 flex flex-col gap-2 ${i > 0 ? 'border-t border-gray-100' : ''}`}>
-              <div className="flex items-center gap-2.5 text-sm">
-                <span className="font-bold text-gray-500">{item.suffix}</span>
-                <ArrowRight className="w-3.5 h-3.5 text-gray-300" />
-                <span
-                  className="px-2 py-0.5 rounded-lg text-xs font-bold text-white"
-                  style={{ backgroundColor: TAG_STYLES.orange.solid }}
-                >
-                  {item.result}
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-x-3 gap-y-1">
-                {item.examples.map(([inf, part]) => (
-                  <span key={inf} className="text-xs text-gray-400">
-                    {inf} → <span className="font-semibold text-gray-600">{part}</span>
+            <div key={item.suffix} className="flex justify-center">
+              <div className="grid grid-cols-[1fr_auto_1fr] gap-x-8">
+                {/* Left Column */}
+                <div className="flex flex-col items-center">
+                  <span className="font-bold text-gray-900 text-[15px] mb-4">{item.suffix}</span>
+                  <div className="flex flex-col gap-1.5 items-start">
+                    {item.examples.map(([inf]) => (
+                      <span key={inf} className="text-[13px] text-gray-400 font-medium">
+                        {inf.slice(0, -2)}
+                        <span className="text-gray-900 font-bold">{inf.slice(-2)}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Middle Column */}
+                <div className="flex flex-col items-center justify-start pt-1">
+                  <ArrowRight className="w-4 h-4 text-gray-300" />
+                </div>
+                
+                {/* Right Column */}
+                <div className="flex flex-col items-center">
+                  <span className="px-3.5 py-1.5 rounded-[12px] text-[13px] font-bold text-[#C2410C] bg-[#FDBA74] mb-4">
+                    {item.result}
                   </span>
-                ))}
+                  <div className="flex flex-col gap-1.5 items-start">
+                    {item.examples.map(([_, part]) => {
+                      const suffixLen = item.result.replace('-', '').length
+                      return (
+                        <span key={part} className="text-[13px] text-gray-400 font-medium">
+                          {part.slice(0, -suffixLen)}
+                          <span className="text-[#C2410C] font-bold">{part.slice(-suffixLen)}</span>
+                        </span>
+                      )
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
           ))}
@@ -299,14 +355,18 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
       const styles = PILL_STYLES[block.color]
       const styleMode = block.style || 'outline'
       const containerClass = block.columns === 3 ? 'grid grid-cols-3' : block.columns === 2 ? 'grid grid-cols-2' : 'flex flex-wrap'
-      return (
-        <div className={`${containerClass} ${compact ? 'gap-2' : 'gap-2.5'}`}>
+      const gapClass = compact ? 'gap-2' : 
+        (block.boxed ? 'gap-x-4 gap-y-4' : 
+        (block.boxedStyle === 'left-border' ? 'gap-3 justify-center' : 'gap-2.5'));
+      
+      const inner = (
+        <div className={`${containerClass} ${gapClass}`}>
           {block.items.map(([inf, part], i) => {
             const isSolid = styleMode === 'solid' || (styleMode === 'mixed' && i === 0)
             if (isSolid) {
               if (block.color === 'lavender' && i === 0) {
                 return (
-                  <span key={inf} className="flex items-center gap-2 rounded-full px-4 py-1.5 text-sm justify-center shadow-sm text-white" style={{ backgroundColor: styles.solid }}>
+                  <span key={inf} className="flex items-center gap-2 rounded-full px-4 py-2 text-sm justify-center shadow-sm text-white" style={{ backgroundColor: styles.solid }}>
                     <span className="font-bold">{inf}</span>
                     <ArrowRight className="w-3.5 h-3.5 text-white/70" />
                     <span className="font-bold">{part}</span>
@@ -314,35 +374,58 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
                 )
               }
               return (
-                <span key={inf} className="flex items-center gap-2 rounded-full px-4 py-1.5 text-xs justify-center" style={{ backgroundColor: styles.tint }}>
-                  <span className="text-gray-700 font-semibold">{inf}</span>
-                  <ArrowRight className={`w-3 h-3 ${styles.arrow}`} />
+                <span key={inf} className={`flex items-center gap-2.5 rounded-full px-4 ${block.boxed || block.boxedStyle === 'left-border' ? 'py-2.5' : 'py-2'} text-xs justify-center`} style={{ backgroundColor: styles.tint }}>
+                  <span className={`${block.boxedStyle === 'left-border' ? 'text-gray-800 font-medium' : 'text-gray-700 font-semibold'}`}>{inf}</span>
+                  <ArrowRight className={`w-3.5 h-3.5 ${block.boxedStyle === 'left-border' ? 'text-gray-400' : styles.arrow}`} />
                   <span className={`font-bold ${styles.text}`}>{part}</span>
                 </span>
               )
             }
+            // Outline mode
+            const borderClass = block.boxed 
+              ? (block.color === 'orange' ? 'border-orange-500' : `border-${block.color}-500`) 
+              : styles.border;
+            const arrowClass = block.boxed ? 'text-gray-300' : styles.arrow;
+              
             return (
-              <span key={inf} className={`flex items-center gap-2 rounded-full bg-white border ${styles.border} px-4 py-1.5 text-xs justify-center`}>
-                <span className="text-gray-700 font-semibold">{inf}</span>
-                <ArrowRight className={`w-3 h-3 ${styles.arrow}`} />
-                <span className={`font-bold ${styles.text}`}>{part}</span>
-              </span>
+              <div key={inf} className={`flex items-center ${block.boxed ? 'w-full justify-between px-5 py-3' : 'gap-2 justify-center px-4 py-2'} rounded-full border ${borderClass}`} style={{ backgroundColor: block.boxed ? styles.tint : '#FFFFFF' }}>
+                <span className={`text-gray-600 ${block.boxed ? 'text-[14px] font-medium' : 'text-xs font-semibold'}`}>{inf}</span>
+                <ArrowRight className={`w-3.5 h-3.5 ${arrowClass}`} />
+                <span className={`font-bold ${block.boxed && block.color === 'orange' ? 'text-[#C2410C]' : styles.text} ${block.boxed ? 'text-[14px]' : 'text-xs'}`}>{part}</span>
+              </div>
             )
           })}
         </div>
       )
+      
+      if (block.boxed || block.boxedStyle === 'left-border') {
+        if (block.boxedStyle === 'left-border') {
+          return (
+            <div className="rounded-[16px] bg-white p-5 shadow-sm flex flex-col gap-6" style={{ borderLeft: `4px solid ${styles.solid}` }}>
+              {block.note && <p className="text-[13px] text-gray-600 leading-relaxed font-medium">{renderBold(block.note)}</p>}
+              {inner}
+            </div>
+          )
+        }
+        return (
+          <div className="rounded-[20px] bg-white p-6 shadow-sm flex flex-col gap-6">
+            {block.note && <p className="text-[14px] text-gray-700 leading-relaxed text-center">{renderBold(block.note)}</p>}
+            {inner}
+          </div>
+        )
+      }
+      return inner
     }
     case 'word-pills':
       return (
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center justify-center gap-2.5">
           {block.groups.map((group, gi) => (
-            <div key={gi} className="flex items-center gap-2">
-              {gi > 0 && <span className="text-gray-300 font-bold">·</span>}
+            <div key={gi} className="flex items-center gap-2.5">
               {group.words.map((word, wi) => (
-                <div key={word} className="flex items-center gap-2">
+                <div key={word} className="flex items-center gap-2.5">
                   {wi > 0 && <span className="text-gray-400 text-sm">/</span>}
                   <span
-                    className="px-3 py-1.5 rounded-full text-sm font-bold text-white"
+                    className="px-4 py-2 rounded-full text-sm font-bold text-white"
                     style={{ backgroundColor: PILL_STYLES[group.color].solid }}
                   >
                     {word}
@@ -356,14 +439,16 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
     case 'examples': {
       const styles = PILL_STYLES[block.color]
       return (
-        <div className="flex flex-col gap-2.5">
-          <span className="w-fit flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide" style={{ borderColor: styles.solid, color: styles.solid }}>
-            <MessageSquareText className="w-3 h-3" /> Ejemplo
-          </span>
-          <div className="rounded-2xl border border-gray-100 bg-white px-4 py-3.5 flex flex-col gap-2.5" style={{ backgroundColor: styles.tint }}>
+        <div className="relative mt-7 mb-2">
+          <div className="absolute -top-3 left-4">
+            <span className="flex items-center gap-1.5 rounded-full border border-[#91A5D8] bg-white px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#3E5C9F]">
+              <FileText className="w-3 h-3" /> Ejemplo
+            </span>
+          </div>
+          <div className="rounded-[20px] border border-[#D2D6E1] bg-[#EEF0F5] px-4 pt-6 pb-4 flex flex-col gap-2.5 shadow-sm">
             {block.items.map((item, i) => (
-              <p key={i} className="text-sm font-medium text-gray-800">
-                {highlight(item.text, item.highlights.map(word => ({ word, color: 'pink' as const })), styles.text)}
+              <p key={i} className="text-sm font-medium text-gray-700 leading-relaxed">
+                {highlight(item.text, item.highlights.map(word => ({ word, color: block.color })), styles.solid)}
               </p>
             ))}
           </div>
@@ -372,27 +457,30 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
     }
     case 'correction-pairs':
       if (compact) {
+        const gridCols = block.columns === 3 ? 'grid-cols-3' : 'grid-cols-2'
         return (
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className={`grid ${gridCols} gap-1.5`}>
             {block.items.map(([wrong, correct]) => (
-              <span key={wrong} className="flex items-center gap-1 rounded-full bg-white border border-green-200 px-3 py-1.5 text-xs justify-center">
-                <span className="text-gray-400 line-through">{wrong}</span>
-                <ArrowRight className="w-3 h-3 text-green-400" />
-                <span className="font-bold text-green-700">{correct}</span>
+              <span key={wrong} className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs justify-center" style={{ backgroundColor: PILL_STYLES.green.tint }}>
+                <span className="text-gray-500 line-through font-medium">{wrong}</span>
+                <ArrowRight className="w-3.5 h-3.5 text-green-500" />
+                <span className="font-bold text-[#15803D]">{correct}</span>
               </span>
             ))}
           </div>
         )
       }
       return (
-        <div className="rounded-2xl border border-gray-100 bg-white border-l-4 border-l-green-400 px-4 py-3.5 grid grid-cols-2 gap-x-4 gap-y-3">
-          {block.items.map(([wrong, correct]) => (
-            <div key={wrong} className="flex items-center gap-2 text-sm">
-              <span className="text-gray-400 line-through">{wrong}</span>
-              <ArrowRight className="w-3.5 h-3.5 text-green-400" />
-              <span className="font-bold text-green-700">{correct}</span>
-            </div>
-          ))}
+        <div className="relative bg-white py-6 px-8 shadow-[0_4px_14px_rgba(0,0,0,0.06)] overflow-hidden rounded-r-[20px] rounded-l-none border-l-[3px] border-[#15803D]">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+            {block.items.map(([wrong, correct]) => (
+              <span key={wrong} className="flex items-center gap-2 rounded-full px-4 py-2 text-[13px] justify-center" style={{ backgroundColor: PILL_STYLES.green.tint }}>
+                <span className="text-gray-500 line-through font-medium">{wrong}</span>
+                <ArrowRight className="w-4 h-4 text-green-500" />
+                <span className="font-bold text-[#15803D]">{correct}</span>
+              </span>
+            ))}
+          </div>
         </div>
       )
     case 'stem-cloud':
@@ -545,7 +633,10 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
         </div>
       )
     case 'boxed-pairs': {
-      const accentColor = block.accent === 'green' ? '#15803D' : 'var(--bsp-orange)'
+      let accentColor = 'var(--bsp-orange)'
+      if (block.accent === 'green') accentColor = '#15803D'
+      if (block.accent === 'pink') accentColor = '#F55379'
+      if (block.accent === 'blue') accentColor = '#2563EB'
       const highlightBg = block.accent === 'orange' ? '#FDBA74' : accentColor
       const highlightText = block.accent === 'orange' ? '#C2410C' : '#FFFFFF'
       
@@ -562,13 +653,13 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
             return (
               <div
                 key={person}
-                className={`rounded-xl px-3.5 py-2.5 grid grid-cols-[55%_45%] items-center gap-2 border border-gray-100 bg-white ${dimUnselected ? 'opacity-40' : ''}`}
+                className={`rounded-xl px-4 py-3 flex items-center justify-between gap-2 border border-gray-100 bg-white ${dimUnselected ? 'opacity-40' : ''}`}
                 style={isHighlighted
                   ? { backgroundColor: highlightBg, borderColor: highlightBg }
                   : {}}
               >
                 <span className={`text-xs ${isHighlighted ? '' : 'text-gray-500'}`} style={isHighlighted ? { color: highlightText } : {}}>{person}</span>
-                <span className={`text-[13px] font-bold leading-tight ${isHighlighted ? '' : ''}`} style={isHighlighted ? { color: highlightText } : { color: block.accent === 'orange' ? '#C2410C' : accentColor }}>
+                <span className={`text-[13px] font-bold leading-tight text-right ${isHighlighted ? '' : ''}`} style={isHighlighted ? { color: highlightText } : { color: block.accent === 'orange' ? '#C2410C' : accentColor }}>
                   {typeof form === 'string' ? (
                     form.split('/').map((part, idx, arr) => (
                       <span key={idx}>
@@ -596,6 +687,17 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
       return (
         <div className={`relative bg-white p-4 shadow-sm overflow-hidden ${containerClasses}`}>
           {InnerGrid}
+          {block.note && (
+            <div className="mt-5 pt-1 pr-12">
+              <p className="text-[11px] text-gray-400 italic leading-relaxed">{block.note}</p>
+            </div>
+          )}
+          {block.character && (
+            <img
+              src={block.character} alt=""
+              className="absolute bottom-2 right-1 w-[48px] object-contain shrink-0"
+            />
+          )}
         </div>
       )
     }
@@ -1120,21 +1222,22 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
 function SectionTabs({ active }: { active: 'haber' | 'participio' }) {
   const tab = (key: 'haber' | 'participio', label: string) => {
     const isActive = active === key
-    const color = key === 'haber' ? TAG_STYLES.blue.solid : TAG_STYLES.orange.solid
+    const color = key === 'haber' ? TAG_STYLES.blue.solid : 'var(--bsp-orange)'
     return (
       <span
-        className="px-3 py-1 rounded-lg text-xs font-bold"
+        className="px-4 py-2 rounded-[12px] text-[12px] font-bold"
         style={isActive
           ? { backgroundColor: color, color: '#fff' }
-          : { backgroundColor: '#F3F4F6', color: '#9CA3AF' }}
+          : { backgroundColor: '#D2D6E1', color: '#6B7280' }}
       >
         {label}
       </span>
     )
   }
   return (
-    <div className="flex items-center gap-1.5 w-fit">
+    <div className="flex items-center gap-2.5 w-fit">
       {tab('haber', 'haber')}
+      <span className="text-gray-800 text-sm font-medium">+</span>
       {tab('participio', 'participio')}
     </div>
   )
