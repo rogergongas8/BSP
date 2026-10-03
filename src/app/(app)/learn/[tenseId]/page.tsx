@@ -4,7 +4,7 @@ import { use, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence, type PanInfo } from 'motion/react'
-import { X, BookOpen, ArrowLeft, ArrowRight, MessageSquareText, Repeat, FileText, CloudRain, Check, XCircle, ArrowDown, Lightbulb } from 'lucide-react'
+import { X, BookOpen, ArrowLeft, ArrowRight, MessageSquareText, Repeat, FileText, CloudRain, Check, XCircle, CheckCircle2, ArrowDown, Lightbulb } from 'lucide-react'
 import { resolveTenseId } from '@/lib/game-logic'
 import { LESSONS, type LessonBlock, type LessonStep, type PillColor } from '@/lib/lessons'
 import OverscrollColor from '@/components/overscroll-color'
@@ -20,6 +20,8 @@ const PILL_STYLES: Record<PillColor, { border: string; arrow: string; text: stri
   pink:   { border: 'border-pink-200',   arrow: 'text-pink-400',   text: 'text-pink-700',   solid: '#F55379', tint: '#FEF1F5' },
   wine:   { border: 'border-rose-300',   arrow: 'text-rose-500',   text: 'text-rose-800',   solid: '#9F1239', tint: '#FDF2F5' },
   lavender: { border: 'border-indigo-200', arrow: 'text-indigo-400', text: 'text-indigo-700', solid: '#6366F1', tint: '#EEF0FE' },
+  blue: { border: 'border-blue-300', arrow: 'text-blue-500', text: 'text-blue-600', solid: '#2563EB', tint: '#EFF6FF' },
+  red: { border: 'border-[#DC5A76]', arrow: 'text-[#DC5A76]', text: 'text-[#B5314A]', solid: '#DC5A76', tint: '#FDF2F5' },
 }
 
 const PASTEL_HEADER: Record<PillColor, { bg: string; text: string }> = {
@@ -28,6 +30,8 @@ const PASTEL_HEADER: Record<PillColor, { bg: string; text: string }> = {
   pink: { bg: '#FBD6E4', text: '#9D174D' },
   wine: { bg: '#F0C9D3', text: '#881337' },
   lavender: { bg: '#D9DCFA', text: '#3730A3' },
+  blue: { bg: '#DBEAFE', text: '#1E40AF' },
+  red: { bg: '#FBD6E4', text: '#9D174D' },
 }
 
 function highlight(
@@ -57,16 +61,28 @@ function highlight(
 }
 
 
-function renderBold(text: string) {
-  return text.split(/(\*\*.+?\*\*|\*.+?\*|__.+?__|\[\[.+?\]\])/g).map((part, i) => {
+function renderBold(text: string, color?: string) {
+  return text.split(/(\*\*.+?\*\*|\*.+?\*|__.+?__|\[\[.+?\]\]|!!.+?!!|\{\{.+?\}\}|\^\^.+?\^\^|==.+?==)/g).map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={i} className="font-semibold text-gray-800">{part.slice(2, -2)}</strong>
+      return <strong key={i} className="font-semibold text-gray-800" style={color ? { color } : undefined}>{part.slice(2, -2)}</strong>
     }
     if (part.startsWith('__') && part.endsWith('__')) {
-      return <strong key={i} className="font-semibold text-orange-500">{part.slice(2, -2)}</strong>
+      return <strong key={i} className="font-semibold text-[#F58220]">{part.slice(2, -2)}</strong>
     }
     if (part.startsWith('[[') && part.endsWith(']]')) {
       return <strong key={i} className="font-semibold text-green-700">{part.slice(2, -2)}</strong>
+    }
+    if (part.startsWith('!!') && part.endsWith('!!')) {
+      return <strong key={i} className="font-semibold text-[#E11D48]">{part.slice(2, -2)}</strong>
+    }
+    if (part.startsWith('{{') && part.endsWith('}}')) {
+      return <strong key={i} className="font-semibold text-[#3B82F6]">{part.slice(2, -2)}</strong>
+    }
+    if (part.startsWith('^^') && part.endsWith('^^')) {
+      return <strong key={i} className="font-semibold text-gray-800 underline decoration-[2px] decoration-[#3B82F6] underline-offset-4">{part.slice(2, -2)}</strong>
+    }
+    if (part.startsWith('==') && part.endsWith('==')) {
+      return <strong key={i} className="font-semibold text-gray-800 underline decoration-[2px] decoration-[#E11D48] underline-offset-4">{part.slice(2, -2)}</strong>
     }
     if (part.startsWith('*') && part.endsWith('*')) {
       return <em key={i} className="italic">{part.slice(1, -1)}</em>
@@ -79,11 +95,18 @@ const RICH_COLORS: Record<'red' | 'blue' | 'orange', string> = {
   red: '#E11D48', blue: '#2563EB', orange: 'var(--bsp-orange)',
 }
 
-function renderRichSubtitle(segments: { text: string; bold?: boolean; color?: 'red' | 'blue' | 'orange' }[]) {
+function renderRichSubtitle(segments: { text: string; bold?: boolean; color?: 'red' | 'blue' | 'orange'; underline?: boolean; underlineColor?: string }[]) {
   return segments.map((seg, i) => {
-    const style = seg.color ? { color: RICH_COLORS[seg.color] } : undefined
+    const style: React.CSSProperties = seg.color ? { color: RICH_COLORS[seg.color] } : {}
+    if (seg.underline) {
+      style.textDecoration = 'underline'
+      style.textDecorationThickness = '1.5px'
+      style.textUnderlineOffset = '2px'
+      if (seg.underlineColor === 'blue') style.textDecorationColor = '#3B82F6' // tailwind blue-500
+      else if (seg.underlineColor) style.textDecorationColor = seg.underlineColor
+    }
     return seg.bold
-      ? <strong key={i} className="font-bold" style={style ?? { color: '#4B5563' }}>{seg.text}</strong>
+      ? <strong key={i} className="font-bold" style={{ color: '#4B5563', ...style }}>{seg.text}</strong>
       : <span key={i} style={style}>{seg.text}</span>
   })
 }
@@ -103,7 +126,7 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
       return (
         <div className="relative pt-3 mt-4">
           <div className="absolute top-0 left-4 bg-gray-100 px-1.5">
-            <span className="flex items-center gap-1.5 rounded-full border border-[#3E5C9F] text-[#3E5C9F] px-3.5 py-1 text-[10px] font-bold uppercase tracking-wide">
+            <span className="flex items-center gap-[4px] rounded-full border border-[#3E5C9F] text-[#3E5C9F] px-3.5 py-1 text-[10px] font-bold uppercase tracking-wide">
               <Lightbulb className="w-3.5 h-3.5" /> Ejemplo
             </span>
           </div>
@@ -164,7 +187,7 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
                     <tr key={r[0]} className="border-b border-gray-100 last:border-b-0">
                       {ri === 0 && (
                         <td rowSpan={g.rows.length} className="px-1.5 pt-3 pb-2 text-center align-top border-r border-gray-200 bg-[#FAFAFA]">
-                          <span className="text-sm font-bold text-gray-900 inline-flex items-center justify-center gap-1.5">
+                          <span className="text-sm font-bold text-gray-900 inline-flex items-center justify-center gap-[4px]">
                             {g.change[0]} <ArrowRight className="w-3.5 h-3.5 text-gray-400" /> {g.change[1]}
                           </span>
                         </td>
@@ -197,7 +220,7 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
               {block.parts.map((p, i) => (
                 <div key={p.tag} className="flex items-center gap-4">
                   {i > 0 && <span className="text-gray-900 font-light text-xl">+</span>}
-                  <div className="flex flex-col items-center gap-1.5">
+                  <div className="flex flex-col items-center gap-[4px]">
                     <span
                       className="px-4 py-2 rounded-[14px] text-[15px] font-bold text-white shadow-sm"
                       style={{ backgroundColor: TAG_STYLES[p.color].solid }}
@@ -225,7 +248,7 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
                   return (
                     <div key={en} className="flex items-center gap-2">
                       {i > 0 && <span className="text-gray-400">+</span>}
-                      <span className="px-3 py-1 rounded-[10px] border bg-white shadow-sm" style={{ borderColor: TAG_STYLES[color].solid, color: TAG_STYLES[color].solid }}>
+                      <span className="px-3 py-1 rounded-full border bg-white shadow-sm" style={{ borderColor: TAG_STYLES[color].solid, color: TAG_STYLES[color].solid }}>
                         {en}
                       </span>
                     </div>
@@ -240,14 +263,14 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
       return (
         <div className="relative mt-7 mb-2">
           <div className="absolute -top-3 left-4">
-            <span className="flex items-center gap-1.5 rounded-full border border-[#91A5D8] bg-white px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#3E5C9F]">
+            <span className="flex items-center gap-[4px] rounded-full border border-[#91A5D8] bg-white px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#3E5C9F]">
               <FileText className="w-3 h-3" /> Ejemplo
             </span>
           </div>
           <div className="rounded-[20px] border border-[#D2D6E1] bg-[#EEF0F5] px-5 pt-7 pb-5 shadow-sm overflow-x-auto">
             <div className="flex items-start justify-between w-full">
               {block.pairs.map(([es, en], i) => (
-                <div key={i} className="flex flex-col gap-1.5">
+                <div key={i} className="flex flex-col gap-[4px]">
                   <span className="text-[13px] font-medium text-gray-700 whitespace-nowrap">
                     {highlight(es, block.highlights)}
                   </span>
@@ -305,7 +328,45 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
           )}
         </div>
       )
+    case 'outline-pills': {
+      const styles = PILL_STYLES[block.color]
+      const containerClass = block.columns === 4 ? 'grid grid-cols-4 gap-[4px]' : (block.columns === 2 ? 'grid grid-cols-2 gap-2' : 'flex flex-wrap gap-x-2 gap-y-2.5 justify-center')
+      
+      const content = (
+        <div className={containerClass}>
+          {block.words.map(w => (
+            <span key={w} className={`flex justify-center items-center ${block.columns === 4 ? 'px-1 py-1.5 text-[11px]' : 'px-3 py-1.5 text-[11px]'} rounded-full border ${styles.border} font-bold ${styles.text}`} style={{ backgroundColor: '#FFFFFF' }}>
+              {w}
+            </span>
+          ))}
+        </div>
+      )
+
+      if (block.boxed) {
+        return (
+          <div className="rounded-[20px] border border-gray-100 bg-white p-5 shadow-sm">
+            {content}
+          </div>
+        )
+      }
+      return content
+    }
     case 'rule-cards':
+      if (compact) {
+        return (
+          <div className="flex flex-row items-center justify-center gap-6 py-1">
+            {block.items.map((item) => (
+              <div key={item.suffix} className="flex items-center gap-3">
+                <span className="font-bold text-gray-900 text-[13px]">{item.suffix}</span>
+                <ArrowRight className="w-4 h-4 text-gray-300" />
+                <span className="px-3 py-1.5 rounded-[12px] text-[13px] font-bold text-[#C2680C] bg-[#FFEAD1]">
+                  {item.result}
+                </span>
+              </div>
+            ))}
+          </div>
+        )
+      }
       return (
         <div className="rounded-[20px] bg-white p-6 shadow-sm flex flex-col gap-8">
           {block.items.map((item, i) => (
@@ -314,7 +375,7 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
                 {/* Left Column */}
                 <div className="flex flex-col items-center">
                   <span className="font-bold text-gray-900 text-[15px] mb-4">{item.suffix}</span>
-                  <div className="flex flex-col gap-1.5 items-start">
+                  <div className="flex flex-col gap-[4px] items-start">
                     {item.examples.map(([inf]) => (
                       <span key={inf} className="text-[13px] text-gray-400 font-medium">
                         {inf.slice(0, -2)}
@@ -334,7 +395,7 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
                   <span className="px-3.5 py-1.5 rounded-[12px] text-[13px] font-bold text-[#C2410C] bg-[#FDBA74] mb-4">
                     {item.result}
                   </span>
-                  <div className="flex flex-col gap-1.5 items-start">
+                  <div className="flex flex-col gap-[4px] items-start">
                     {item.examples.map(([_, part]) => {
                       const suffixLen = item.result.replace('-', '').length
                       return (
@@ -361,8 +422,47 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
       
       const inner = (
         <div className={`${containerClass} ${gapClass}`}>
-          {block.items.map(([inf, part], i) => {
+          {block.items.map(([infRaw, partRaw], i) => {
+            const infIsObj = typeof infRaw === 'object'
+            const partIsObj = typeof partRaw === 'object'
+            const inf = infIsObj ? infRaw.text : infRaw
+            const part = partIsObj ? partRaw.text : partRaw
+            
             const isSolid = styleMode === 'solid' || (styleMode === 'mixed' && i === 0)
+            
+            const renderText = (item: string | { text: string; prefixEnd?: number; underlineIdx?: number }, isLeft: boolean) => {
+              if (typeof item === 'string') {
+                return (
+                  <span className={isLeft ? 
+                    (block.boxedStyle === 'left-border' ? 'text-gray-800 font-medium' : 'text-gray-700 font-semibold') : 
+                    (`font-bold ${block.boxed && block.color === 'orange' && !isSolid ? 'text-[#C2410C]' : styles.text}`)
+                  }>
+                    {item}
+                  </span>
+                )
+              }
+              const { text, prefixEnd, underlineIdx } = item
+              const renderChar = (char: string, idx: number) => {
+                return idx === underlineIdx ? <span key={idx} className="underline decoration-[1.5px] underline-offset-[3px]">{char}</span> : char
+              }
+              
+              if (prefixEnd) {
+                return (
+                  <span className="text-[13px]">
+                    <span className={`font-bold ${styles.text}`}>{text.slice(0, prefixEnd)}</span>
+                    <span className="font-medium text-gray-700">
+                      {text.slice(prefixEnd).split('').map((c, i) => renderChar(c, i + prefixEnd))}
+                    </span>
+                  </span>
+                )
+              }
+              return (
+                <span className={isLeft ? 'text-gray-700 font-semibold' : `font-bold ${styles.text}`}>
+                  {text.split('').map((c, i) => renderChar(c, i))}
+                </span>
+              )
+            }
+
             if (isSolid) {
               if (block.color === 'lavender' && i === 0) {
                 return (
@@ -373,11 +473,12 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
                   </span>
                 )
               }
+              const arrowColor = infIsObj || partIsObj ? 'text-gray-400' : (block.boxedStyle === 'left-border' ? 'text-gray-400' : styles.arrow);
               return (
                 <span key={inf} className={`flex items-center gap-2.5 rounded-full px-4 ${block.boxed || block.boxedStyle === 'left-border' ? 'py-2.5' : 'py-2'} text-xs justify-center`} style={{ backgroundColor: styles.tint }}>
-                  <span className={`${block.boxedStyle === 'left-border' ? 'text-gray-800 font-medium' : 'text-gray-700 font-semibold'}`}>{inf}</span>
-                  <ArrowRight className={`w-3.5 h-3.5 ${block.boxedStyle === 'left-border' ? 'text-gray-400' : styles.arrow}`} />
-                  <span className={`font-bold ${styles.text}`}>{part}</span>
+                  {renderText(infRaw, true)}
+                  <ArrowRight className={`w-3.5 h-3.5 ${arrowColor}`} />
+                  {renderText(partRaw, false)}
                 </span>
               )
             }
@@ -441,7 +542,7 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
       return (
         <div className="relative mt-7 mb-2">
           <div className="absolute -top-3 left-4">
-            <span className="flex items-center gap-1.5 rounded-full border border-[#91A5D8] bg-white px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#3E5C9F]">
+            <span className="flex items-center gap-[4px] rounded-full border border-[#91A5D8] bg-white px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#3E5C9F]">
               <FileText className="w-3 h-3" /> Ejemplo
             </span>
           </div>
@@ -459,9 +560,9 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
       if (compact) {
         const gridCols = block.columns === 3 ? 'grid-cols-3' : 'grid-cols-2'
         return (
-          <div className={`grid ${gridCols} gap-1.5`}>
+          <div className={`grid ${gridCols} gap-[4px]`}>
             {block.items.map(([wrong, correct]) => (
-              <span key={wrong} className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs justify-center" style={{ backgroundColor: PILL_STYLES.green.tint }}>
+              <span key={wrong} className="flex items-center gap-[4px] rounded-full px-3 py-1.5 text-xs justify-center" style={{ backgroundColor: PILL_STYLES.green.tint }}>
                 <span className="text-gray-500 line-through font-medium">{wrong}</span>
                 <ArrowRight className="w-3.5 h-3.5 text-green-500" />
                 <span className="font-bold text-[#15803D]">{correct}</span>
@@ -507,7 +608,7 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
     case 'stem-formula':
       if (compact) {
         return (
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="grid grid-cols-2 gap-[4px]">
             {block.stems.map(([inf, stem]) => (
               <span key={inf} className="flex items-center gap-1 rounded-full bg-white border border-orange-200 px-3 py-1.5 text-xs justify-center">
                 <span className="text-gray-700 font-medium">{inf}</span>
@@ -733,7 +834,7 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
         return (
           <div className="flex flex-col gap-3">
             {block.groups.map(group => (
-              <div key={group.label} className="flex flex-col gap-1.5">
+              <div key={group.label} className="flex flex-col gap-[4px]">
                 <span className="text-xs font-bold" style={{ color: PILL_STYLES[group.color].solid }}>{group.label.toUpperCase()}</span>
                 <div className="grid grid-cols-2 gap-x-6 gap-y-1">
                   {group.rows.map(([person, form]) => (
@@ -757,7 +858,7 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
               return (
                 <div key={group.label} className={`flex flex-col ${isPastel ? '' : (gi > 0 ? 'border-l border-gray-100' : '')} flex-1`}>
                   <span className={isPastel
-                    ? `px-3 py-2 text-center text-xs font-bold uppercase tracking-wide rounded-[10px] mb-4 w-[90%] mx-auto ${gi === 0 ? 'bg-[#98ACDA] text-[#273B73]' : 'bg-[#DEE3F1] text-[#273B73]'}`
+                    ? `px-3 py-2 text-center text-xs font-bold uppercase tracking-wide rounded-full mb-4 w-[90%] mx-auto ${gi === 0 ? 'bg-[#98ACDA] text-[#273B73]' : 'bg-[#DEE3F1] text-[#273B73]'}`
                     : 'px-3 py-2.5 text-center text-[10px] font-bold uppercase tracking-wide bg-gray-50 text-gray-500'}>
                     {group.label}
                   </span>
@@ -845,7 +946,7 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
     }
     case 'stem-cards':
       return (
-        <div className={`grid w-full px-2 ${compact ? 'grid-cols-3 gap-1.5' : 'grid-cols-3 gap-3'}`}>
+        <div className={`grid w-full px-2 ${compact ? 'grid-cols-3 gap-[4px]' : 'grid-cols-3 gap-3'}`}>
           {block.items.map(([inf, stem]) => (
             <div key={inf} className="rounded-xl border border-gray-200 bg-white px-3 py-3 flex flex-col items-center shadow-sm">
               <span className="text-[10px] text-gray-400">{inf}</span>
@@ -861,22 +962,24 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
           {block.items.map(item => {
             const Icon = ICONS[item.icon]
             return (
-              <div key={item.title} className="rounded-2xl border border-gray-100 bg-white px-4 py-3.5 flex flex-col gap-2.5">
-                <div className="flex items-center gap-3">
-                  <span className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center shrink-0 overflow-hidden">
-                    {item.image
-                      ? <Image src={item.image} alt="" width={36} height={36} className="object-contain" />
-                      : <Icon className="w-4 h-4 text-gray-400" />}
-                  </span>
+              <div key={item.title} className="rounded-2xl border border-gray-100 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] px-4 py-4 flex flex-col gap-3">
+                <div className="flex items-center gap-4">
+                  {item.image ? (
+                    <Image src={item.image} alt="" width={60} height={60} className="object-contain shrink-0" />
+                  ) : (
+                    <span className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center shrink-0 overflow-hidden">
+                      <Icon className="w-4 h-4 text-gray-400" />
+                    </span>
+                  )}
                   <div>
-                    <p className="text-sm font-bold text-gray-900">{item.title}</p>
-                    <p className="text-xs text-gray-400">{renderBold(item.desc)}</p>
+                    <p className="text-[14px] font-bold text-gray-900 leading-snug">{item.title}</p>
+                    <p className="text-[12px] text-gray-600 font-medium leading-snug">{renderBold(item.desc)}</p>
                   </div>
                 </div>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 mt-1">
                   {item.examples.map(ex => (
                     <p key={ex} className="text-xs text-gray-700 rounded-xl px-3 py-2.5" style={{ backgroundColor: PILL_STYLES.orange.tint }}>
-                      {renderBold(ex)}
+                      {renderBold(ex, PILL_STYLES.orange.solid)}
                     </p>
                   ))}
                 </div>
@@ -889,129 +992,267 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
     case 'validity-note':
       if (compact) return null
       return (
-        <div className="rounded-2xl border border-orange-100 bg-orange-50/40 px-3.5 py-3.5 flex flex-col gap-2.5">
+        <div className="rounded-2xl border border-orange-200 bg-orange-50/50 px-4 py-4 flex flex-col gap-3">
           <div className="flex items-start gap-2.5">
-            <span className="w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0 mt-0.5" style={{ backgroundColor: 'var(--bsp-orange)' }}>!</span>
-            <p className="text-xs text-gray-600 leading-relaxed">{renderBold(block.text)}</p>
+            <Lightbulb className="w-4 h-4 shrink-0 mt-0.5 text-orange-400" strokeWidth={2.5} />
+            <p className="text-[13px] text-gray-700 leading-snug">{renderBold(block.text)}</p>
           </div>
-          <div className="flex items-center gap-2 rounded-lg border border-green-300 bg-green-50 px-3 py-2">
-            <Check className="w-3.5 h-3.5 text-green-500 shrink-0" />
-            <span className="text-xs text-green-800">{block.correct}</span>
+          <div className="flex flex-col gap-2 mt-1">
+            <div className="flex items-center gap-2.5 rounded-lg border border-green-500 bg-[#E8F8EE] px-3.5 py-2.5">
+              <CheckCircle2 className="w-4 h-4 text-white fill-green-600 shrink-0" />
+              <span className="text-xs text-gray-900">{renderBold(block.correct, '#16a34a')}</span>
+            </div>
+            <div className="flex items-center gap-2.5 rounded-lg border border-[#D94F69] bg-[#FCE8EB] px-3.5 py-2.5">
+              <XCircle className="w-4 h-4 text-white fill-[#D94F69] shrink-0" />
+              <span className="text-xs text-gray-900">{renderBold(block.incorrect, '#D94F69')}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2">
-            <XCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
-            <span className="text-xs text-red-800 line-through">{block.incorrect}</span>
-          </div>
-          <p className="text-[11px] text-gray-400 italic">{block.caption}</p>
+          <p className="text-[11px] text-gray-500 italic leading-snug">{block.caption}</p>
         </div>
       )
     case 'now-then-list':
       return (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-3">
           {block.groups.map(group => (
-            <div key={group.label} className="flex flex-col gap-2.5">
-              {!compact && (
-                <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400 border-b border-orange-200 pb-1.5">{group.label}</span>
+            <div key={group.now} className="flex flex-col gap-3 rounded-2xl bg-white px-4 py-4 shadow-sm border border-gray-100">
+              {!compact && group.label && (
+                <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400 border-b border-orange-300 pb-1.5">{group.label}</span>
               )}
-              <div className="flex items-center gap-2.5">
-                <span className="shrink-0 px-2.5 py-1 rounded-full bg-gray-200 text-gray-600 text-[10px] font-bold">NOW</span>
-                <p className="text-xs text-gray-700 flex-1">{renderBold(group.now)}</p>
+              <div className="flex items-center gap-3">
+                <span className="shrink-0 px-2.5 py-1 rounded-full bg-[#8E94A2] text-white text-[10px] font-bold">NOW</span>
+                <p className="text-[12px] text-gray-800 flex-1 leading-snug">{renderBold(group.now)}</p>
               </div>
-              <div className="flex items-center gap-2.5">
-                <span className="shrink-0 px-2.5 py-1 rounded-full text-white text-[10px] font-bold" style={{ backgroundColor: 'var(--bsp-orange)' }}>BACK THEN</span>
-                <p className="text-xs flex-1" style={{ color: 'var(--bsp-orange)' }}>{renderBold(group.then)}</p>
+              <div className="flex items-center gap-3">
+                <span className="shrink-0 px-2.5 py-1 rounded-full bg-[#FBA862] text-gray-900 text-[10px] font-bold">BACK THEN</span>
+                <p className="text-[12px] text-gray-800 flex-1 leading-snug">{renderBold(group.then, '#F58220')}</p>
               </div>
             </div>
           ))}
           {block.character && !compact && (
-            <Image src={block.character} alt="" width={110} height={110} className="object-contain mx-auto mt-1" />
+            <div className="flex justify-center mt-4 mb-2">
+              <Image src={block.character} alt="" width={200} height={200} className="object-contain" />
+            </div>
           )}
         </div>
       )
-    case 'main-action-example':
+    case 'main-action-example': {
+      const formatSentence = (sentence: string, bgP: string, actP: string) => {
+        const parts = sentence.split(new RegExp(`(${bgP}|${actP})`, 'i'))
+        return parts.map((part, i) => {
+          if (part.toLowerCase() === bgP.toLowerCase()) {
+            return <strong key={i} className="font-bold text-[#F58220]">{part}</strong>
+          }
+          if (part.toLowerCase() === actP.toLowerCase()) {
+            return <strong key={i} className="font-bold text-[#2563EB] underline decoration-[1.5px] underline-offset-2">{part}</strong>
+          }
+          return <span key={i}>{part}</span>
+        })
+      }
+
       return (
-        <div className="rounded-2xl border border-gray-100 bg-white px-4 py-3.5 flex items-center gap-3">
-          <div className="flex-1 flex flex-col gap-2.5">
-            <p className="text-sm text-gray-700">
-              {highlight(block.sentence, [
-                { word: block.backgroundPhrase.split(' ')[0], color: 'orange' },
-                { word: block.actionPhrase, color: 'blue' },
-              ])}
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="px-3 py-1 rounded-full text-xs font-bold" style={{ backgroundColor: PILL_STYLES.orange.tint, color: '#9A5B1C' }}>
-                {block.backgroundPhrase}
-              </span>
-              <span className="px-3 py-1 rounded-full border border-blue-200 text-blue-700 text-xs font-bold">{block.actionPhrase}</span>
+        <div className="rounded-[1.25rem] border border-gray-100 bg-white shadow-sm p-4 flex flex-col gap-3.5">
+          <p className="text-[13px] text-gray-800 leading-snug">
+            {formatSentence(block.sentence, block.backgroundPhrase, block.actionPhrase)}
+          </p>
+
+          <div className="w-full h-px bg-gray-100 mt-1" />
+
+          <div className="flex gap-4 w-full mt-3">
+            <div className="flex-1 flex flex-col relative pt-1 gap-2">
+              {/* Visual Track */}
+              <div className={`relative ${block.layout === 'center' ? 'h-[100px]' : 'h-[76px]'} w-full flex items-center justify-center`}>
+                {/* Dashed orange track */}
+                <div className={`absolute ${block.layout === 'center' ? 'left-0 right-0 h-[80px]' : 'left-0 right-8 h-[56px]'} rounded-full border-[1.5px] border-dashed border-orange-300 bg-[#FFF8F0] z-0`} />
+                {/* BG Image */}
+                <div className={`absolute inset-0 z-10 flex items-center justify-center ${block.layout === 'center' ? '' : 'pr-16'}`}>
+                  {block.bgImage && (
+                    <Image 
+                      src={block.bgImage} 
+                      width={300} 
+                      height={120} 
+                      className={`object-contain ${block.layout === 'center' ? 'w-full h-[120px] -mt-3' : 'w-[160px] h-[80px]'}`} 
+                      alt="" 
+                    />
+                  )}
+                </div>
+                {/* Action circle */}
+                <div className={`absolute ${block.layout === 'center' ? 'left-1/2 -translate-x-1/2' : 'right-0'} top-1/2 -translate-y-1/2 w-[54px] h-[54px] rounded-full bg-[#2563EB] border-[2px] border-white flex items-center justify-center z-20 overflow-hidden shadow-sm`}>
+                  {block.actionImage && (
+                    <Image 
+                      src={block.actionImage} 
+                      width={80} 
+                      height={80} 
+                      className={`object-cover max-w-none ${block.layout === 'center' ? 'w-[130%] h-[130%] object-[50%_25%]' : 'w-[180%] h-[180%] translate-y-4'}`} 
+                      alt="" 
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Labels */}
+              {block.layout === 'center' ? (
+                <div className="relative w-full mt-1 flex flex-col items-center justify-center rounded-[20px] border-[1.5px] border-dashed border-orange-300 bg-[#FFF8F0] py-3 gap-2 px-4 mx-auto max-w-[220px]">
+                  <div className="h-8 px-4 rounded-full border-[1.5px] border-[#2563EB] bg-white flex items-center justify-center shadow-sm">
+                    <span className="text-[12px] font-bold text-[#2563EB] whitespace-nowrap">{block.actionPhrase}</span>
+                  </div>
+                  <span className="text-[12px] font-bold text-[#D97706] text-center leading-tight">{block.backgroundPhrase}</span>
+                </div>
+              ) : (
+                <div className="relative h-9 w-full mt-1">
+                  <div className="absolute left-0 right-8 h-full rounded-full border-[1.5px] border-dashed border-orange-300 bg-[#FFF8F0] flex items-center justify-center">
+                    <span className="text-[12px] font-bold text-[#D97706]">{block.backgroundPhrase}</span>
+                  </div>
+                  <div className="absolute right-1 top-1/2 -translate-y-1/2 h-8 px-4 rounded-full border-[1.5px] border-[#2563EB] bg-white flex items-center justify-center shadow-sm z-10">
+                    <span className="text-[12px] font-bold text-[#2563EB] whitespace-nowrap">{block.actionPhrase}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* You now */}
+            {/* Placed in the same flex row, top-aligned visually with the main track */}
+            <div className={`shrink-0 flex flex-col items-center justify-center w-[56px] pt-1 ${block.layout === 'center' ? 'h-[100px]' : 'h-[76px]'}`}>
+              <span className="text-[10px] font-bold text-gray-700 mb-1.5 whitespace-nowrap">You now</span>
+              <Image src="/images/teoria/imperfectovsindefinido/Profile - Mimo.png" width={56} height={56} className="object-contain" alt="" />
             </div>
           </div>
-          {block.character && !compact && (
-            <Image src={block.character} alt="" width={56} height={56} className="object-contain shrink-0" />
-          )}
         </div>
       )
+    }
     case 'narration-chain':
       return (
-        <div className="flex flex-col gap-1.5">
-          {block.imperfectoLines.map((line, i) => (
-            <div key={line} className="flex items-center gap-3">
-              <div className="flex flex-col items-center w-2.5 shrink-0">
-                <span className="w-2 h-2 rounded-full bg-orange-300" />
-                {(i < block.imperfectoLines.length - 1 || true) && <span className="w-px flex-1 bg-orange-200" style={{ minHeight: 14 }} />}
+        <div className="flex flex-col">
+          {block.paragraph && (
+            <div className="pb-5 mb-5 border-b border-gray-100">
+              <p className="text-[13px] italic text-gray-500 leading-relaxed">{block.paragraph}</p>
+            </div>
+          )}
+          
+          <div className="flex flex-col pl-2">
+            {block.imperfectoLines.map((line, i) => (
+              <div key={line} className="flex items-stretch gap-4">
+                <div className="flex flex-col items-center w-10 shrink-0 pt-0.5">
+                  <div className="w-10 h-10 rounded-full overflow-hidden bg-white border border-gray-100 flex items-center justify-center shadow-sm z-10 shrink-0 relative">
+                    <Image src="/images/profile/small-loading2.png" width={48} height={48} className="object-cover w-full h-full absolute" alt="" />
+                  </div>
+                  {i < block.imperfectoLines.length - 1 && (
+                    <div className="w-[2px] flex-1 bg-[#F58220] -my-1 relative z-0" style={{ minHeight: '32px' }} />
+                  )}
+                </div>
+                <div className="pb-4 flex-1 flex items-start">
+                  <span className="inline-block text-[13px] font-bold px-4 py-2.5 rounded-[12px] border-[1.5px] border-dashed border-[#FBA862] bg-[#FFF8F0] text-gray-900 shadow-sm">
+                    {line}
+                  </span>
+                </div>
               </div>
-              <span className="text-xs px-3 py-1.5 rounded-full flex-1" style={{ backgroundColor: PILL_STYLES.orange.tint, color: '#9A5B1C' }}>{line}</span>
+            ))}
+            
+            <div className="flex items-start gap-4 mt-2">
+              <div className="flex flex-col items-center w-10 shrink-0 pt-1">
+                <div className="w-10 h-10 rounded-full overflow-hidden bg-white border border-gray-100 flex items-center justify-center shadow-sm shrink-0 relative">
+                  {block.closingIcon && (
+                    <Image src={block.closingIcon} width={48} height={48} className="object-cover w-full h-full absolute" alt="" />
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-3 flex-1">
+                <span className="inline-block text-[14px] font-bold px-5 py-2.5 rounded-[12px] bg-[#3B82F6] text-white shadow-sm">
+                  {block.indefinidoLine}
+                </span>
+                <div className="flex items-center gap-1 text-[12px] text-gray-400 font-medium">
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>closes the narration</span>
+                </div>
+              </div>
             </div>
-          ))}
-          <div className="flex items-center gap-3">
-            <div className="flex flex-col items-center w-2.5 shrink-0">
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--bsp-blue)' }} />
-            </div>
-            {block.closingIcon && !compact && (
-              <Image src={block.closingIcon} alt="" width={36} height={36} className="object-contain shrink-0" />
-            )}
-            <span className="text-xs font-bold px-3 py-1.5 rounded-full text-white" style={{ backgroundColor: 'var(--bsp-blue)' }}>{block.indefinidoLine}</span>
-            <span className="text-[10px] text-gray-400 italic">closes the narration</span>
           </div>
         </div>
       )
     case 'toggle-pair':
       return (
-        <div className="grid grid-cols-2 gap-2.5">
-          <div className="rounded-xl border border-green-200 bg-green-50 px-3.5 py-3 flex flex-col items-center gap-1">
-            <span className="text-[9px] font-bold uppercase tracking-wide text-green-600">Simple</span>
-            <span className="text-sm font-bold text-gray-900">{block.simple}</span>
+        <div className="grid grid-cols-2 gap-3 mt-2">
+          <div className="rounded-[1.25rem] border border-[#C5E1B5] bg-[#EEF5EA] px-4 py-6 flex flex-col items-center justify-center gap-[4px] shadow-sm">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Simple</span>
+            <span className="text-[15px] font-bold text-gray-900">{block.simple}</span>
           </div>
-          <div className="rounded-xl border border-gray-200 bg-white px-3.5 py-3 flex flex-col items-center gap-1">
-            <span className="text-[9px] font-bold uppercase tracking-wide text-gray-400">Progressive</span>
-            <span className="text-sm font-bold text-gray-900">{block.progressive}</span>
+          <div className="rounded-[1.25rem] border border-gray-100 bg-white px-4 py-6 flex flex-col items-center justify-center gap-[4px] shadow-sm">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Progressive</span>
+            <span className="text-[15px] font-bold text-gray-900">{block.progressive}</span>
           </div>
         </div>
       )
-    case 'exception-pairs':
-      return (
-        <div className={`grid grid-cols-2 ${compact ? 'gap-1.5' : 'gap-2.5'}`}>
+    case 'exception-pairs': {
+      const content = (
+        <div className={`grid grid-cols-2 ${compact ? 'gap-2' : 'gap-3'}`}>
           {block.items.map(([correct, wrong]) => (
-            <div key={correct} className="rounded-full bg-white border border-gray-100 px-3 py-2 flex items-center gap-1.5 text-xs justify-center">
-              <span className="font-bold text-green-600">{correct}</span>
-              <span className="text-red-400 line-through">{wrong}</span>
+            <div key={correct} className={`rounded-full bg-white border ${block.note ? 'border-orange-200' : 'border-gray-100'} px-3 py-2.5 flex items-center justify-center gap-2 shadow-sm`}>
+              <span className="text-[13px] font-bold text-green-600">{correct}</span>
+              <span className="text-[11px] font-medium text-red-400 line-through decoration-red-400/60">{wrong}</span>
             </div>
           ))}
         </div>
       )
+
+      if (block.note) {
+        return (
+          <div className="rounded-[1.25rem] border border-orange-200 bg-[#FFF8F0] p-4 mt-2 shadow-sm">
+            <div className="flex items-start gap-2.5 mb-4">
+              <Lightbulb className="w-5 h-5 text-orange-400 shrink-0 mt-0.5" />
+              <p className="text-[13px] text-gray-800 leading-snug">{renderBold(block.note)}</p>
+            </div>
+            {content}
+          </div>
+        )
+      }
+
+      if (block.title) {
+        return (
+          <div className="flex flex-col gap-2.5 mt-3">
+            <span className="text-[11px] font-bold text-gray-900 ml-1">{block.title}</span>
+            {content}
+          </div>
+        )
+      }
+
+      return content
+    }
     case 'dual-card': {
       const cardBg = { blue: 'var(--bsp-blue)', blueLight: '#5B7FD6', red: '#B5314A' }
       const exampleBg = { blue: { bg: '#DBEAFE', text: '#1E40AF' }, blueLight: { bg: '#EEF0FE', text: '#3730A3' }, red: { bg: '#FBD6E4', text: '#9D174D' } }
+      const cardBorder = { blue: '#A9C0ED', blueLight: '#91A5D8', red: '#F1A9BC' }
+      const nestedBg = { blue: '#E1EDFB', red: '#FDE9EF' }
+      
       return (
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-2 gap-3">
           {block.cards.map(card => (
-            <div key={card.label} className="rounded-2xl border border-gray-100 bg-white overflow-hidden flex flex-col">
-              <span className="px-2 py-2 text-center text-[10px] font-bold text-white" style={{ backgroundColor: cardBg[card.color] }}>{card.label}</span>
-              <div className="px-3 py-2.5 flex flex-col gap-2.5 flex-1">
-                <div className="flex items-center gap-2">
+            <div key={card.label} className="rounded-[1.25rem] border bg-white overflow-hidden flex flex-col shadow-sm" style={{ borderColor: cardBorder[card.color] }}>
+              <span className="px-2 py-2.5 text-center text-[11px] font-bold text-white tracking-wide" style={{ backgroundColor: cardBg[card.color] }}>{card.label}</span>
+              <div className="px-3.5 py-4 flex flex-col gap-3 flex-1 items-center justify-start">
+                <div className={`flex items-center gap-2 ${!card.icon ? 'justify-center text-center' : ''}`}>
                   {card.icon && <Image src={card.icon} alt="" width={28} height={28} className="object-contain shrink-0" />}
-                  <p className="text-[11px] text-gray-600 leading-snug">{renderBold(card.text)}</p>
+                  <p className="text-[12px] text-gray-700 leading-snug">{renderBold(card.text)}</p>
                 </div>
-                <p className="text-[11px] rounded-lg px-2.5 py-2" style={{ backgroundColor: exampleBg[card.color].bg, color: exampleBg[card.color].text }}>{card.example}</p>
+                {card.nestedConsequence && (
+                  <div className="rounded-[1rem] border overflow-hidden mt-1 flex flex-col w-full" style={{ borderColor: cardBorder[card.color] }}>
+                    <div className="px-3 py-3 flex items-center justify-center text-center" style={{ backgroundColor: card.color === 'red' ? nestedBg.red : nestedBg.blue }}>
+                      <p className="text-[12px] font-bold text-gray-900 leading-snug">{card.nestedConsequence.quote}</p>
+                    </div>
+                    <div className="flex items-center gap-2.5 px-3 py-2.5 bg-white">
+                      <Image src={card.nestedConsequence.icon} alt="" width={24} height={24} className="object-contain shrink-0" />
+                      <p className="text-[10px] text-gray-600 leading-tight font-medium text-left">{card.nestedConsequence.caption}</p>
+                    </div>
+                  </div>
+                )}
+                {card.exampleRich ? (
+                  <p className="text-[11px] rounded-lg px-2.5 py-2 w-full text-center" style={{ backgroundColor: exampleBg[card.color].bg }}>
+                    <span className="underline decoration-[1.5px] underline-offset-2" style={{ color: card.color === 'red' ? '#B5314A' : '#1E40AF', textDecorationColor: card.color === 'red' ? '#DC5A76' : '#60A5FA' }}>{card.exampleRich.underline}</span>
+                    {' '}
+                    <strong className="font-bold" style={{ color: card.color === 'red' ? '#B5314A' : '#1E40AF' }}>{card.exampleRich.bold}</strong>
+                    <span className="text-gray-500">{card.exampleRich.rest}</span>
+                  </p>
+                ) : card.example ? (
+                  <p className="text-[12px] rounded-[10px] px-3 py-2.5 w-full text-center leading-snug" style={{ backgroundColor: exampleBg[card.color].bg, color: exampleBg[card.color].text }}>{renderBold(card.example)}</p>
+                ) : null}
               </div>
             </div>
           ))}
@@ -1019,54 +1260,107 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
       )
     }
     case 'time-unit-card': {
-      const isPerfecto = block.variant === 'perfecto'
+      const isPerfecto = block.variant === 'perfecto' || block.variant === 'perfecto-split'
+      const isSplit = block.variant === 'indefinido' || block.variant === 'perfecto-split'
+      const leftFillColor = block.variant === 'perfecto-split' ? '#B5314A' : '#DBEAFE'
       const headerColor = isPerfecto ? '#B5314A' : 'var(--bsp-blue)'
       const softColor = isPerfecto ? '#DC5A76' : '#5B7FD6'
       return (
-        <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden">
-          <span className="block px-3 py-2.5 text-center text-xs font-bold text-white uppercase tracking-wide" style={{ backgroundColor: headerColor }}>
-            {isPerfecto ? 'Perfecto' : 'Indefinido'}
-          </span>
-          <div className="px-4 py-3.5 flex flex-col gap-3.5">
+        <div className={block.hideHeader ? "flex flex-col gap-3.5" : "rounded-2xl border border-gray-100 bg-white overflow-hidden"}>
+          {!block.hideHeader && (
+            <span className="block px-3 py-2.5 text-center text-xs font-bold text-white uppercase tracking-wide" style={{ backgroundColor: headerColor }}>
+              {isPerfecto ? 'Perfecto' : 'Indefinido'}
+            </span>
+          )}
+          <div className={`${block.hideHeader ? '' : 'px-4 py-3.5'} flex flex-col gap-3.5`}>
             {block.desc && <p className="text-xs text-gray-700">{renderBold(block.desc)}</p>}
             {block.timeUnits && (
-              <div className="flex flex-wrap gap-2 pb-2.5 border-b border-gray-100">
+              <div className="flex flex-wrap justify-center gap-2 pb-2.5 border-b" style={{ borderBottomColor: isPerfecto ? 'rgba(220, 90, 118, 0.4)' : 'rgba(91, 127, 214, 0.4)' }}>
                 {block.timeUnits.map(u => (
                   <span key={u} className="px-2.5 py-1 rounded-full border text-xs font-medium" style={{ borderColor: softColor, color: headerColor }}>{u}</span>
                 ))}
               </div>
             )}
             {block.diagram && (
-              <div className="flex flex-col items-center gap-1.5">
-                <div className="flex items-center justify-between w-full text-[10px] text-gray-400 px-2">
+              <div className="flex flex-col items-center gap-[4px] mt-2 w-[92%] mx-auto">
+                <div className={`w-full text-[10px] text-gray-800 font-bold px-2 ${block.diagram.times?.length === 3 ? 'grid grid-cols-3 text-center' : 'grid grid-cols-2 text-center'}`}>
                   <span>The event</span>
                   <span>You</span>
+                  {block.diagram.times?.length === 3 && <span></span>}
                 </div>
-                <div className="relative w-full flex items-center justify-between px-1">
-                  <div className="absolute inset-x-0 h-6 rounded-full opacity-60" style={{ backgroundColor: isPerfecto ? '#FBD6E4' : '#DBEAFE' }} />
+                <div className={`relative w-full px-1 py-1 ${block.diagram.times?.length === 3 ? 'grid grid-cols-3 justify-items-center' : 'grid grid-cols-2 justify-items-center'}`}>
+                  <div className={`absolute inset-x-0 h-14 top-1/2 -translate-y-1/2 flex ${block.variant === 'perfecto-split' ? '' : 'justify-between gap-1'}`}>
+                    {!isSplit ? (
+                      <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 100">
+                        <polygon points="0,25 80,25 80,0 100,50 80,100 80,75 0,75" fill="#FBD6E4" />
+                      </svg>
+                    ) : (
+                      <>
+                        <svg className={`${block.variant === 'perfecto-split' ? 'w-[50%]' : 'w-[48%]'} h-full`} preserveAspectRatio="none" viewBox="0 0 100 100">
+                          {block.variant === 'indefinido' ? (
+                            <polygon points="0,25 92,25 92,10 100,10 100,90 92,90 92,75 0,75" fill={leftFillColor} />
+                          ) : (
+                            <polygon points="0,25 100,25 100,75 0,75" fill={leftFillColor} />
+                          )}
+                        </svg>
+                        <svg className={`${block.variant === 'perfecto-split' ? 'w-[50%]' : 'w-[48%]'} h-full`} preserveAspectRatio="none" viewBox="0 0 100 100">
+                          <polygon points="0,25 75,25 75,0 100,50 75,100 75,75 0,75" fill="#FBD6E4" />
+                        </svg>
+                      </>
+                    )}
+                  </div>
                   <Image src={block.diagram.eventIcon} alt="" width={52} height={52} className="relative object-contain" />
-                  <Image src={block.diagram.youIcon} alt="" width={52} height={52} className="relative object-contain" />
+                  <Image src={block.diagram.youIcon} alt="" width={52} height={52} className={`relative object-contain ${block.diagram.youIconFlipped ? 'scale-x-[-1]' : ''}`} />
+                  {block.diagram.times?.length === 3 && <div></div>}
                 </div>
                 {block.diagram.times && (
-                  <div className="flex items-center justify-between w-full text-[9px] text-gray-400 px-1">
-                    {block.diagram.times.map(t => <span key={t}>{t}</span>)}
+                  <div className={`w-full text-[9px] text-gray-400 px-1 ${block.diagram.times.length === 3 ? 'grid grid-cols-3 text-center' : 'flex justify-between'}`}>
+                    {block.diagram.times.map((t, idx) => <span key={idx}>{t}</span>)}
+                  </div>
+                )}
+                {block.diagram.bottomIcons && (
+                  <div className="flex justify-between w-[75%] mx-auto mt-1 px-1 relative z-10">
+                    <Image src={block.diagram.bottomIcons.left} alt="" width={42} height={42} className="object-contain" />
+                    <Image src={block.diagram.bottomIcons.right} alt="" width={42} height={42} className="object-contain" />
                   </div>
                 )}
               </div>
             )}
-            <div className="flex items-center gap-2">
-              {block.durations.map(d => (
-                <span
-                  key={d.label}
-                  className="flex-1 text-center px-3 py-1.5 rounded-full text-xs font-bold"
-                  style={d.variant === 'perfecto'
-                    ? { border: '1.5px solid #B5314A', color: '#B5314A' }
-                    : { backgroundColor: 'var(--bsp-blue)', color: '#fff' }}
-                >
-                  {d.label}
-                </span>
-              ))}
-            </div>
+            {block.durationsLayout === 'stack' ? (
+              <div className="flex flex-col gap-2 w-[92%] mx-auto mt-1">
+                <div className="grid grid-cols-2 gap-2">
+                  {block.durations[0] && (
+                    <span
+                      className="text-center px-3 py-1.5 rounded-full text-xs font-bold"
+                      style={block.durations[0].variant === 'perfecto-solid' ? { backgroundColor: '#B5314A', color: '#fff', border: '1px solid #B5314A' } : block.durations[0].variant === 'perfecto' ? { border: '1px solid #DC5A76', backgroundColor: '#FDF2F5', color: '#B5314A' } : { border: '1px solid #5B7FD6', backgroundColor: '#EFF6FF', color: '#1D4ED8' }}
+                    >
+                      {block.durations[0].label}
+                    </span>
+                  )}
+                  <div></div>
+                </div>
+                {block.durations[1] && (
+                  <span
+                    className="w-full text-center px-3 py-1.5 rounded-full text-xs font-bold"
+                    style={block.durations[1].variant === 'perfecto-solid' ? { backgroundColor: '#B5314A', color: '#fff', border: '1px solid #B5314A' } : block.durations[1].variant === 'perfecto' ? { border: '1px solid #DC5A76', backgroundColor: '#FDF2F5', color: '#B5314A' } : { border: '1px solid #5B7FD6', backgroundColor: '#EFF6FF', color: '#1D4ED8' }}
+                  >
+                    {block.durations[1].label}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 w-[92%] mx-auto mt-1">
+                {block.durations.map(d => (
+                  <span
+                    key={d.label}
+                    className="flex-1 text-center px-3 py-1.5 rounded-full text-xs font-bold"
+                    style={d.variant === 'perfecto-solid' ? { backgroundColor: '#B5314A', color: '#fff', border: '1px solid #B5314A' } : d.variant === 'perfecto' ? { border: '1px solid #DC5A76', backgroundColor: '#FDF2F5', color: '#B5314A' } : { border: '1px solid #5B7FD6', backgroundColor: '#EFF6FF', color: '#1D4ED8' }}
+                  >
+                    {d.label}
+                  </span>
+                ))}
+              </div>
+            )}
             {block.example && (
               <p className="text-xs text-center text-gray-700">
                 <span className="underline" style={{ color: headerColor, textDecorationColor: headerColor }}>{block.exampleUnderline}</span>
@@ -1082,14 +1376,14 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
     }
     case 'ejemplo-lines':
       return (
-        <div className="flex flex-col gap-2.5">
-          <span className="w-fit flex items-center gap-1.5 rounded-full border border-blue-200 text-blue-600 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide">
+        <div className="relative mt-4">
+          <span className="absolute -top-3.5 left-4 bg-white flex items-center gap-[4px] rounded-full border border-[#91A5D8] text-[#3E5C9F] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide z-10">
             <MessageSquareText className="w-3 h-3" /> Ejemplo
           </span>
-          <div className="rounded-2xl border border-gray-100 bg-white px-4 py-3.5 flex flex-col gap-2.5">
+          <div className="rounded-[20px] border border-[#D2D6E1] bg-[#EEF0F5] px-4 pt-6 pb-4 flex flex-col gap-3 relative shadow-sm">
             {block.items.map((item, i) => (
               <p key={i} className="text-xs text-gray-700">
-                <span className="underline decoration-rose-400 text-rose-600">{item.underline}</span> {item.rest}
+                <span className="underline decoration-[#DC5A76] decoration-[1.5px] underline-offset-4">{item.underline}</span> {item.rest}
               </p>
             ))}
           </div>
@@ -1097,20 +1391,24 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
       )
     case 'consequence-grid':
       return (
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-2 gap-3">
           {block.items.map((item, i) => {
             const isPerfecto = item.variant === 'perfecto'
+            const borderColor = isPerfecto ? '#F1A9BC' : '#A9C0ED'
+            const topBgColor = isPerfecto ? '#FDE9EF' : '#E1EDFB'
+            const tagColor = isPerfecto ? '#B5314A' : '#3258A6'
+            
             return (
-              <div key={i} className="rounded-2xl border border-gray-100 bg-white overflow-hidden flex flex-col">
-                <div className="px-3 py-2.5" style={{ backgroundColor: isPerfecto ? '#FBD6E4' : '#DBEAFE' }}>
-                  <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: isPerfecto ? '#B5314A' : 'var(--bsp-blue)' }}>
+              <div key={i} className="rounded-[1.25rem] border bg-white overflow-hidden flex flex-col shadow-sm" style={{ borderColor }}>
+                <div className="px-3.5 pt-3.5 pb-3 flex flex-col gap-1" style={{ backgroundColor: topBgColor }}>
+                  <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: tagColor }}>
                     {isPerfecto ? 'Perfecto' : 'Indefinido'}
                   </span>
-                  <p className="text-xs font-bold text-gray-900">&ldquo;{item.quote}&rdquo;</p>
+                  <p className="text-[12px] font-bold text-gray-900 leading-snug">&ldquo;{item.quote}&rdquo;</p>
                 </div>
-                <div className="flex items-center gap-2.5 px-3 py-2.5">
+                <div className="flex items-center gap-2.5 px-3.5 py-3">
                   <Image src={item.icon} alt="" width={28} height={28} className="object-contain shrink-0" />
-                  <p className="text-[11px] text-gray-600 leading-snug">{item.caption}</p>
+                  <p className="text-[10px] text-gray-600 leading-tight font-medium">{item.caption}</p>
                 </div>
               </div>
             )
@@ -1140,80 +1438,167 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
       )
     case 'mix-scenario': {
       const isPerfecto = block.actionVariant === 'perfecto'
-      const actionColor = isPerfecto ? '#B5314A' : 'var(--bsp-blue)'
+      const actionColor = isPerfecto ? '#E11D48' : '#2563EB' // Rose-600 vs Blue-600
+      const pillTextColor = isPerfecto ? '#111827' : '#2563EB' // Gray-900 vs Blue-600
+      
       return (
-        <div className="rounded-2xl border border-gray-100 bg-white px-4 py-3.5 flex flex-col gap-3">
-          <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400">{block.label}</span>
-          <p className="text-xs">
-            <span className="font-bold" style={{ color: 'var(--bsp-orange)' }}>{block.backgroundPhrase}</span>
-            <span className="text-gray-500">, por eso </span>
-            <span className="font-bold underline" style={{ color: actionColor, textDecorationColor: actionColor }}>{block.actionPhrase}</span>
-            <span className="text-gray-500"> algo.</span>
-          </p>
-          <div className="border-t border-gray-100 pt-3 flex items-center gap-2">
-            <span className="px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5" style={{ backgroundColor: PILL_STYLES.orange.tint, color: '#9A5B1C' }}>
-              {block.backgroundPhrase.toLowerCase()}
-              <span className="px-2 py-0.5 rounded-full bg-white border text-xs font-bold" style={{ borderColor: actionColor, color: actionColor }}>{block.actionPhrase}</span>
-            </span>
-            {block.character && !compact && (
-              <Image src={block.character} alt="" width={40} height={40} className="object-contain shrink-0 ml-auto" />
-            )}
-          </div>
-          <div className="flex items-center gap-1 h-7">
-            {block.timeline.length === 2 ? (
-              <>
-                <span className="flex-1 h-full rounded-l-full flex items-center justify-center text-[10px] font-bold text-white" style={{ backgroundColor: 'var(--bsp-blue)' }}>{block.timeline[0]}</span>
-                <span className="flex-1 h-full flex items-center justify-center text-[10px] font-bold" style={{ backgroundColor: '#FBD6E4', color: '#9D174D', clipPath: 'polygon(0 0, 85% 0, 100% 50%, 85% 100%, 0 100%)' }}>{block.timeline[1]}</span>
-              </>
-            ) : (
-              <span className="flex-1 h-full flex items-center justify-center text-[10px] font-bold" style={{ backgroundColor: '#FBD6E4', color: '#9D174D', clipPath: 'polygon(0 0, 90% 0, 100% 50%, 90% 100%, 0 100%)' }}>{block.timeline[0]}</span>
-            )}
+        <div className="rounded-[1.25rem] bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100 p-5 flex flex-col relative overflow-hidden">
+          <span className="text-[12px] font-bold text-gray-500 uppercase tracking-wide mb-2">{block.label}</span>
+          
+          {block.sentence ? (
+            <p className="text-[14px] text-gray-800 leading-snug mb-5">
+              {renderBold(block.sentence)}
+            </p>
+          ) : (
+            <p className="text-[14px] text-gray-800 leading-snug mb-5">
+              <span className="font-bold text-[#F58220]">{block.backgroundPhrase}</span>
+              <span className="text-gray-500">, por eso </span>
+              <span className="font-bold underline decoration-[2px] underline-offset-4" style={{ color: actionColor }}>{block.actionPhrase}</span>
+              <span className="text-gray-500"> algo.</span>
+            </p>
+          )}
+
+          <div className="w-full border-t border-gray-100 pt-5 flex flex-col gap-3">
+            <div className="flex items-start justify-between w-full">
+              <div className="flex flex-col gap-4 relative z-10 w-[240px]">
+                
+                {/* Visual Track */}
+                <div className="h-[64px] rounded-full border-[1.5px] border-dashed border-[#FBA862] bg-[#FFF8F0] relative w-full flex items-center p-[4px]">
+                  {block.bgImage && (
+                    <Image 
+                      src={block.bgImage} 
+                      width={120} 
+                      height={75} 
+                      className="absolute -bottom-2 left-3 object-contain h-[85px] drop-shadow-sm" 
+                      alt="" 
+                    />
+                  )}
+                  <div className="ml-auto w-[50px] h-[50px] shrink-0 rounded-full flex items-center justify-center overflow-hidden z-20 relative" style={{ backgroundColor: actionColor }}>
+                    {block.actionImage && (
+                      <Image 
+                        src={block.actionImage} 
+                        width={50} 
+                        height={50} 
+                        className={isPerfecto ? "object-cover w-[85%] h-[85%] object-top translate-y-0.5 drop-shadow-md" : "object-cover w-[180%] h-[180%] object-top translate-y-4 -translate-x-0.5 drop-shadow-md"} 
+                        alt="" 
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Labels */}
+                <div className="h-[36px] rounded-full border-[1.5px] border-dashed border-[#FBA862] bg-[#FFF8F0] relative w-[240px] flex items-center p-[4px] pl-4 mt-1">
+                  <div className="flex-1 flex items-center justify-center pr-2">
+                    <span className="text-[12px] font-bold text-gray-900 leading-none">{block.backgroundPhrase}</span>
+                  </div>
+                  <div className="h-[28px] shrink-0 rounded-full border-[1.5px] bg-white flex items-center justify-center px-4 z-10 ml-auto" style={{ borderColor: actionColor }}>
+                    <span className="text-[12px] font-bold leading-none" style={{ color: pillTextColor }}>{block.actionPhrase}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* You now */}
+              <div className="flex flex-col items-center justify-center shrink-0 pr-1 h-[64px] relative">
+                <span className="text-[11px] font-bold text-gray-900 absolute -top-2">You now</span>
+                <Image src="/images/teoria/liodetiempos/Profile - Mimo.png" width={52} height={52} className="object-contain" alt="" />
+              </div>
+            </div>
+
+            {/* Timeline Ribbons */}
+            <div className="flex items-center w-full mt-4">
+              {block.timeline.length === 2 ? (
+                <>
+                  <div className="relative w-[240px] h-[42px] flex items-center justify-center">
+                    <svg className="absolute inset-0 w-full h-full text-[#C6D2EE]" preserveAspectRatio="none" viewBox="0 0 100 100">
+                      <polygon points="0,25 94,25 94,10 100,10 100,90 94,90 94,75 0,75" fill="currentColor" />
+                    </svg>
+                    <span className="relative z-10 text-[13px] font-bold text-[#3852A4] leading-none">{block.timeline[0]}</span>
+                  </div>
+                  <div className="relative flex-1 h-[42px] ml-4 flex items-center justify-center pr-4">
+                    <svg className="absolute inset-0 w-full h-full text-[#F8D7E3]" preserveAspectRatio="none" viewBox="0 0 100 100">
+                      <polygon points="0,25 75,25 75,0 100,50 75,100 75,75 0,75" fill="currentColor" />
+                    </svg>
+                    <span className="relative z-10 text-[13px] font-bold text-[#E11D48] leading-none">{block.timeline[1]}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="relative w-full h-[42px] flex items-center justify-center pr-4">
+                  <svg className="absolute inset-0 w-full h-full text-[#F8D7E3]" preserveAspectRatio="none" viewBox="0 0 100 100">
+                    <polygon points="0,25 92,25 92,0 100,50 92,100 92,75 0,75" fill="currentColor" />
+                  </svg>
+                  <span className="relative z-10 text-[13px] font-bold text-[#E11D48] leading-none">{block.timeline[0]}</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )
     }
+        case 'review-links':
+      return (
+        <div className="flex flex-col gap-3 mt-1">
+          {block.links.map((link, i) => (
+            <button
+              key={i}
+              onClick={() => window.location.href = link.href}
+              className="w-full text-left rounded-[16px] bg-[#DCFCE7] px-4 py-3.5 flex items-center gap-4 shadow-sm transition-transform active:scale-[0.98]"
+            >
+              <div className="w-[44px] h-[44px] shrink-0 rounded-[10px] bg-[#166534] flex items-center justify-center shadow-sm">
+                <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-[24px] h-[24px] text-white">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                </svg>
+              </div>
+              <div className="flex flex-col flex-1 gap-1 min-w-0">
+                <span className="text-[13px] font-bold text-gray-900 leading-tight">{link.title}</span>
+                <span className="text-[12px] text-gray-700 leading-snug">{renderBold(link.text)}</span>
+              </div>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="shrink-0 text-[#166534]">
+                <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          ))}
+        </div>
+      )
     case 'decision-tree':
       return (
         <div className="flex flex-col gap-3.5">
-          <div className="rounded-2xl border border-gray-100 bg-white px-4 py-4 flex flex-col gap-3.5">
+          <div className="rounded-[20px] bg-white px-5 py-6 flex flex-col gap-6 shadow-sm border border-gray-100">
             {block.steps.map((step, i) => (
-              <div key={step.number} className="flex flex-col gap-2.5">
-                <div className="flex items-center gap-2.5">
-                  <span className="w-5 h-5 rounded-full bg-bsp-blue text-white text-[10px] font-bold flex items-center justify-center shrink-0">{step.number}</span>
-                  <p className="text-xs font-bold text-gray-800">{step.question}</p>
+              <div key={step.number} className="flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="w-[26px] h-[26px] rounded-full bg-[#3852A4] text-white text-[12px] font-bold flex items-center justify-center shrink-0">{step.number}</span>
+                  <p className="text-[13px] font-bold text-gray-900">{step.question}</p>
                 </div>
-                <ArrowDown className="w-4 h-4 text-gray-300 mx-auto" />
+                <div className="flex justify-center -mt-1 mb-0.5">
+                  <svg width="18" height="20" viewBox="0 0 18 20" fill="#CBD5E1">
+                    <path d="M5 0h8v10h5l-9 10-9-10h5z"/>
+                  </svg>
+                </div>
                 {step.result === 'single' ? (
-                  <div className="rounded-xl px-4 py-3 flex flex-col items-center gap-1" style={{ backgroundColor: PILL_STYLES.orange.tint, border: '1px solid #F5CB98' }}>
-                    <span className="text-sm font-bold" style={{ color: 'var(--bsp-orange)' }}>{step.label}</span>
-                    <span className="text-[10px] text-gray-500">{step.hint}</span>
+                  <div className="rounded-[12px] px-2 py-4 flex flex-col items-center gap-1" style={{ backgroundColor: '#FFF8F0', border: '1px solid #FBA862' }}>
+                    <span className="text-[14px] font-bold" style={{ color: '#F58220' }}>{step.label}</span>
+                    {step.hint && <span className="text-[12px] text-[#D4A07A] font-medium mt-1">{step.hint}</span>}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-2 gap-3">
                     {step.options.map(opt => {
                       const isPerfecto = opt.variant === 'perfecto'
                       return (
                         <div
                           key={opt.label}
-                          className="rounded-xl px-3.5 py-3 flex flex-col items-center gap-1"
-                          style={{ backgroundColor: isPerfecto ? '#FBD6E4' : '#DBEAFE', border: `1px solid ${isPerfecto ? '#F0A8C0' : '#93C5FD'}` }}
+                          className="rounded-[12px] px-2 py-4 flex flex-col items-center justify-center gap-1"
+                          style={{ backgroundColor: isPerfecto ? '#FFF0F2' : '#F0F4FF', border: '1px solid ' + (isPerfecto ? '#FCA5A5' : '#93C5FD') }}
                         >
-                          <span className="text-sm font-bold" style={{ color: isPerfecto ? '#B5314A' : 'var(--bsp-blue)' }}>{opt.label}</span>
-                          <span className="text-[10px] text-gray-500 italic text-center">{opt.hint}</span>
+                          <span className="text-[14px] font-bold" style={{ color: isPerfecto ? '#E11D48' : '#2563EB' }}>{opt.label}</span>
+                          {opt.hint && <span className="text-[11px] text-gray-500 font-medium mt-1 text-center">{opt.hint}</span>}
                         </div>
                       )
                     })}
                   </div>
                 )}
-                {i < block.steps.length - 1 && <div className="border-t border-gray-100 mt-1.5" />}
               </div>
             ))}
           </div>
-          {block.tip && (
-            <div className="rounded-xl bg-green-100/70 border border-green-200 px-3.5 py-3">
-              <p className="text-xs text-green-900 leading-relaxed">{block.tip}</p>
-            </div>
-          )}
         </div>
       )
   }
@@ -1275,17 +1660,54 @@ function StepView({ step }: { step: LessonStep }) {
 }
 
 function SummaryView({ steps }: { steps: LessonStep[] }) {
-  return (
-    <div className="flex flex-col gap-5 relative">
-      {steps.map((step, idx) => (
-        <div key={step.number} className="flex gap-3 relative">
-          <div className="flex flex-col items-center shrink-0">
-            <BadgeCircle number={step.number} color={step.badgeColor ?? 'blue'} />
-            {idx < steps.length - 1 && <span className="w-px flex-1 bg-gray-200 mt-1" />}
+  const isSingleStep = steps.length === 1;
+
+  if (isSingleStep) {
+    const step = steps[0];
+    return (
+      <div className="flex flex-col gap-6 relative mt-2">
+        <div className="flex items-start gap-4 relative">
+          <div className="flex flex-col items-center shrink-0 mt-0.5">
+            <span className="w-11 h-11 rounded-full bg-[#3852A4] text-white text-[18px] font-bold flex items-center justify-center shadow-sm">
+              {step.number}
+            </span>
           </div>
-          <div className="flex flex-col gap-2 pb-1 flex-1 min-w-0">
-            <h3 className="text-sm font-bold text-gray-900">{step.title}</h3>
-            <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5 pt-1 flex-1 min-w-0">
+            <h3 className="text-[18px] font-bold text-gray-900">{step.title}</h3>
+            {step.subtitle && (
+              <p className="text-[13.5px] text-gray-600 leading-relaxed pr-2">
+                {renderBold(step.subtitle)}
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="flex flex-col gap-5 mt-1 w-full max-w-md mx-auto">
+          {step.blocks.map((block, i) => <LessonBlockView key={i} block={block} compact />)}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-8 relative mt-2">
+      {steps.map((step, idx) => (
+        <div key={step.number} className="flex items-start gap-4 relative">
+          <div className="flex flex-col items-center shrink-0 mt-0.5">
+            <span className="w-11 h-11 rounded-full bg-[#3852A4] text-white text-[18px] font-bold flex items-center justify-center shadow-sm">
+              {step.number}
+            </span>
+            {idx < steps.length - 1 && <span className="w-[1.5px] flex-1 bg-gray-200 mt-3 -mb-8" />}
+          </div>
+          <div className="flex flex-col gap-4 pb-2 flex-1 min-w-0">
+            <div className="flex flex-col gap-1.5 pt-1">
+              <h3 className="text-[17px] font-bold text-gray-900">{step.title}</h3>
+              {step.subtitle && (
+                <p className="text-[13px] text-gray-600 leading-relaxed pr-2">
+                  {renderBold(step.subtitle)}
+                </p>
+              )}
+            </div>
+            <div className="flex flex-col gap-4 mt-2">
               {step.blocks.map((block, i) => <LessonBlockView key={i} block={block} compact />)}
             </div>
           </div>
@@ -1314,6 +1736,7 @@ export default function LessonPage({ params }: { params: Promise<{ tenseId: stri
   const totalPages = lesson.steps.length + 1
   const isFirst = page === 0
   const isSummary = page === totalPages - 1
+  const isPerfectoSummary = tenseId === 'pretérito-perfecto' && isSummary
 
   const SWIPE_OFFSET_THRESHOLD = 50
   const SWIPE_VELOCITY_THRESHOLD = 500
@@ -1326,9 +1749,7 @@ export default function LessonPage({ params }: { params: Promise<{ tenseId: stri
     if (!isFirst) setPage(p => Math.max(0, p - 1))
   }
 
-  // Horizontal swipe — handled by Framer Motion's own drag="x" on the scroll container below.
   const handleDragEnd = (_: unknown, info: PanInfo) => {
-    // Ignore mostly-vertical drags so Motion's transform-based drag never fights the native scroll.
     if (Math.abs(info.offset.x) < Math.abs(info.offset.y)) return
 
     const isSwipe = Math.abs(info.offset.x) > SWIPE_OFFSET_THRESHOLD || Math.abs(info.velocity.x) > SWIPE_VELOCITY_THRESHOLD
@@ -1338,15 +1759,10 @@ export default function LessonPage({ params }: { params: Promise<{ tenseId: stri
     else goPrev()
   }
 
-  // Vertical swipe used to turn the page too (swipe up at the bottom advanced, swipe down at the
-  // top went back). In practice it fired on ordinary reading: scroll to the end of a lesson and
-  // the momentum of that same gesture carried you onto the next page unasked. Page turns are
-  // horizontal-only now — that is the gesture people mean when they want to move on.
-
   return (
     <>
-      <OverscrollColor top="#2F54BA" bottom="#F3F4F6" />
-      <div className="flex-1 min-h-0 flex flex-col bg-gray-100 overflow-hidden">
+      <OverscrollColor top="#2F54BA" bottom={isPerfectoSummary ? "#FFFFFF" : "#F3F4F6"} />
+      <div className={`flex-1 min-h-0 flex flex-col overflow-hidden ${isPerfectoSummary ? 'bg-white' : 'bg-gray-100'}`}>
         {/* Header */}
         <div className="shrink-0 bg-bsp-blue px-6 pt-10 pb-8">
           <div className="flex items-center justify-between mb-4">
@@ -1368,16 +1784,12 @@ export default function LessonPage({ params }: { params: Promise<{ tenseId: stri
           <svg viewBox="0 0 402 36" preserveAspectRatio="none" className="w-full block h-9">
             <path
               d="M0,0 C67,36 134,0 201,18 C268,36 335,0 402,18 L402,36 L0,36 Z"
-              fill="#F3F4F6"
+              fill={isPerfectoSummary ? "#FFFFFF" : "#F3F4F6"}
             />
           </svg>
         </div>
 
-        {/* Content — scrolls internally only when it doesn't fit; page itself never scrolls.
-            Swipe lives on this outer scroll container (not the inner content div) so a touch
-            anywhere in the viewport — including blank space below short content — can trigger
-            the page-turn, not just a touch directly on text/cards. Horizontal only: dragDirectionLock
-            keeps a vertical gesture as a plain scroll, so reading never turns the page. */}
+        {/* Content */}
         <motion.div
           className="thin-scroll flex-1 min-h-0 overflow-y-auto px-6 pt-6 pb-6"
           drag="x"
@@ -1402,8 +1814,8 @@ export default function LessonPage({ params }: { params: Promise<{ tenseId: stri
         </motion.div>
 
         {/* Footer */}
-        <div className="shrink-0 bg-gray-100 pt-2 pb-6">
-          <div className="flex items-center justify-center gap-1.5 pb-3">
+        <div className={`shrink-0 pt-2 pb-6 ${isPerfectoSummary ? 'bg-white' : 'bg-gray-100'}`}>
+          <div className="flex items-center justify-center gap-[4px] pb-3">
             {Array.from({ length: totalPages }).map((_, i) => (
               <span
                 key={i}
@@ -1421,7 +1833,7 @@ export default function LessonPage({ params }: { params: Promise<{ tenseId: stri
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setPage(p => Math.max(0, p - 1))}
-                className="flex-1 flex items-center justify-center gap-1.5 py-3.5 rounded-2xl text-sm font-bold border-2 border-gray-200 text-gray-700"
+                className="flex-1 flex items-center justify-center gap-[4px] py-3.5 rounded-2xl text-sm font-bold border-2 border-gray-200 text-gray-700"
               >
                 <ArrowLeft className="w-4 h-4" /> Atrás
               </motion.button>
@@ -1432,7 +1844,7 @@ export default function LessonPage({ params }: { params: Promise<{ tenseId: stri
                 if (isSummary) router.back()
                 else setPage(p => Math.min(totalPages - 1, p + 1))
               }}
-              className="flex-1 flex items-center justify-center gap-1.5 py-3.5 rounded-2xl text-sm font-bold text-white"
+              className="flex-1 flex items-center justify-center gap-[4px] py-3.5 rounded-2xl text-sm font-bold text-white"
               style={{ backgroundColor: isSummary ? 'var(--bsp-orange)' : 'var(--bsp-blue)' }}
             >
               {isSummary ? '¡Fin!' : 'Siguiente'}
