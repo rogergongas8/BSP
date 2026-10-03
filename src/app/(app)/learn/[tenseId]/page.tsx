@@ -1689,25 +1689,23 @@ function SummaryView({ steps }: { steps: LessonStep[] }) {
   }
 
   return (
-    <div className="flex flex-col gap-8 relative mt-2">
+    <div className="flex flex-col gap-5 relative">
       {steps.map((step, idx) => (
-        <div key={step.number} className="flex items-start gap-4 relative">
-          <div className="flex flex-col items-center shrink-0 mt-0.5">
-            <span className="w-11 h-11 rounded-full bg-[#3852A4] text-white text-[18px] font-bold flex items-center justify-center shadow-sm">
-              {step.number}
-            </span>
-            {idx < steps.length - 1 && <span className="w-[1.5px] flex-1 bg-gray-200 mt-3 -mb-8" />}
+        <div key={step.number} className="flex items-stretch gap-3 relative">
+          <div className="flex flex-col items-center shrink-0 w-[26px]">
+            <BadgeCircle number={step.number} color={step.badgeColor ?? 'blue'} />
+            {idx < steps.length - 1 && <span className="w-px flex-1 bg-gray-200 mt-2 -mb-5" />}
           </div>
-          <div className="flex flex-col gap-4 pb-2 flex-1 min-w-0">
-            <div className="flex flex-col gap-1.5 pt-1">
-              <h3 className="text-[17px] font-bold text-gray-900">{step.title}</h3>
+          <div className="flex flex-col gap-3 pb-2 flex-1 min-w-0">
+            <div className="flex flex-col gap-[4px] pt-0.5">
+              <h3 className="text-[15px] font-bold text-gray-900">{step.title}</h3>
               {step.subtitle && (
                 <p className="text-[13px] text-gray-600 leading-relaxed pr-2">
                   {renderBold(step.subtitle)}
                 </p>
               )}
             </div>
-            <div className="flex flex-col gap-4 mt-2">
+            <div className="flex flex-col gap-3">
               {step.blocks.map((block, i) => <LessonBlockView key={i} block={block} compact />)}
             </div>
           </div>
