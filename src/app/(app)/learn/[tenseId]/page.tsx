@@ -66,6 +66,9 @@ function renderBold(text: string, color?: string) {
     if (part.startsWith('**') && part.endsWith('**')) {
       return <strong key={i} className="font-semibold text-gray-800" style={color ? { color } : undefined}>{part.slice(2, -2)}</strong>
     }
+    if (part.startsWith('*') && part.endsWith('*') && !part.startsWith('**')) {
+      return <em key={i} className="italic">{part.slice(1, -1)}</em>
+    }
     if (part.startsWith('__') && part.endsWith('__')) {
       return <strong key={i} className="font-semibold text-[#F58220]">{part.slice(2, -2)}</strong>
     }
@@ -112,6 +115,7 @@ function renderRichSubtitle(segments: { text: string; bold?: boolean; color?: 'r
 }
 
 function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boolean }) {
+  const router = useRouter()
   switch (block.type) {
     case 'summary-group':
       return (
@@ -322,8 +326,8 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
             </>
           ) : (
             <>
-              <Lightbulb className="absolute left-1 top-0.5 w-4 h-4 text-orange-500" />
-              <p className="text-[11px] text-gray-600 font-light leading-relaxed pl-6">{renderBold(block.text)}</p>
+              <Lightbulb className="absolute left-1 top-1 w-4 h-4 text-orange-500" />
+              <p className="text-[13px] text-[#4B5563] font-light leading-relaxed pl-7">{renderBold(block.text)}</p>
             </>
           )}
         </div>
@@ -517,8 +521,8 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
       }
       return inner
     }
-    case 'word-pills':
-      return (
+    case 'word-pills': {
+      const pillsContent = (
         <div className="flex flex-wrap items-center justify-center gap-2.5">
           {block.groups.map((group, gi) => (
             <div key={gi} className="flex items-center gap-2.5">
@@ -526,7 +530,7 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
                 <div key={word} className="flex items-center gap-2.5">
                   {wi > 0 && <span className="text-gray-400 text-sm">/</span>}
                   <span
-                    className="px-4 py-2 rounded-full text-sm font-bold text-white"
+                    className="px-4 py-2 rounded-[12px] text-sm font-bold text-white shadow-sm"
                     style={{ backgroundColor: PILL_STYLES[group.color].solid }}
                   >
                     {word}
@@ -537,6 +541,11 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
           ))}
         </div>
       )
+      if (compact) {
+        return <div className="rounded-[20px] bg-white border border-gray-100 p-5 shadow-sm w-full">{pillsContent}</div>
+      }
+      return pillsContent
+    }
     case 'examples': {
       const styles = PILL_STYLES[block.color]
       return (
@@ -830,6 +839,25 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
       )
     }
     case 'dual-conjugation':
+      if (compact && block.style === 'cards') {
+        return (
+          <div className="flex flex-col gap-5">
+            {block.groups.map(group => (
+              <div key={group.label} className="flex flex-col gap-2.5">
+                <span className="text-[11px] font-bold text-gray-900 uppercase tracking-wider">{group.label}</span>
+                <div className="grid grid-cols-2 gap-2">
+                  {group.rows.map(([person, form]) => (
+                    <div key={person} className="flex items-center justify-between px-3 py-2 bg-white rounded-xl border border-gray-200 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                      <span className="text-[11px] text-gray-500 font-medium">{person}</span>
+                      <span className="text-[12px] font-bold" style={{ color: PILL_STYLES[group.color].solid }}>{form}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      }
       if (compact && block.style !== 'pastel') {
         return (
           <div className="flex flex-col gap-3">
@@ -849,36 +877,55 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
           </div>
         )
       }
+      const isContainerBox = block.style === 'pastel' || block.style === 'cards'
       return (
-        <div className={block.style === 'pastel' ? 'rounded-[20px] border border-gray-100 bg-white p-5 shadow-sm' : 'rounded-2xl border border-gray-100 bg-white overflow-hidden flex'}>
-          <div className={block.style === 'pastel' ? 'grid grid-cols-2 gap-4' : 'flex'}>
+        <div className={isContainerBox ? `rounded-[20px] border border-gray-100 bg-white ${compact ? 'p-3.5' : 'p-5'} shadow-sm` : 'rounded-2xl border border-gray-100 bg-white overflow-hidden flex w-full'}>
+          <div className={isContainerBox ? `grid grid-cols-2 ${compact ? 'gap-2' : 'gap-4'}` : 'flex w-full'}>
             {block.groups.map((group, gi) => {
               const isPastel = block.style === 'pastel'
+              const isCards = block.style === 'cards'
+              
+              const labelClasses = isPastel 
+                ? `px-2 py-1.5 text-center ${compact ? 'text-[10px]' : 'text-xs'} font-bold uppercase tracking-wide rounded-full ${compact ? 'mb-2' : 'mb-4'} w-[90%] mx-auto ${gi === 0 ? 'bg-[#98ACDA] text-[#273B73]' : 'bg-[#DEE3F1] text-[#273B73]'}`
+                : isCards
+                  ? `px-3 py-2 text-center text-xs font-bold text-white rounded-lg ${compact ? 'mb-2' : 'mb-4'} w-[90%] mx-auto`
+                  : 'px-3 py-2.5 text-center text-[10px] font-bold uppercase tracking-wide bg-gray-50 text-gray-500'
+                  
+              const labelStyle = isCards ? { backgroundColor: PILL_STYLES[group.color].solid } : {}
               
               return (
-                <div key={group.label} className={`flex flex-col ${isPastel ? '' : (gi > 0 ? 'border-l border-gray-100' : '')} flex-1`}>
-                  <span className={isPastel
-                    ? `px-3 py-2 text-center text-xs font-bold uppercase tracking-wide rounded-full mb-4 w-[90%] mx-auto ${gi === 0 ? 'bg-[#98ACDA] text-[#273B73]' : 'bg-[#DEE3F1] text-[#273B73]'}`
-                    : 'px-3 py-2.5 text-center text-[10px] font-bold uppercase tracking-wide bg-gray-50 text-gray-500'}>
+                <div key={group.label} className={`flex flex-col ${isContainerBox ? '' : (gi > 0 ? 'border-l border-gray-100' : '')} flex-1`}>
+                  <span className={labelClasses} style={labelStyle}>
                     {group.label}
                   </span>
-                  <div className={`flex flex-col ${isPastel ? 'gap-2.5' : ''}`}>
+                  <div className={`flex flex-col ${isContainerBox ? (compact ? 'gap-1.5' : 'gap-2.5') : ''}`}>
                     {group.rows.map(([pronoun, ending], i) => {
                       const isHighlighted = Array.isArray(group.highlightIndex)
                         ? group.highlightIndex.includes(i)
                         : group.highlightIndex === i
+                        
                       if (isPastel) {
                         return (
-                          <div key={pronoun} className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl border ${isHighlighted ? 'border-orange-400' : 'border-gray-200'}`}>
-                            <span className="text-xs text-gray-500 font-medium">{pronoun}</span>
-                            <span className="text-[13px] font-bold text-[#2A4385]">{ending}</span>
+                          <div key={pronoun} className={`flex items-center justify-between ${compact ? 'px-2.5 py-2' : 'px-3.5 py-2.5'} rounded-xl border ${isHighlighted ? 'border-orange-400' : 'border-gray-200'}`}>
+                            <span className={`${compact ? 'text-[11px]' : 'text-xs'} text-gray-500 font-medium`}>{pronoun}</span>
+                            <span className={`${compact ? 'text-[12px]' : 'text-[13px]'} font-bold text-[#2A4385]`}>{ending}</span>
                           </div>
                         )
                       }
+                      
+                      if (isCards) {
+                        return (
+                          <div key={pronoun} className={`flex items-center justify-between ${compact ? 'px-2.5 py-2' : 'px-3.5 py-2.5'} rounded-xl border ${isHighlighted ? 'border-orange-400' : 'border-gray-200'}`}>
+                            <span className={`${compact ? 'text-[11px]' : 'text-xs'} text-gray-500 font-medium`}>{pronoun}</span>
+                            <span className={`${compact ? 'text-[12px]' : 'text-[13px]'} font-bold`} style={{ color: PILL_STYLES[group.color].solid }}>{ending}</span>
+                          </div>
+                        )
+                      }
+                      
                       return (
                         <div key={pronoun} className={`flex items-center justify-between px-4 py-2.5 ${i > 0 ? 'border-t border-gray-100' : ''} ${isHighlighted ? 'bg-orange-50' : 'bg-white'}`}>
                           <span className={`text-[10px] font-bold uppercase tracking-wide ${isHighlighted ? 'text-orange-600' : 'text-gray-400'}`}>{pronoun}</span>
-                          <span className={`text-sm font-bold ${isHighlighted ? 'text-orange-600' : 'text-gray-900'}`}>{ending}</span>
+                          <span className={`text-[13px] font-bold ${isHighlighted ? 'text-orange-600' : 'text-gray-900'}`}>{ending}</span>
                         </div>
                       )
                     })}
@@ -891,18 +938,18 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
       )
     case 'accent-table': {
       const styles = PILL_STYLES[block.color]
-      return (
-        <div className={`grid grid-cols-2 ${compact ? 'gap-x-6 gap-y-1' : 'gap-x-8 gap-y-3'}`}>
+      const gridContent = (
+        <div className={`grid grid-cols-2 ${compact ? 'gap-2 mt-0.5' : 'gap-4'}`}>
           {block.rows.map(([person, form]) => {
             const idx = form.toLowerCase().indexOf(block.underline.toLowerCase())
             return (
-              <div key={person} className="flex items-baseline justify-between gap-3">
-                <span className="text-xs text-gray-400">{person}</span>
-                <span className="text-sm font-bold text-gray-900">
+              <div key={person} className={`flex items-center justify-between ${compact ? 'px-2.5 py-2 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.02)]' : 'px-4 py-3'} rounded-xl border border-gray-200`}>
+                <span className={`${compact ? 'text-[11px]' : 'text-xs'} text-gray-500 font-medium`}>{person}</span>
+                <span className={`${compact ? 'text-[12px]' : 'text-[14px]'} font-bold`} style={{ color: styles.solid }}>
                   {idx === -1 ? form : (
                     <>
                       {form.slice(0, idx)}
-                      <span className="underline decoration-2" style={{ color: styles.solid, textDecorationColor: styles.solid }}>
+                      <span className="underline decoration-2 underline-offset-2" style={{ textDecorationColor: styles.solid }}>
                         {form.slice(idx, idx + block.underline.length)}
                       </span>
                       {form.slice(idx + block.underline.length)}
@@ -912,6 +959,14 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
               </div>
             )
           })}
+        </div>
+      )
+      
+      if (compact) return gridContent
+      
+      return (
+        <div className="rounded-[20px] border border-gray-100 bg-white p-5 shadow-sm w-full">
+          {gridContent}
         </div>
       )
     }
@@ -944,17 +999,27 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
         </div>
       )
     }
-    case 'stem-cards':
-      return (
-        <div className={`grid w-full px-2 ${compact ? 'grid-cols-3 gap-[4px]' : 'grid-cols-3 gap-3'}`}>
+    case 'stem-cards': {
+      const gridContent = (
+        <div className={`grid w-full ${compact ? 'grid-cols-3 gap-2' : 'px-2 grid-cols-3 gap-3'}`}>
           {block.items.map(([inf, stem]) => (
-            <div key={inf} className="rounded-xl border border-gray-200 bg-white px-3 py-3 flex flex-col items-center shadow-sm">
-              <span className="text-[10px] text-gray-400">{inf}</span>
-              <span className="text-sm font-bold text-blue-600">{stem}</span>
+            <div key={inf} className="rounded-[12px] border border-gray-100 bg-white px-2 py-3 flex flex-col items-center shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+              <span className="text-[10px] text-gray-400 mb-1">{inf}</span>
+              <span className="text-[13px] font-bold text-[#2563EB]">{stem}</span>
             </div>
           ))}
         </div>
       )
+      
+      if (compact) {
+        return (
+          <div className="rounded-[20px] bg-white border border-gray-100 p-4 shadow-sm w-full">
+            {gridContent}
+          </div>
+        )
+      }
+      return gridContent
+    }
     case 'uses-list': {
       const ICONS = { repeat: Repeat, file: FileText, cloud: CloudRain }
       return (
@@ -1060,50 +1125,75 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
           <div className="flex gap-4 w-full mt-3">
             <div className="flex-1 flex flex-col relative pt-1 gap-2">
               {/* Visual Track */}
-              <div className={`relative ${block.layout === 'center' ? 'h-[100px]' : 'h-[76px]'} w-full flex items-center justify-center`}>
-                {/* Dashed orange track */}
-                <div className={`absolute ${block.layout === 'center' ? 'left-0 right-0 h-[80px]' : 'left-0 right-8 h-[56px]'} rounded-full border-[1.5px] border-dashed border-orange-300 bg-[#FFF8F0] z-0`} />
-                {/* BG Image */}
-                <div className={`absolute inset-0 z-10 flex items-center justify-center ${block.layout === 'center' ? '' : 'pr-16'}`}>
+              {block.layout === 'center' ? (
+                <div className="relative h-[100px] w-full flex items-center justify-center">
+                  {/* Dashed orange track */}
+                  <div className="absolute left-0 right-0 h-[80px] rounded-full border-[1.5px] border-dashed border-[#FBA862] bg-[#FFF8F0] z-0" />
+                  {/* BG Image */}
+                  <div className="absolute inset-0 z-10 flex items-center justify-center">
+                    {block.bgImage && (
+                      <Image 
+                        src={block.bgImage} 
+                        width={300} 
+                        height={120} 
+                        className="object-contain w-full h-[120px] -mt-3" 
+                        alt="" 
+                      />
+                    )}
+                  </div>
+                  {/* Action circle */}
+                  <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 w-[54px] h-[54px] rounded-full bg-[#2563EB] border-[2px] border-white flex items-center justify-center z-20 overflow-hidden shadow-sm">
+                    {block.actionImage && (
+                      <Image 
+                        src={block.actionImage} 
+                        width={80} 
+                        height={80} 
+                        className="object-cover max-w-none w-[130%] h-[130%] object-[50%_25%]" 
+                        alt="" 
+                      />
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="relative h-[64px] rounded-full border-[1.5px] border-dashed border-[#FBA862] bg-[#FFF8F0] w-full flex items-center p-[4px]">
                   {block.bgImage && (
                     <Image 
                       src={block.bgImage} 
-                      width={300} 
-                      height={120} 
-                      className={`object-contain ${block.layout === 'center' ? 'w-full h-[120px] -mt-3' : 'w-[160px] h-[80px]'}`} 
+                      width={120} 
+                      height={75} 
+                      className="absolute -bottom-2 left-3 object-contain h-[85px] drop-shadow-sm z-10" 
                       alt="" 
                     />
                   )}
+                  <div className="ml-auto w-[50px] h-[50px] shrink-0 rounded-full flex items-center justify-center overflow-hidden z-20 relative bg-[#2563EB]">
+                    {block.actionImage && (
+                      <Image 
+                        src={block.actionImage} 
+                        width={50} 
+                        height={50} 
+                        className="object-cover w-[180%] h-[180%] object-top translate-y-4 -translate-x-0.5 drop-shadow-md" 
+                        alt="" 
+                      />
+                    )}
+                  </div>
                 </div>
-                {/* Action circle */}
-                <div className={`absolute ${block.layout === 'center' ? 'left-1/2 -translate-x-1/2' : 'right-0'} top-1/2 -translate-y-1/2 w-[54px] h-[54px] rounded-full bg-[#2563EB] border-[2px] border-white flex items-center justify-center z-20 overflow-hidden shadow-sm`}>
-                  {block.actionImage && (
-                    <Image 
-                      src={block.actionImage} 
-                      width={80} 
-                      height={80} 
-                      className={`object-cover max-w-none ${block.layout === 'center' ? 'w-[130%] h-[130%] object-[50%_25%]' : 'w-[180%] h-[180%] translate-y-4'}`} 
-                      alt="" 
-                    />
-                  )}
-                </div>
-              </div>
+              )}
 
               {/* Labels */}
               {block.layout === 'center' ? (
-                <div className="relative w-full mt-1 flex flex-col items-center justify-center rounded-[20px] border-[1.5px] border-dashed border-orange-300 bg-[#FFF8F0] py-3 gap-2 px-4 mx-auto max-w-[220px]">
+                <div className="relative w-full mt-1 flex flex-col items-center justify-center rounded-[20px] border-[1.5px] border-dashed border-[#FBA862] bg-[#FFF8F0] py-3 gap-2 px-4 mx-auto max-w-[220px]">
                   <div className="h-8 px-4 rounded-full border-[1.5px] border-[#2563EB] bg-white flex items-center justify-center shadow-sm">
                     <span className="text-[12px] font-bold text-[#2563EB] whitespace-nowrap">{block.actionPhrase}</span>
                   </div>
-                  <span className="text-[12px] font-bold text-[#D97706] text-center leading-tight">{block.backgroundPhrase}</span>
+                  <span className="text-[12px] font-bold text-[#F58220] text-center leading-tight">{block.backgroundPhrase}</span>
                 </div>
               ) : (
-                <div className="relative h-9 w-full mt-1">
-                  <div className="absolute left-0 right-8 h-full rounded-full border-[1.5px] border-dashed border-orange-300 bg-[#FFF8F0] flex items-center justify-center">
-                    <span className="text-[12px] font-bold text-[#D97706]">{block.backgroundPhrase}</span>
+                <div className="relative h-[36px] rounded-full border-[1.5px] border-dashed border-[#FBA862] bg-[#FFF8F0] w-full flex items-center p-[4px] pl-4 mt-1">
+                  <div className="flex-1 flex items-center justify-center pr-2">
+                    <span className="text-[12px] font-bold text-gray-900 leading-none">{block.backgroundPhrase}</span>
                   </div>
-                  <div className="absolute right-1 top-1/2 -translate-y-1/2 h-8 px-4 rounded-full border-[1.5px] border-[#2563EB] bg-white flex items-center justify-center shadow-sm z-10">
-                    <span className="text-[12px] font-bold text-[#2563EB] whitespace-nowrap">{block.actionPhrase}</span>
+                  <div className="h-[28px] shrink-0 rounded-full border-[1.5px] border-[#2563EB] bg-white flex items-center justify-center px-4 z-10 ml-auto shadow-sm">
+                    <span className="text-[12px] font-bold text-[#2563EB] leading-none whitespace-nowrap">{block.actionPhrase}</span>
                   </div>
                 </div>
               )}
@@ -1171,13 +1261,13 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
     case 'toggle-pair':
       return (
         <div className="grid grid-cols-2 gap-3 mt-2">
-          <div className="rounded-[1.25rem] border border-[#C5E1B5] bg-[#EEF5EA] px-4 py-6 flex flex-col items-center justify-center gap-[4px] shadow-sm">
+          <div className="rounded-[1.25rem] border border-[#C5E1B5] bg-[#EEF5EA] px-4 pt-5 pb-6 flex flex-col items-center justify-center gap-[6px] shadow-sm">
             <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Simple</span>
-            <span className="text-[15px] font-bold text-gray-900">{block.simple}</span>
+            <span className="text-[14px] font-bold text-gray-900">{block.simple}</span>
           </div>
-          <div className="rounded-[1.25rem] border border-gray-100 bg-white px-4 py-6 flex flex-col items-center justify-center gap-[4px] shadow-sm">
+          <div className="rounded-[1.25rem] border border-gray-100 bg-white px-4 pt-5 pb-6 flex flex-col items-center justify-center gap-[6px] shadow-sm">
             <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Progressive</span>
-            <span className="text-[15px] font-bold text-gray-900">{block.progressive}</span>
+            <span className="text-[14px] font-bold text-gray-900">{block.progressive}</span>
           </div>
         </div>
       )
@@ -1534,13 +1624,13 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
         </div>
       )
     }
-        case 'review-links':
+        case 'review-links': {
       return (
         <div className="flex flex-col gap-3 mt-1">
           {block.links.map((link, i) => (
             <button
               key={i}
-              onClick={() => window.location.href = link.href}
+              onClick={() => router.replace(link.href)}
               className="w-full text-left rounded-[16px] bg-[#DCFCE7] px-4 py-3.5 flex items-center gap-4 shadow-sm transition-transform active:scale-[0.98]"
             >
               <div className="w-[44px] h-[44px] shrink-0 rounded-[10px] bg-[#166534] flex items-center justify-center shadow-sm">
@@ -1559,6 +1649,7 @@ function LessonBlockView({ block, compact }: { block: LessonBlock; compact?: boo
           ))}
         </div>
       )
+    }
     case 'decision-tree':
       return (
         <div className="flex flex-col gap-3.5">

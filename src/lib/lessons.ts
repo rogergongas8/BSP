@@ -18,7 +18,7 @@ export type LessonBlock =
   | { type: 'example-words'; color: PillColor; boxColor?: PillColor; words: (string | { text: string; underline: string })[] }
   | {
       type: 'dual-conjugation'
-      style?: 'solid' | 'pastel'
+      style?: 'solid' | 'pastel' | 'cards'
       groups: { label: string; color: PillColor; rows: [string, string][]; highlightIndex?: number | number[] }[]
     }
   | { type: 'accent-table'; rows: [string, string][]; color: PillColor; underline: string }
@@ -558,7 +558,7 @@ export const LESSONS: Record<string, Lesson> = {
     steps: [
       {
         number: '1',
-        title: '3 irregular verbs',
+        title: '3 fully irregular verbs',
         subtitle: "Good news! There aren't many fully irregular verbs!",
         blocks: [
           {
@@ -950,6 +950,61 @@ export const LESSONS: Record<string, Lesson> = {
     tenseId: 'imperfecto-irregular',
     title: 'Imperfecto',
     subtitle: 'irregular',
+    summarySteps: [
+      {
+        number: '1',
+        title: '3 fully irregular verbs',
+        blocks: [
+          {
+            type: 'word-pills',
+            groups: [
+              { words: ['ser'], color: 'wine' },
+              { words: ['ir'], color: 'wine' },
+              { words: ['ver'], color: 'pink' },
+            ],
+          },
+        ],
+      },
+      {
+        number: '2',
+        title: 'The twins: ser/ir',
+        blocks: [
+          {
+            type: 'dual-conjugation',
+            style: 'cards',
+            groups: [
+              {
+                label: 'ser', color: 'wine',
+                rows: [['yo', 'era'], ['tú', 'eras'], ['él/ella', 'era'], ['nosotros', 'éramos'], ['vosotros', 'erais'], ['ellos/ellas', 'eran']],
+              },
+              {
+                label: 'ir', color: 'wine',
+                rows: [['yo', 'iba'], ['tú', 'ibas'], ['él/ella', 'iba'], ['nosotros', 'íbamos'], ['vosotros', 'ibais'], ['ellos/ellas', 'iban']],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        number: '3',
+        title: 'The tiny rebel: ver',
+        blocks: [
+          {
+            type: 'accent-table',
+            color: 'pink',
+            underline: 'e',
+            rows: [
+              ['yo', 'veía'],
+              ['tú', 'veías'],
+              ['él/ella', 'veía'],
+              ['nosotros', 'veíamos'],
+              ['vosotros', 'veíais'],
+              ['ellos/ellas', 'veían'],
+            ],
+          },
+        ],
+      },
+    ],
     steps: [
       {
         number: '1',
@@ -968,11 +1023,12 @@ export const LESSONS: Record<string, Lesson> = {
       },
       {
         number: '2',
-        title: 'Pure memory: ser / ir',
+        title: 'The twins: ser/ir',
         subtitle: 'These are the **only two** imperfecto verbs you really have to **learn by heart**: ir and ser. ¡Tú puedes!',
         blocks: [
           {
             type: 'dual-conjugation',
+            style: 'cards',
             groups: [
               {
                 label: 'ser', color: 'wine',
@@ -984,6 +1040,10 @@ export const LESSONS: Record<string, Lesson> = {
               },
             ],
           },
+          {
+            type: 'note',
+            text: 'Notice: *ser* and *ir* are also irregular in Indefinido, but there they share the same forms: fui, fuiste, fue... In Imperfecto, they each have **their own set: era... / iba...**',
+          }
         ],
       },
       {
@@ -1020,6 +1080,38 @@ export const LESSONS: Record<string, Lesson> = {
     tenseId: 'imperfecto-regular',
     title: 'Imperfecto',
     subtitle: 'regular',
+    summarySteps: [
+      {
+        number: '1',
+        title: 'Classic stem',
+        blocks: [
+          {
+            type: 'stem-cards',
+            items: [['hablar', 'habl-'], ['comer', 'com-'], ['vivir', 'viv-']],
+          },
+        ],
+      },
+      {
+        number: '2',
+        title: 'The ending',
+        blocks: [
+          {
+            type: 'dual-conjugation',
+            style: 'pastel',
+            groups: [
+              {
+                label: '-AR', color: 'lavender', highlightIndex: 3,
+                rows: [['yo', '-aba'], ['tú', '-abas'], ['él/ella', '-aba'], ['nosotros', '-ábamos'], ['vosotros', '-abais'], ['ellos/ellas', '-aban']],
+              },
+              {
+                label: '-ER/-IR', color: 'orange', highlightIndex: 0,
+                rows: [['yo', '-ía'], ['tú', '-ías'], ['él/ella', '-ía'], ['nosotros', '-íamos'], ['vosotros', '-íais'], ['ellos/ellas', '-ían']],
+              },
+            ],
+          },
+        ],
+      },
+    ],
     steps: [
       {
         number: '1',
@@ -1051,6 +1143,18 @@ export const LESSONS: Record<string, Lesson> = {
               },
             ],
           },
+          {
+            type: 'note',
+            text: 'Notice the accent pattern: -er / -ir forms **always have an accent**, but -ar forms only have **one in nosotros**.',
+          },
+          {
+            type: 'example-columns',
+            columns: [
+              ['hablaba', 'hablabas', 'hablaba', 'hablábamos', 'hablabais', 'hablaban'],
+              ['comía', 'comías', 'comía', 'comíamos', 'comíais', 'comían'],
+              ['vivía', 'vivías', 'vivía', 'vivíamos', 'vivíais', 'vivían']
+            ]
+          }
         ],
       },
     ],
@@ -1527,12 +1631,12 @@ export const LESSONS: Record<string, Lesson> = {
               {
                 title: 'Struggling with the first question?',
                 text: 'Review how to identify the background in the lesson "[[Imperfecto vs. Indefinido]]"',
-                href: '/learn/imperfecto-vs-indefinido'
+                href: '/learn/imperfecto-indefinido'
               },
               {
                 title: 'Struggling with the second question?',
                 text: 'Review how to identify the time unit in the lesson "[[Pretérito perfecto vs. Indefinido]]"',
-                href: '/learn/perfecto-vs-indefinido'
+                href: '/learn/perfecto-indefinido'
               }
             ]
           }
