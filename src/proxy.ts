@@ -13,6 +13,9 @@ const PROTECTED_ROUTES = [
   '/admin',
 ]
 
+// Public landing, served at "/" through a rewrite for signed-out visitors.
+const LANDING_ROUTE = '/welcome'
+
 // Layout/preview-only routes: useful while building screens, never reachable in production.
 const DEV_ONLY_ROUTES = ['/dev-scoreboard', '/preview']
 
@@ -50,7 +53,26 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
-  const isProtected = pathname === '/' || PROTECTED_ROUTES.some((route) => pathname.startsWith(route))
+  const isProtected = PROTECTED_ROUTES.some((route) => pathname.startsWith(route))
+
+  // The landing page only lives at "/". Hitting /welcome directly would publish a duplicate
+  // of it, so send it home (the landing for visitors, the app for signed-in users).
+  if (pathname === LANDING_ROUTE) {
+    const homeUrl = request.nextUrl.clone()
+    homeUrl.pathname = '/'
+    return NextResponse.redirect(homeUrl, 308)
+  }
+
+  // "/" is the app home for signed-in users and the public landing for everyone else. A rewrite,
+  // not a redirect, so crawlers get a 200 with real content at the root URL instead of a hop to
+  // /login (which left Google with nothing to index).
+  if (pathname === '/' && !user) {
+    const landingUrl = request.nextUrl.clone()
+    landingUrl.pathname = LANDING_ROUTE
+    const rewrite = NextResponse.rewrite(landingUrl, { request })
+    supabaseResponse.cookies.getAll().forEach((cookie) => rewrite.cookies.set(cookie))
+    return rewrite
+  }
 
   if (isProtected && !user) {
     const loginUrl = request.nextUrl.clone()
