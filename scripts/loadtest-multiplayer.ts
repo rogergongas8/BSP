@@ -1,7 +1,7 @@
 /**
  * 10-player multiplayer simulation, run against a LOCAL Supabase instance.
  *
- * Exercises the paths that broke during the IESE session, in order:
+ * Exercises the paths that broke during the first live class session, in order:
  *   1. Ten players join one room and the server agrees they are all there.
  *   2. Three of them "freeze" (lose their client) and re-enter the same code mid-game.
  *   3. A full eight-round game is played to the final scoreboard.
@@ -353,7 +353,7 @@ async function main(): Promise<void> {
     check('total_rounds recorded', roomAfterStart?.total_rounds === TOTAL_ROUNDS)
 
     // The frozen players never lost their row — they lost their client. Re-entering the code
-    // is exactly what failed at IESE ("invalid code" on a live game).
+    // is exactly what failed in that live class ("invalid code" on a live game).
     const frozen = rest.slice(0, FROZEN_COUNT)
     const rejoins = await Promise.all(frozen.map(p => joinRoom(admin, room.code, p.id)))
     check(`${FROZEN_COUNT} frozen players re-entered a live game`, rejoins.every(r => r.ok),

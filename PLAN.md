@@ -1,7 +1,7 @@
 # BSP App — Plan de Implementación
 
 ## Context
-Aplicación web estilo Duolingo para aprendizaje de español, orientada inicialmente a estudiantes del IESE. Tiene dos modos principales:
+Aplicación web estilo Duolingo para aprendizaje de español, orientada inicialmente a un grupo de clase. Tiene dos modos principales:
 
 1. **Singleplayer** — el usuario practica solo, con ejercicios organizados por tiempos verbales (presente, pasado, futuro, subjuntivo…). Incluye documentación/teoría para que aprendan las reglas antes de practicar.
 2. **Multijugador en tiempo real** — los usuarios crean salas con un código, múltiples jugadores se unen y compiten simultáneamente respondiendo si frases son correctas o incorrectas dentro de un temporizador.
@@ -156,7 +156,7 @@ create table game_history (
   - `src/lib/supabase/admin.ts` — service role, solo server, para orquestación de juego
 - `src/middleware.ts` — refresca sesión, protege rutas `/play`, `/room/*`, `/profile`, `/leaderboard`.
 - **Trigger de perfil** (`0003_profile_trigger.sql`): crea fila en `profiles` automáticamente al registrarse.
-- Restricción opcional a dominio IESE: flag de config para habilitar/deshabilitar.
+- Restricción opcional a un dominio de email institucional: flag de config para habilitar/deshabilitar.
 
 ---
 
@@ -364,4 +364,4 @@ pnpm dlx supabase gen types typescript --linked > src/types/database.types.ts
 1. **Timers en serverless** — Next.js API routes en Vercel no mantienen estado. Resolver con Supabase Edge Function + `pg_cron`. Para MVP: host-driven (Option A) es aceptable.
 2. **Anti-cheat** — `phrase.is_correct` y `points_awarded` nunca llegan al cliente mid-round. Solo service role escribe estos campos.
 3. **Transcripción del PDF** — requiere trabajo manual; el árbol de decisión tiene múltiples ramas. Planificar tiempo en la Fase 2.
-4. **Escalado IESE → público** — restricción de dominio IESE como flag de config. Supabase escala con pgBouncer + read replicas sin cambiar código.
+4. **Escalado grupo inicial → público** — restricción de dominio como flag de config. Supabase escala con pgBouncer + read replicas sin cambiar código.

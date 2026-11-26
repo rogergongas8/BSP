@@ -4,7 +4,7 @@
 export const SITE_URL = 'https://www.miaustico.com'
 export const SITE_NAME = 'Miaustico BSP'
 export const SITE_DESCRIPTION =
-  'Practise the Spanish past tenses (indefinido, imperfecto and pretérito perfecto) with writing drills, mixed-tense quizzes and live class battles. Built for IESE students learning Spanish.'
+  'Practise the Spanish past tenses (indefinido, imperfecto and pretérito perfecto) with writing drills, mixed-tense quizzes and live class battles. Built for students learning Spanish.'
 
 export const FAQ = [
   {
@@ -17,7 +17,7 @@ export const FAQ = [
   },
   {
     q: 'Who is it for?',
-    a: 'Students at IESE who are learning Spanish and want to get the past tenses right. It works on any phone or computer browser.',
+    a: 'Students who are learning Spanish and want to get the past tenses right, on their own or with their class. It works on any phone or computer browser.',
   },
   {
     q: 'How do I sign up?',

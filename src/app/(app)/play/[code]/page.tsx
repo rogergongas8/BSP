@@ -1802,7 +1802,7 @@ export default function PlayPage({ params }: { params: Promise<{ code: string }>
    * The whole game timeline is driven by `postgres_changes` on `rounds`. That subscription is a
    * single point of failure: a websocket that drops during the start burst, a phone that locks, a
    * backgrounded Safari tab, or one refused fetch inside `applyRound`, and the client never hears
-   * about another round. Several players hit exactly this at IESE and sat on "Collecting
+   * about another round. Several players hit exactly this in a live class and sat on "Collecting
    * answers..." until the game ended.
    *
    * So the server state is re-read on a slow interval regardless of Realtime. When the round in

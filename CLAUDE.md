@@ -7,7 +7,7 @@
 
 ## Project Overview
 
-**BSP** is a Duolingo-style Spanish learning app for IESE students. Two modes:
+**BSP** is a Duolingo-style Spanish learning app for students learning Spanish. Two modes:
 - **Singleplayer** — self-paced practice organized by verb tense (`/learn` "Escribiendo…", `/practice` "Lío de tiempos")
 - **Multiplayer** — real-time competitive rooms with live scoring (`/room/[code]` lobby, `/play/[code]` live game "Battle")
 

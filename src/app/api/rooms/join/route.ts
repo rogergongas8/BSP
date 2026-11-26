@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
   const { code } = parsed.data
 
-  // A room that is already `playing` is still joinable: during the IESE session several players
+  // A room that is already `playing` is still joinable: during the first live class session several players
   // had their game freeze, and re-entering the code told them it was invalid because this lookup
   // only matched `waiting`. Reconnecting to a live game is the recovery path, so both states are
   // accepted here and the response tells the client which screen to open.

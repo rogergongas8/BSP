@@ -1,6 +1,6 @@
 # Miaustico BSP
 
-> Miaustico (BSP) is a web app for practising the Spanish past tenses: the indefinido, the imperfecto and the pretérito perfecto. It is built for IESE students learning Spanish. Each tense has its own cat character: Zas (indefinido), Mimo (imperfecto) and Javi Tostado (pretérito perfecto).
+> Miaustico (BSP) is a web app for practising the Spanish past tenses: the indefinido, the imperfecto and the pretérito perfecto. It is built for students learning Spanish. Each tense has its own cat character: Zas (indefinido), Mimo (imperfecto) and Javi Tostado (pretérito perfecto).
 
 ## What you can do
 

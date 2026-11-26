@@ -135,7 +135,7 @@ export default function WelcomePage() {
             Practise the Spanish past tenses, one cat at a time.
           </h1>
           <p className="mt-5 max-w-[34ch] text-base leading-relaxed text-white/85 sm:max-w-[46ch] sm:text-lg">
-            Miaustico is a practice app for IESE students learning Spanish. Write sentences in the
+            Miaustico is a practice app for students learning Spanish. Write sentences in the
             indefinido, imperfecto and pretérito perfecto, learn when each one fits, and play live
             quizzes against your class.
           </p>

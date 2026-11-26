@@ -30,7 +30,6 @@ export const metadata: Metadata = {
     "pretérito perfecto",
     "learn spanish",
     "aprender español",
-    "IESE",
   ],
   openGraph: {
     title: "Miaustico: practise the Spanish past tenses",

@@ -12,7 +12,7 @@ import { checkOrigin } from '@/lib/security'
  * "who is in the room" were only ever reconciled by the join request itself, so a player whose
  * join had not landed showed up in the lobby for everyone while staying invisible to the server.
  *
- * The consequence, seen live at IESE: the round auto-advanced once the *known* players answered,
+ * The consequence, seen in a live class: the round auto-advanced once the *known* players answered,
  * and the unknown ones got a 403 from `/answer` and `/results` — leaving them stuck on
  * "Collecting answers..." forever. The lobby now calls this on mount so the two agree before
  * anyone presses Jugar.
