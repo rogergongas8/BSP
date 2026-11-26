@@ -9,7 +9,7 @@ export const SITE_DESCRIPTION =
 export const FAQ = [
   {
     q: 'What is Miaustico?',
-    a: 'Miaustico (BSP) is a web app for practising Spanish verb tenses. You write and choose verb forms in real sentences, read short theory lessons, and compete in live quizzes with your classmates.',
+    a: 'Miaustico is a web app for practising Spanish verb tenses. You write and choose verb forms in real sentences, read short theory lessons, and compete in live quizzes with your classmates.',
   },
   {
     q: 'Which Spanish tenses can I practise?',
